@@ -1,0 +1,154 @@
+---
+title: TikTok Integration
+description: Connect TikTok Business account to manage customer conversations
+---
+
+Connect your TikTok Business account to Chatwoot to manage TikTok Direct Messages from your unified inbox.
+
+## Prerequisites
+
+- TikTok Business account
+- TikTok Developer account
+- OAuth credentials from TikTok for Developers
+
+## Setup
+
+<Steps>
+  <Step title="Create TikTok Business account">
+    1. Go to [TikTok for Business](https://business.tiktok.com/)
+    2. Create a business account
+    3. Complete business verification
+  </Step>
+
+  <Step title="Set up TikTok Developer App">
+    1. Visit [TikTok for Developers](https://developers.tiktok.com/)
+    2. Create a new app
+    3. Enable the Messaging API product
+    4. Configure OAuth redirect URLs
+  </Step>
+
+  <Step title="Get OAuth credentials">
+    From your TikTok Developer app settings, copy:
+    - Client Key (App ID)
+    - Client Secret
+  </Step>
+
+  <Step title="Add TikTok inbox in Chatwoot">
+    Navigate to **Settings** → **Inboxes** → **Add Inbox** → **TikTok**
+  </Step>
+
+  <Step title="Authorize TikTok">
+    Click **Sign in with TikTok** and authorize Chatwoot to access your TikTok Business account.
+    
+    Required permissions:
+    - `user.info.basic` - Basic profile information
+    - `user.info.profile` - Profile details
+    - `user.info.stats` - Account statistics
+    - `video.list` - Video list access
+  </Step>
+
+  <Step title="Configure and test">
+    - Select your TikTok Business account
+    - Add agents to the inbox
+    - Send a test DM to your TikTok account
+    - Verify it appears in Chatwoot
+  </Step>
+</Steps>
+
+## Features
+
+- **Direct messages** - Receive and reply to TikTok DMs
+- **OAuth authentication** - Secure token-based authentication
+- **Automatic token refresh** - Tokens refresh automatically before expiry
+- **Rich media** - Send images and videos
+- **Business account integration** - Connect verified business accounts
+
+## OAuth Token Management
+
+TikTok uses OAuth 2.0 with token expiration:
+
+<ParamField path="access_token" type="string" required>
+  OAuth access token for API authentication (encrypted at rest)
+</ParamField>
+
+<ParamField path="refresh_token" type="string" required>
+  Token used to refresh access token when expired (encrypted at rest)
+</ParamField>
+
+<ParamField path="expires_at" type="datetime" required>
+  Access token expiration timestamp
+</ParamField>
+
+<ParamField path="refresh_token_expires_at" type="datetime" required>
+  Refresh token expiration timestamp
+</ParamField>
+
+<ParamField path="business_id" type="string" required>
+  Unique TikTok Business account identifier
+</ParamField>
+
+### Token Refresh
+
+Chatwoot automatically refreshes access tokens before they expire. The `Tiktok::TokenService` handles:
+- Checking token expiration
+- Refreshing tokens using refresh token
+- Updating token values in database
+- Handling authorization errors
+
+## Best Practices
+
+<Check>Respond quickly to maintain engagement with users</Check>
+<Check>Use automation rules for initial responses</Check>
+<Check>Monitor token expiration and reauthorize if needed</Check>
+<Check>Keep business account information up to date</Check>
+<Check>Set up CSAT surveys to gather feedback</Check>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Cannot connect TikTok account">
+    - Verify it's a TikTok Business account (not personal)
+    - Ensure business verification is complete
+    - Check OAuth credentials are correct
+    - Verify redirect URLs match in TikTok Developer settings
+    - Clear browser cache and try again
+  </Accordion>
+
+  <Accordion title="Messages not syncing">
+    - Reconnect TikTok account in Chatwoot
+    - Check access token hasn't expired
+    - Verify TikTok Developer app status is active
+    - Ensure Messaging API product is enabled
+    - Check Chatwoot logs for authorization errors
+  </Accordion>
+
+  <Accordion title="Authorization expired">
+    - Access tokens expire periodically
+    - Chatwoot shows reauthorization alert
+    - Click reauthorize in inbox settings
+    - Complete OAuth flow again
+    - Tokens will be refreshed automatically
+  </Accordion>
+
+  <Accordion title="Cannot send messages">
+    - Check if user has messaged you first (TikTok requires this)
+    - Verify access token is valid
+    - Ensure business account is not restricted
+    - Check message content complies with TikTok policies
+  </Accordion>
+</AccordionGroup>
+
+## Limitations
+
+- TikTok requires users to message you first before you can initiate conversation
+- Access tokens expire and require refresh
+- Business account verification required
+- Some TikTok features may not be available through API
+- Message types and media formats have restrictions
+
+## Related Documentation
+
+- [Instagram Integration](/channels/instagram)
+- [Facebook Messenger](/channels/facebook)
+- [Automation Rules](/features/automation)
+- [Canned Responses](/ai/canned-responses)

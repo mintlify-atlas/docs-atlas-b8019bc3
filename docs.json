@@ -65,7 +65,8 @@
               "channels/whatsapp",
               "channels/telegram",
               "channels/line",
-              "channels/sms"
+              "channels/sms",
+              "channels/tiktok"
             ]
           },
           {
