@@ -1,0 +1,189 @@
+{
+  "projectType": "saas",
+  "projectName": "Chatwoot",
+  "projectDescription": "Open-source customer support platform with omnichannel messaging, AI agents, and help center",
+  "theme": "palm",
+  "primaryColor": "#43a9f6",
+  "lightColor": "#85c6f6",
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "features"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/omnichannel",
+              "features/conversations",
+              "features/contacts",
+              "features/teams",
+              "features/automation",
+              "features/reports"
+            ]
+          },
+          {
+            "group": "AI & Automation",
+            "pages": [
+              "ai/captain",
+              "ai/chatbots",
+              "ai/canned-responses"
+            ]
+          },
+          {
+            "group": "Channels",
+            "pages": [
+              "channels/website-widget",
+              "channels/email",
+              "channels/facebook",
+              "channels/instagram",
+              "channels/twitter",
+              "channels/whatsapp",
+              "channels/telegram",
+              "channels/line",
+              "channels/sms"
+            ]
+          },
+          {
+            "group": "Help Center",
+            "pages": [
+              "help-center/overview",
+              "help-center/articles",
+              "help-center/categories",
+              "help-center/portal-customization"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Self-Hosting",
+        "groups": [
+          {
+            "group": "Deployment",
+            "pages": [
+              "self-hosting/overview",
+              "self-hosting/docker",
+              "self-hosting/heroku",
+              "self-hosting/digital-ocean",
+              "self-hosting/kubernetes"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "self-hosting/environment-variables",
+              "self-hosting/email-setup",
+              "self-hosting/storage",
+              "self-hosting/redis",
+              "self-hosting/postgres"
+            ]
+          },
+          {
+            "group": "Operations",
+            "pages": [
+              "self-hosting/backup-restore",
+              "self-hosting/monitoring",
+              "self-hosting/upgrades",
+              "self-hosting/scaling",
+              "self-hosting/troubleshooting"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Developers",
+        "groups": [
+          {
+            "group": "API Reference",
+            "pages": [
+              "api/overview",
+              "api/authentication",
+              "api/accounts",
+              "api/agents",
+              "api/contacts",
+              "api/conversations",
+              "api/messages",
+              "api/inboxes",
+              "api/webhooks"
+            ]
+          },
+          {
+            "group": "Integrations",
+            "pages": [
+              "integrations/overview",
+              "integrations/slack",
+              "integrations/dialogflow",
+              "integrations/shopify",
+              "integrations/linear",
+              "integrations/dashboard-apps"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "developers/webhooks",
+              "developers/custom-attributes",
+              "developers/widget-sdk",
+              "developers/widget-apis"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Contributing",
+        "groups": [
+          {
+            "group": "Contributing Guide",
+            "pages": [
+              "contributing/overview",
+              "contributing/setup",
+              "contributing/code-style",
+              "contributing/testing"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Omnichannel inbox (website, email, Facebook, Instagram, Twitter, WhatsApp, Telegram, Line, SMS)",
+    "Captain AI agent for automated support responses",
+    "Help Center portal with articles and FAQs",
+    "Team collaboration with private notes and mentions",
+    "Contact management with segments and custom attributes",
+    "Automation rules and workflows",
+    "Live chat widget and SDK",
+    "Reports and analytics (CSAT, agent performance, conversation metrics)",
+    "Integrations (Slack, Dialogflow, Shopify, Linear, Google Translate)",
+    "Multi-language support and internationalization"
+  ],
+  "publicApiSurface": [
+    "POST /api/v1/accounts - Create account",
+    "GET /api/v1/accounts/:id - Get account details",
+    "GET /api/v1/accounts/:account_id/agents - List agents",
+    "POST /api/v1/accounts/:account_id/agents - Create agent",
+    "GET /api/v1/accounts/:account_id/contacts - List contacts",
+    "POST /api/v1/accounts/:account_id/contacts - Create contact",
+    "GET /api/v1/accounts/:account_id/conversations - List conversations",
+    "POST /api/v1/accounts/:account_id/conversations - Create conversation",
+    "GET /api/v1/accounts/:account_id/conversations/:id/messages - Get messages",
+    "POST /api/v1/accounts/:account_id/conversations/:id/messages - Send message",
+    "GET /api/v1/accounts/:account_id/inboxes - List inboxes",
+    "POST /api/v1/accounts/:account_id/inboxes - Create inbox",
+    "POST /api/v1/accounts/:account_id/webhooks - Create webhook",
+    "GET /api/v1/accounts/:account_id/captain/assistants - List AI assistants",
+    "POST /api/v1/accounts/:account_id/captain/assistants - Create AI assistant",
+    "Widget SDK - window.$chatwoot.init()",
+    "Widget SDK - window.$chatwoot.toggle()",
+    "Widget SDK - window.$chatwoot.setUser()",
+    "Widget SDK - window.$chatwoot.setCustomAttributes()"
+  ]
+}
