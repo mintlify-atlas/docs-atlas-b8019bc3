@@ -1,0 +1,441 @@
+---
+title: Webhooks
+description: Configure webhooks to receive real-time event notifications from Chatwoot
+---
+
+Webhooks allow you to receive real-time HTTP notifications when events occur in your Chatwoot account. You can use webhooks to integrate Chatwoot with external systems, trigger automations, or sync data.
+
+## Overview
+
+When an event occurs in Chatwoot (such as a new message or conversation status change), Chatwoot sends an HTTP POST request to your configured webhook URL with the event payload in JSON format.
+
+## Creating a Webhook
+
+### Via API
+
+```http
+POST /api/v1/accounts/{account_id}/webhooks
+Content-Type: application/json
+
+{
+  "name": "My Webhook",
+  "url": "https://example.com/webhook",
+  "subscriptions": [
+    "message_created",
+    "conversation_status_changed"
+  ],
+  "inbox_id": null  // Optional: scope to specific inbox
+}
+```
+
+### Webhook Types
+
+- **Account-level webhooks** (`webhook_type: 0`): Receive events for all inboxes in the account
+- **Inbox-level webhooks** (`webhook_type: 1`): Receive events only for a specific inbox
+
+Source: `app/models/webhook.rb:27`
+
+## Available Events
+
+Chatwoot supports the following webhook events:
+
+| Event | Description |
+|-------|-------------|
+| `conversation_created` | New conversation is created |
+| `conversation_status_changed` | Conversation status changes (open, resolved, pending) |
+| `conversation_updated` | Conversation attributes are updated |
+| `message_created` | New message is created |
+| `message_updated` | Message is updated |
+| `contact_created` | New contact is created |
+| `contact_updated` | Contact attributes are updated |
+| `inbox_created` | New inbox is created |
+| `inbox_updated` | Inbox settings are updated |
+| `conversation_typing_on` | User starts typing |
+| `conversation_typing_off` | User stops typing |
+| `webwidget_triggered` | Widget is opened by a visitor |
+
+Source: `app/models/webhook.rb:29-31`
+
+## Webhook Payload Structure
+
+### Message Created Event
+
+```json
+{
+  "event": "message_created",
+  "id": 12345,
+  "content": "Hello, I need help with my order",
+  "content_type": "text",
+  "content_attributes": {},
+  "message_type": "incoming",
+  "created_at": "2026-03-04T10:30:00Z",
+  "private": false,
+  "source_id": "ext-msg-123",
+  "sender": {
+    "id": 101,
+    "name": "John Doe",
+    "email": "john@example.com",
+    "type": "contact"
+  },
+  "conversation": {
+    "id": 5678,
+    "inbox_id": 42,
+    "status": "open",
+    "custom_attributes": {},
+    "additional_attributes": {}
+  },
+  "account": {
+    "id": 1,
+    "name": "Acme Inc"
+  },
+  "inbox": {
+    "id": 42,
+    "name": "Website Chat"
+  },
+  "attachments": []
+}
+```
+
+Source: `app/models/message.rb` (webhook_data method)
+
+### Conversation Status Changed Event
+
+```json
+{
+  "event": "conversation_status_changed",
+  "id": 5678,
+  "status": "resolved",
+  "inbox_id": 42,
+  "contact_inbox": {
+    "id": 789,
+    "contact_id": 101,
+    "inbox_id": 42
+  },
+  "custom_attributes": {
+    "order_id": "ORD-12345",
+    "priority": "high"
+  },
+  "additional_attributes": {},
+  "labels": ["support", "billing"],
+  "priority": "high",
+  "changed_attributes": ["status"],
+  "meta": {
+    "sender": {
+      "id": 101,
+      "name": "John Doe",
+      "email": "john@example.com"
+    },
+    "assignee": {
+      "id": 5,
+      "name": "Agent Smith",
+      "email": "agent@acme.com"
+    }
+  }
+}
+```
+
+Source: `app/listeners/webhook_listener.rb:2-8`
+
+### Contact Created Event
+
+```json
+{
+  "event": "contact_created",
+  "id": 101,
+  "name": "John Doe",
+  "email": "john@example.com",
+  "phone_number": "+1234567890",
+  "identifier": "user-12345",
+  "avatar": "https://example.com/avatar.jpg",
+  "thumbnail": "https://example.com/avatar.jpg",
+  "custom_attributes": {
+    "plan": "premium",
+    "signup_date": "2026-01-15"
+  },
+  "additional_attributes": {},
+  "blocked": false,
+  "account": {
+    "id": 1,
+    "name": "Acme Inc"
+  }
+}
+```
+
+Source: `app/models/contact.rb` (webhook_data method)
+
+### Conversation Typing Events
+
+```json
+{
+  "event": "conversation_typing_on",
+  "user": {
+    "id": 5,
+    "name": "Agent Smith",
+    "email": "agent@acme.com",
+    "type": "user"
+  },
+  "conversation": {
+    "id": 5678,
+    "inbox_id": 42,
+    "status": "open"
+  },
+  "is_private": false
+}
+```
+
+Source: `app/listeners/webhook_listener.rb:96-108`
+
+### Widget Triggered Event
+
+```json
+{
+  "event": "webwidget_triggered",
+  "contact_inbox": {
+    "id": 789,
+    "contact_id": 101,
+    "inbox_id": 42
+  },
+  "event_info": {
+    "referrer_url": "https://example.com/pricing",
+    "user_agent": "Mozilla/5.0..."
+  }
+}
+```
+
+Source: `app/listeners/webhook_listener.rb:45-52`
+
+## Security
+
+### Webhook Signature Verification
+
+Chatwoot webhooks are sent via HTTPS POST requests with a JSON payload. Currently, Chatwoot does not include HMAC signatures by default, but you should:
+
+1. **Use HTTPS URLs only** - Webhook URLs must use HTTPS
+2. **Validate the request origin** - Check that requests come from your Chatwoot instance
+3. **Implement IP allowlisting** - Restrict webhook endpoint access to your Chatwoot server IP
+4. **Use a secret token in the URL** - Include a random token in your webhook URL path
+
+### Example: Verifying Webhook with Secret Token
+
+```javascript
+app.post('/webhook/:secret_token', (req, res) => {
+  const { secret_token } = req.params;
+  
+  if (secret_token !== process.env.WEBHOOK_SECRET) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  const event = req.body;
+  console.log('Received event:', event.event);
+  
+  // Process the webhook
+  processWebhook(event);
+  
+  res.status(200).json({ success: true });
+});
+```
+
+## Webhook Delivery
+
+### Timeout Configuration
+
+Webhooks have a configurable timeout (default: 5 seconds). You can set a custom timeout using the `WEBHOOK_TIMEOUT` environment variable.
+
+Source: `lib/webhooks/trigger.rb:82-87`
+
+### Retry Policy
+
+Chatwoot does not automatically retry failed webhook deliveries. Your endpoint should:
+
+- Respond with a `200 OK` status code quickly (within 5 seconds)
+- Process webhook data asynchronously if needed
+- Implement idempotency to handle duplicate deliveries
+
+### Error Handling
+
+For certain events (`message_created`, `message_updated`), webhook failures trigger automatic error handling:
+
+- **Agent Bot Webhooks**: Failed delivery moves conversation from `pending` to `open` status
+- **API Inbox Webhooks**: Failed delivery marks the message with `failed` status
+
+Source: `lib/webhooks/trigger.rb:33-42`
+
+## Testing Webhooks
+
+### Using RequestBin or Webhook.site
+
+```bash
+# Create a test webhook
+curl -X POST https://chatwoot.example.com/api/v1/accounts/1/webhooks \
+  -H "Content-Type: application/json" \
+  -H "api_access_token: YOUR_TOKEN" \
+  -d '{
+    "name": "Test Webhook",
+    "url": "https://webhook.site/your-unique-id",
+    "subscriptions": ["message_created", "conversation_created"]
+  }'
+```
+
+### Local Testing with ngrok
+
+```bash
+# Start ngrok tunnel
+ngrok http 3000
+
+# Use the HTTPS URL in your webhook configuration
+https://abc123.ngrok.io/webhook
+```
+
+## Example Implementations
+
+### Node.js/Express
+
+```javascript
+const express = require('express');
+const app = express();
+
+app.use(express.json());
+
+app.post('/chatwoot-webhook', async (req, res) => {
+  const { event, id, ...data } = req.body;
+  
+  try {
+    switch (event) {
+      case 'message_created':
+        await handleNewMessage(data);
+        break;
+      case 'conversation_status_changed':
+        await handleStatusChange(data);
+        break;
+      case 'contact_created':
+        await syncContactToCRM(data);
+        break;
+      default:
+        console.log('Unhandled event:', event);
+    }
+    
+    res.status(200).json({ received: true });
+  } catch (error) {
+    console.error('Webhook processing error:', error);
+    res.status(500).json({ error: 'Processing failed' });
+  }
+});
+
+app.listen(3000, () => {
+  console.log('Webhook server listening on port 3000');
+});
+```
+
+### Python/Flask
+
+```python
+from flask import Flask, request, jsonify
+import requests
+
+app = Flask(__name__)
+
+@app.route('/chatwoot-webhook', methods=['POST'])
+def webhook():
+    data = request.json
+    event = data.get('event')
+    
+    if event == 'message_created':
+        # Send notification to Slack
+        send_to_slack(data)
+    elif event == 'conversation_status_changed':
+        # Update external dashboard
+        update_dashboard(data)
+    
+    return jsonify({'status': 'success'}), 200
+
+def send_to_slack(data):
+    message = f"New message: {data.get('content')}"
+    requests.post(SLACK_WEBHOOK_URL, json={'text': message})
+
+if __name__ == '__main__':
+    app.run(port=3000)
+```
+
+### Ruby/Sinatra
+
+```ruby
+require 'sinatra'
+require 'json'
+
+post '/chatwoot-webhook' do
+  payload = JSON.parse(request.body.read)
+  
+  case payload['event']
+  when 'contact_created'
+    sync_to_crm(payload)
+  when 'message_created'
+    analyze_sentiment(payload)
+  end
+  
+  status 200
+  json success: true
+end
+```
+
+## Managing Webhooks
+
+### List Webhooks
+
+```http
+GET /api/v1/accounts/{account_id}/webhooks
+```
+
+### Update Webhook
+
+```http
+PATCH /api/v1/accounts/{account_id}/webhooks/{webhook_id}
+Content-Type: application/json
+
+{
+  "name": "Updated Webhook Name",
+  "subscriptions": ["message_created", "conversation_created"]
+}
+```
+
+### Delete Webhook
+
+```http
+DELETE /api/v1/accounts/{account_id}/webhooks/{webhook_id}
+```
+
+## Best Practices
+
+1. **Process asynchronously**: Return 200 OK immediately and process webhook data in a background job
+2. **Implement idempotency**: Use the event `id` to prevent duplicate processing
+3. **Handle all events gracefully**: Don't fail on unexpected event types
+4. **Log webhook payloads**: Keep audit logs for debugging
+5. **Monitor webhook health**: Track delivery success rates and response times
+6. **Use appropriate subscriptions**: Only subscribe to events you need
+7. **Implement exponential backoff**: If you need to make external API calls
+8. **Set up alerting**: Monitor for webhook processing failures
+
+## Troubleshooting
+
+### Webhook Not Receiving Events
+
+- Verify the webhook URL is accessible from your Chatwoot instance
+- Check that the webhook subscriptions include the event type
+- Ensure your endpoint returns a 200 status code within 5 seconds
+- Check Chatwoot logs for delivery errors
+
+### Duplicate Events
+
+- Implement idempotency using the event `id` field
+- Store processed event IDs in your database
+
+### Missing Data in Payload
+
+- Different events have different payload structures
+- Check the specific event documentation above
+- Some fields may be `null` depending on the event context
+
+## Related Resources
+
+- [Custom Attributes](/developers/custom-attributes) - Learn about custom attributes in webhook payloads
+- [Widget SDK](/developers/widget-sdk) - Trigger events that generate webhooks
+- [API Reference](/api-reference) - Webhook management endpoints

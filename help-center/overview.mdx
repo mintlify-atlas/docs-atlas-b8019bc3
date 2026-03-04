@@ -1,0 +1,187 @@
+---
+title: 'Help Center Overview'
+description: 'Build a self-service knowledge base portal for your customers'
+icon: 'circle-question'
+---
+
+The Help Center in Chatwoot allows you to create a self-service knowledge base portal where customers can find answers to their questions without contacting support. Build a comprehensive documentation site with articles, categories, and full customization options.
+
+## What is a Help Center?
+
+A Help Center (also known as a knowledge base or portal) is a public-facing website that contains:
+
+- **Articles** - Documentation pages with detailed information
+- **Categories** - Organizational structure to group related articles
+- **Search functionality** - Full-text search across all content
+- **Multi-locale support** - Content in multiple languages
+- **Custom branding** - Match your brand colors and style
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Multi-language Support" icon="language">
+    Create content in multiple locales with per-language article versions and category translations.
+  </Card>
+  
+  <Card title="Rich Content Editor" icon="pen-to-square">
+    Write articles with full Markdown/HTML support, including headings, lists, images, and code blocks.
+  </Card>
+  
+  <Card title="Article Search" icon="magnifying-glass">
+    Built-in full-text search across article titles, descriptions, and content with real-time suggestions.
+  </Card>
+  
+  <Card title="View Analytics" icon="chart-line">
+    Track article views to understand which content is most popular and helpful.
+  </Card>
+  
+  <Card title="Article Status" icon="toggle-on">
+    Control article visibility with draft, published, and archived states.
+  </Card>
+  
+  <Card title="Custom Domain" icon="globe">
+    Host your Help Center on your own domain with SSL support.
+  </Card>
+</CardGroup>
+
+## Article Features
+
+### Content Management
+
+- **Rich text content** - Full HTML/Markdown support for article body
+- **Metadata** - Title, description (meta tag), and custom slug
+- **Positioning** - Manual ordering within categories
+- **Authorship** - Track article authors and creation dates
+- **Associated articles** - Link related articles across locales
+
+### Publishing Workflow
+
+<Steps>
+  <Step title="Draft">
+    Create and edit articles in draft mode without making them public
+  </Step>
+  
+  <Step title="Published">
+    Make articles visible to customers on the public portal
+  </Step>
+  
+  <Step title="Archived">
+    Hide outdated articles while preserving content for reference
+  </Step>
+</Steps>
+
+### Article Schema
+
+Each article contains:
+
+```ruby
+# Core fields
+title           # Article heading
+content         # Full article body (HTML/Markdown)
+description     # Short summary for meta tags
+slug            # URL-friendly identifier
+locale          # Language code (e.g., 'en', 'es')
+status          # draft (0), published (1), or archived (2)
+position        # Sort order within category
+views           # View count tracking
+
+# Relationships
+portal_id       # Parent portal
+category_id     # Optional category assignment
+author_id       # User who created the article
+associated_article_id  # Link to parent article for translations
+```
+
+## Portal URL Structure
+
+Help Centers are accessible at:
+
+```
+https://your-domain.com/hc/{portal-slug}/{locale}/
+```
+
+**Article URLs:**
+```
+https://your-domain.com/hc/{portal-slug}/{locale}/articles/{article-slug}
+```
+
+**Category URLs:**
+```
+https://your-domain.com/hc/{portal-slug}/{locale}/categories/{category-slug}
+```
+
+## Theme Support
+
+The Help Center supports automatic theme switching:
+
+- **Light mode** - Default bright theme
+- **Dark mode** - Dark theme for reduced eye strain
+- **System** - Follows user's OS preference
+
+Theme preferences are persisted in `localStorage` and sync with system changes.
+
+## Search Functionality
+
+The portal includes powerful search features:
+
+<AccordionGroup>
+  <Accordion title="Full-text Search">
+    PostgreSQL-powered text search with ranking:
+    - Title matches weighted highest (A)
+    - Description matches weighted medium (B)
+    - Content matches weighted lower (C)
+    - Results normalized by document length
+  </Accordion>
+  
+  <Accordion title="Search Filters">
+    Filter results by:
+    - Locale/language
+    - Category
+    - Author
+    - Status (published/draft/archived)
+  </Accordion>
+  
+  <Accordion title="Real-time Suggestions">
+    Vue-powered search component with instant results as you type
+  </Accordion>
+</AccordionGroup>
+
+## Getting Started
+
+<CardGroup cols={2}>
+  <Card title="Create Articles" icon="file-lines" href="/help-center/articles">
+    Learn how to write and publish articles
+  </Card>
+  
+  <Card title="Organize Categories" icon="folder-tree" href="/help-center/categories">
+    Structure your content with categories
+  </Card>
+  
+  <Card title="Customize Portal" icon="palette" href="/help-center/portal-customization">
+    Brand your Help Center with custom colors and settings
+  </Card>
+</CardGroup>
+
+## Best Practices
+
+<Tip>
+  **Start with categories** - Plan your information architecture before creating articles. Well-organized categories make it easier for customers to find answers.
+</Tip>
+
+<Tip>
+  **Use descriptive titles** - Article titles appear in search results and should clearly indicate the content.
+</Tip>
+
+<Tip>
+  **Add table of contents** - For long articles, the automatic table of contents helps users navigate to specific sections.
+</Tip>
+
+<Warning>
+  **Locale consistency** - Articles inherit their locale from their category. Make sure categories exist for all supported locales.
+</Warning>
+
+## Related Resources
+
+- [Articles Management](/help-center/articles)
+- [Categories & Organization](/help-center/categories)
+- [Portal Customization](/help-center/portal-customization)

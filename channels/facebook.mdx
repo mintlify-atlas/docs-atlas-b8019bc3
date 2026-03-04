@@ -1,0 +1,107 @@
+---
+title: Facebook Messenger
+description: Integrate Facebook Messenger to manage customer conversations from Facebook pages
+---
+
+Connect your Facebook Page to Chatwoot to manage Messenger conversations alongside other channels in a unified inbox.
+
+## Prerequisites
+
+- A Facebook Page (not a personal profile)
+- Admin access to the Facebook Page
+- Facebook account with appropriate permissions
+
+## Setup
+
+<Steps>
+  <Step title="Navigate to inbox settings">
+    Go to **Settings** → **Inboxes** → **Add Inbox** → **Messenger**
+  </Step>
+
+  <Step title="Authorize Facebook">
+    Click **Sign in with Facebook** and authorize Chatwoot to access your pages.
+    
+    You'll need to grant these permissions:
+    - `pages_show_list` - View list of pages you manage
+    - `pages_messaging` - Send and receive messages
+    - `pages_read_engagement` - Read page content
+    - `pages_manage_metadata` - Manage page settings
+  </Step>
+
+  <Step title="Select your page">
+    Choose which Facebook Page to connect from the list of pages you manage.
+  </Step>
+
+  <Step title="Configure inbox settings">
+    - Add agents to the inbox
+    - Configure auto-assignment rules
+    - Set business hours
+  </Step>
+
+  <Step title="Test the integration">
+    Send a test message to your Facebook Page. It should appear in Chatwoot within seconds.
+  </Step>
+</Steps>
+
+## Features
+
+- **Real-time messaging** - Instant message sync
+- **Message templates** - Use Facebook approved message templates
+- **Rich media** - Send images, videos, files
+- **Conversation history** - Access past conversations
+- **Page mentions** - Get notified when your page is mentioned
+- **Handoff protocol** - Transfer conversations to human agents
+
+## Message Templates
+
+For sending messages outside the 24-hour response window, use Facebook approved message templates:
+
+1. Create templates in Facebook Business Manager
+2. Get template approval from Facebook
+3. Use templates in Chatwoot conversations
+
+## Best Practices
+
+<Check>Respond within 24 hours to maintain high response rate</Check>
+<Check>Use canned responses for common questions</Check>
+<Check>Set up automation rules for common scenarios</Check>
+<Check>Keep Facebook Page published and active</Check>
+<Check>Monitor connection status regularly</Check>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Messages not syncing">
+    - Reconnect your Facebook Page in inbox settings
+    - Check Facebook permissions are granted
+    - Verify page is published
+    - Check Chatwoot logs for API errors
+  </Accordion>
+
+  <Accordion title="Cannot send messages">
+    - Check if 24-hour messaging window has passed
+    - Use message templates for messages outside window
+    - Verify page token is valid
+    - Ensure page is not restricted by Facebook
+  </Accordion>
+
+  <Accordion title="Authorization fails">
+    - Clear browser cache and cookies
+    - Try different browser
+    - Check if Facebook account has admin access to page
+    - Ensure business verification is complete (if required)
+  </Accordion>
+</AccordionGroup>
+
+## Limitations
+
+- Facebook has a 24-hour messaging window for promotional messages
+- Message templates require Facebook approval
+- Some Facebook features (buttons, cards) may not render in Chatwoot
+- Rate limits apply based on page tier
+
+## Related Documentation
+
+- [Instagram Integration](/channels/instagram)
+- [Automation Rules](/features/automation)
+- [Canned Responses](/ai/canned-responses)

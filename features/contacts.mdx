@@ -1,0 +1,446 @@
+---
+title: 'Contact Management'
+description: 'Managing contacts, profiles, custom attributes, and segmentation'
+icon: 'address-book'
+---
+
+## Overview
+
+Contacts represent customers or visitors who interact with your support channels. Chatwoot provides comprehensive contact management with profiles, custom attributes, and segmentation capabilities.
+
+## Contact Types
+
+Contacts are classified into three types:
+
+<CardGroup cols={3}>
+  <Card title="Visitor" icon="eye">
+    Anonymous users browsing your website
+  </Card>
+  <Card title="Lead" icon="handshake">
+    Identified prospects with contact information
+  </Card>
+  <Card title="Customer" icon="user-check">
+    Paying customers or registered users
+  </Card>
+</CardGroup>
+
+```ruby
+contact.contact_type # => "visitor", "lead", or "customer"
+
+# Change contact type
+contact.update!(contact_type: :customer)
+```
+
+## Contact Attributes
+
+### Core Attributes
+
+```ruby
+contact.name            # Full name
+contact.email           # Email address (unique per account)
+contact.phone_number    # Phone number in E.164 format (+1234567890)
+contact.identifier      # Custom unique identifier
+contact.blocked         # Block status
+contact.last_activity_at # Last interaction timestamp
+```
+
+### Name Components
+
+```ruby
+contact.name         # "John Doe"
+contact.middle_name  # "Michael"
+contact.last_name    # "Doe"
+```
+
+### Location Data
+
+```ruby
+contact.location     # "New York, NY"
+contact.country_code # "US"
+```
+
+## Creating Contacts
+
+### Basic Contact
+
+```ruby
+contact = account.contacts.create!(
+  name: "Jane Smith",
+  email: "jane@example.com",
+  phone_number: "+12125551234",
+  contact_type: :lead
+)
+```
+
+### With Additional Attributes
+
+```ruby
+contact = account.contacts.create!(
+  name: "John Doe",
+  email: "john@example.com",
+  additional_attributes: {
+    company_name: "Acme Corp",
+    job_title: "CEO",
+    city: "New York",
+    country: "United States",
+    social_profiles: {
+      twitter: "johndoe",
+      linkedin: "johndoe"
+    }
+  }
+)
+```
+
+## Custom Attributes
+
+Store custom data specific to your business:
+
+```ruby
+# Set custom attributes
+contact.custom_attributes = {
+  subscription_plan: "enterprise",
+  account_balance: 1500.00,
+  signup_date: "2024-01-15",
+  total_orders: 42,
+  vip_customer: true
+}
+contact.save!
+
+# Access custom attributes
+contact.custom_attributes["subscription_plan"] # => "enterprise"
+```
+
+<Info>
+  Custom attributes are stored as JSONB and support complex data types including strings, numbers, booleans, and nested objects.
+</Info>
+
+## Additional Attributes
+
+System-managed attributes for enriched contact data:
+
+```ruby
+contact.additional_attributes
+# => {
+#   company_name: "Acme Corp",
+#   job_title: "Engineering Manager",
+#   city: "San Francisco",
+#   country: "United States",
+#   social_profiles: {
+#     twitter: "handle",
+#     linkedin: "profile",
+#     github: "username"
+#   },
+#   browser: "Chrome 120",
+#   browser_version: "120.0",
+#   platform: "macOS"
+# }
+```
+
+## Contact Identification
+
+### Email-based Lookup
+
+```ruby
+contact = Contact.from_email("jane@example.com")
+```
+
+### Multiple Identifiers
+
+Contacts can be identified by:
+
+1. **Email** - Unique per account, case-insensitive
+2. **Phone Number** - Unique per account, E.164 format required
+3. **Identifier** - Custom unique identifier for integrations
+
+```ruby
+# Phone number validation (E.164 format)
+contact.phone_number = "+12125551234"  # Valid
+contact.phone_number = "212-555-1234"  # Invalid
+```
+
+<Warning>
+  Phone numbers must be in E.164 format: `+[country code][number]`. Example: `+12125551234`
+</Warning>
+
+## Contact Conversations
+
+Access all conversations for a contact:
+
+```ruby
+# All conversations
+contact.conversations
+
+# Active conversations
+contact.conversations.open
+
+# Recent conversations
+contact.conversations.order(created_at: :desc).limit(10)
+```
+
+## Contact Inboxes
+
+Contacts can interact through multiple channels:
+
+```ruby
+# Get all inboxes where contact has interacted
+contact.contact_inboxes
+contact.inboxes
+
+# Get source ID for specific inbox
+source_id = contact.get_source_id(inbox.id)
+```
+
+## Messages and Notes
+
+```ruby
+# All messages from contact
+contact.messages
+
+# Internal notes about contact
+contact.notes
+```
+
+## Blocking Contacts
+
+Block spam or abusive contacts:
+
+```ruby
+# Block contact
+contact.update!(blocked: true)
+
+# Unblock contact
+contact.update!(blocked: false)
+
+# Check if blocked
+contact.blocked? # => true/false
+```
+
+<Info>
+  When a contact is blocked, new conversations are automatically resolved.
+</Info>
+
+## Labels
+
+Organize contacts with labels:
+
+```ruby
+# Add labels
+contact.add_labels(["vip", "enterprise", "priority"])
+
+# Remove labels
+contact.remove_labels(["priority"])
+
+# Get labels
+contact.label_list # => ["vip", "enterprise"]
+```
+
+## CSAT Responses
+
+Access customer satisfaction survey responses:
+
+```ruby
+contact.csat_survey_responses
+
+# Calculate average rating
+average_csat = contact.csat_survey_responses.average(:rating)
+```
+
+## Contact Sorting
+
+Multiple sorting options:
+
+```ruby
+# Sort by name
+Contact.order_on_name(:asc)
+Contact.order_on_name(:desc)
+
+# Sort by last activity
+Contact.order_on_last_activity_at(:desc)
+
+# Sort by creation date
+Contact.order_on_created_at(:desc)
+
+# Sort by company name
+Contact.order_on_company_name(:asc)
+
+# Sort by location
+Contact.order_on_city(:asc)
+Contact.order_on_country_name(:asc)
+```
+
+## Resolved Contacts
+
+Filter contacts with identification:
+
+```ruby
+# Contacts with email, phone, or identifier
+resolved_contacts = Contact.resolved_contacts
+
+# CRM v2: Lead contacts
+resolved_contacts = Contact.resolved_contacts(use_crm_v2: true)
+```
+
+## Stale Contact Cleanup
+
+Find and remove inactive contacts:
+
+```ruby
+# Find stale contacts (no identification, no conversations, older than 30 days)
+stale_contacts = Contact.stale_without_conversations(30.days.ago)
+
+stale_contacts.destroy_all
+```
+
+## IP Lookup Enhancement
+
+Automatic location detection from IP:
+
+```ruby
+# Enabled per account feature
+if account.feature_enabled?('ip_lookup')
+  # Automatically enriches location data
+  # Triggered after contact creation
+end
+```
+
+## Avatar Management
+
+Contacts inherit from `Avatarable` module:
+
+```ruby
+# Get avatar URL
+contact.avatar_url
+
+# Upload custom avatar
+contact.avatar.attach(avatar_file)
+```
+
+## Contact Events
+
+Contacts trigger events for integrations:
+
+- `CONTACT_CREATED` - New contact created
+- `CONTACT_UPDATED` - Contact attributes changed
+- `CONTACT_DELETED` - Contact deleted
+
+```ruby
+# Webhook payload
+contact.webhook_data
+# => {
+#   account: {...},
+#   additional_attributes: {...},
+#   avatar: "https://...",
+#   custom_attributes: {...},
+#   email: "jane@example.com",
+#   id: 123,
+#   identifier: "USER-001",
+#   name: "Jane Smith",
+#   phone_number: "+12125551234",
+#   thumbnail: "https://...",
+#   blocked: false
+# }
+```
+
+## Best Practices
+
+### Email Validation
+
+<Tip>
+  Emails are automatically downcased and validated against `Devise.email_regexp`.
+</Tip>
+
+```ruby
+contact.email = "Jane@EXAMPLE.COM"
+contact.save!
+contact.email # => "jane@example.com"
+```
+
+### Phone Number Format
+
+```ruby
+# Always use E.164 format
+contact.phone_number = "+12125551234"  # Correct
+contact.phone_number = "+1 (212) 555-1234"  # Will fail validation
+```
+
+### Custom Attributes Schema
+
+Define custom attribute definitions:
+
+```ruby
+account.custom_attribute_definitions.create!(
+  attribute_key: "subscription_plan",
+  attribute_display_name: "Subscription Plan",
+  attribute_display_type: "text",
+  attribute_model: "contact_attribute"
+)
+```
+
+## Company Association
+
+```ruby
+# Associate contact with company (Enterprise feature)
+contact.update!(company_id: company.id)
+```
+
+## Availability Status
+
+Track contact online status:
+
+```ruby
+contact.online?
+contact.offline?
+contact.busy?
+```
+
+## API Examples
+
+### Search Contacts
+
+```ruby
+# Search by name, email, phone, or identifier
+results = account.contacts.where(
+  "name ILIKE ? OR email ILIKE ? OR phone_number ILIKE ?",
+  "%#{query}%", "%#{query}%", "%#{query}%"
+)
+```
+
+### Merge Contacts
+
+```ruby
+# Merge duplicate contacts
+primary_contact = account.contacts.find(primary_id)
+duplicate_contact = account.contacts.find(duplicate_id)
+
+# Move all conversations to primary
+duplicate_contact.conversations.update_all(contact_id: primary_contact.id)
+
+# Delete duplicate
+duplicate_contact.destroy
+```
+
+### Bulk Update
+
+```ruby
+# Update multiple contacts
+Contact.where(id: contact_ids).update_all(
+  custom_attributes: { customer_tier: "gold" }
+)
+```
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Conversations" icon="comments" href="/features/conversations">
+    View contact conversations
+  </Card>
+  <Card title="Custom Attributes" icon="tags">
+    Define custom fields
+  </Card>
+  <Card title="Reports" icon="chart-line" href="/features/reports">
+    Contact analytics
+  </Card>
+  <Card title="Segments" icon="filter">
+    Create contact segments
+  </Card>
+</CardGroup>

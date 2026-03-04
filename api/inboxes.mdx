@@ -1,0 +1,555 @@
+---
+title: Inboxes
+description: Manage communication channels and inboxes in your Chatwoot account
+---
+
+## Overview
+
+Inboxes represent communication channels through which conversations occur. Each inbox can be a website widget, email, SMS, social media channel, or API.
+
+## List All Inboxes
+
+Retrieve all inboxes in your account.
+
+```http
+GET /api/v1/accounts/{account_id}/inboxes
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+### Response
+
+<ResponseField name="id" type="integer">
+  Inbox ID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Inbox name
+</ResponseField>
+
+<ResponseField name="channel_id" type="integer">
+  Associated channel ID
+</ResponseField>
+
+<ResponseField name="channel_type" type="string">
+  Channel type: `Channel::WebWidget`, `Channel::Email`, `Channel::Api`, etc.
+</ResponseField>
+
+<ResponseField name="greeting_enabled" type="boolean">
+  Whether greeting message is enabled
+</ResponseField>
+
+<ResponseField name="greeting_message" type="string">
+  Greeting message content
+</ResponseField>
+
+<ResponseField name="enable_auto_assignment" type="boolean">
+  Whether auto-assignment is enabled
+</ResponseField>
+
+<ResponseField name="working_hours_enabled" type="boolean">
+  Whether working hours are configured
+</ResponseField>
+
+<ResponseField name="timezone" type="string">
+  Inbox timezone
+</ResponseField>
+
+### Example Request
+
+```bash
+curl -X GET https://app.chatwoot.com/api/v1/accounts/1/inboxes \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+### Example Response
+
+```json
+{
+  "payload": [
+    {
+      "id": 1,
+      "name": "Website Widget",
+      "channel_id": 1,
+      "channel_type": "Channel::WebWidget",
+      "greeting_enabled": true,
+      "greeting_message": "Hello! How can we help you?",
+      "enable_auto_assignment": true,
+      "working_hours_enabled": true,
+      "timezone": "America/New_York",
+      "avatar_url": "https://example.com/inbox-avatar.png"
+    },
+    {
+      "id": 2,
+      "name": "Support Email",
+      "channel_id": 2,
+      "channel_type": "Channel::Email",
+      "greeting_enabled": false,
+      "enable_auto_assignment": true,
+      "working_hours_enabled": false
+    }
+  ]
+}
+```
+
+## Get Inbox
+
+Retrieve details of a specific inbox.
+
+```http
+GET /api/v1/accounts/{account_id}/inboxes/{id}
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+<ParamField path="id" type="integer" required>
+  The ID of the inbox
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X GET https://app.chatwoot.com/api/v1/accounts/1/inboxes/1 \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+## Create Inbox
+
+Create a new inbox with a communication channel.
+
+```http
+POST /api/v1/accounts/{account_id}/inboxes
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+### Request Body
+
+<ParamField body="name" type="string" required>
+  Inbox name
+</ParamField>
+
+<ParamField body="channel[type]" type="string" required>
+  Channel type: `web_widget`, `api`, `email`, `line`, `telegram`, `whatsapp`, `sms`
+</ParamField>
+
+<ParamField body="greeting_enabled" type="boolean" default="false">
+  Enable greeting message
+</ParamField>
+
+<ParamField body="greeting_message" type="string">
+  Greeting message text
+</ParamField>
+
+<ParamField body="enable_auto_assignment" type="boolean" default="true">
+  Enable automatic conversation assignment
+</ParamField>
+
+<ParamField body="enable_email_collect" type="boolean" default="true">
+  Enable email collection (web widget only)
+</ParamField>
+
+<ParamField body="csat_survey_enabled" type="boolean" default="false">
+  Enable CSAT survey
+</ParamField>
+
+<ParamField body="timezone" type="string">
+  Inbox timezone (e.g., "America/New_York")
+</ParamField>
+
+### Example Request (Web Widget)
+
+```bash
+curl -X POST https://app.chatwoot.com/api/v1/accounts/1/inboxes \
+  -H "api_access_token: YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Website Support",
+    "channel": {
+      "type": "web_widget",
+      "website_url": "https://example.com",
+      "welcome_title": "Welcome!",
+      "welcome_tagline": "How can we help?",
+      "widget_color": "#1f93ff"
+    },
+    "greeting_enabled": true,
+    "greeting_message": "Hi there! How can I help you today?",
+    "enable_auto_assignment": true
+  }'
+```
+
+### Example Request (API Channel)
+
+```bash
+curl -X POST https://app.chatwoot.com/api/v1/accounts/1/inboxes \
+  -H "api_access_token: YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Mobile App",
+    "channel": {
+      "type": "api",
+      "webhook_url": "https://example.com/webhooks/chatwoot"
+    },
+    "enable_auto_assignment": true
+  }'
+```
+
+### Example Request (Email Channel)
+
+```bash
+curl -X POST https://app.chatwoot.com/api/v1/accounts/1/inboxes \
+  -H "api_access_token: YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Support Email",
+    "channel": {
+      "type": "email",
+      "email": "support@example.com",
+      "imap_enabled": true,
+      "imap_address": "imap.gmail.com",
+      "imap_port": 993,
+      "imap_email": "support@example.com",
+      "imap_password": "app_password",
+      "smtp_enabled": true,
+      "smtp_address": "smtp.gmail.com",
+      "smtp_port": 587,
+      "smtp_email": "support@example.com",
+      "smtp_password": "app_password"
+    }
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "id": 3,
+  "name": "Website Support",
+  "channel_id": 3,
+  "channel_type": "Channel::WebWidget",
+  "greeting_enabled": true,
+  "greeting_message": "Hi there! How can I help you today?",
+  "enable_auto_assignment": true,
+  "webhook_url": "https://app.chatwoot.com/api/v1/webhooks/..."
+}
+```
+
+## Update Inbox
+
+Update inbox settings and configuration.
+
+```http
+PATCH /api/v1/accounts/{account_id}/inboxes/{id}
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+<ParamField path="id" type="integer" required>
+  The ID of the inbox to update
+</ParamField>
+
+### Request Body
+
+Accepts the same parameters as Create Inbox.
+
+### Example Request
+
+```bash
+curl -X PATCH https://app.chatwoot.com/api/v1/accounts/1/inboxes/1 \
+  -H "api_access_token: YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Updated Inbox Name",
+    "greeting_message": "Welcome! We are here to help.",
+    "enable_auto_assignment": false
+  }'
+```
+
+## Delete Inbox
+
+Delete an inbox and its associated channel.
+
+```http
+DELETE /api/v1/accounts/{account_id}/inboxes/{id}
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+<ParamField path="id" type="integer" required>
+  The ID of the inbox to delete
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X DELETE https://app.chatwoot.com/api/v1/accounts/1/inboxes/3 \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+<Warning>
+Deleting an inbox will remove all associated conversations and messages. This action cannot be undone.
+</Warning>
+
+## Get Agent Bot
+
+Retrieve the agent bot assigned to an inbox.
+
+```http
+GET /api/v1/accounts/{account_id}/inboxes/{id}/agent_bot
+```
+
+### Example Request
+
+```bash
+curl -X GET https://app.chatwoot.com/api/v1/accounts/1/inboxes/1/agent_bot \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+## Set Agent Bot
+
+Assign an agent bot to an inbox.
+
+```http
+POST /api/v1/accounts/{account_id}/inboxes/{id}/set_agent_bot
+```
+
+### Request Body
+
+<ParamField body="agent_bot" type="integer">
+  Agent bot ID (set to null to remove bot)
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST https://app.chatwoot.com/api/v1/accounts/1/inboxes/1/set_agent_bot \
+  -H "api_access_token: YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent_bot": 1
+  }'
+```
+
+## Delete Avatar
+
+Remove the inbox avatar image.
+
+```http
+DELETE /api/v1/accounts/{account_id}/inboxes/{id}/avatar
+```
+
+### Example Request
+
+```bash
+curl -X DELETE https://app.chatwoot.com/api/v1/accounts/1/inboxes/1/avatar \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+## Get Campaigns
+
+Retrieve campaigns associated with an inbox.
+
+```http
+GET /api/v1/accounts/{account_id}/inboxes/{id}/campaigns
+```
+
+### Example Request
+
+```bash
+curl -X GET https://app.chatwoot.com/api/v1/accounts/1/inboxes/1/campaigns \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+## Sync Templates
+
+Sync message templates for WhatsApp inboxes.
+
+```http
+POST /api/v1/accounts/{account_id}/inboxes/{id}/sync_templates
+```
+
+### Example Request
+
+```bash
+curl -X POST https://app.chatwoot.com/api/v1/accounts/1/inboxes/1/sync_templates \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+<Note>
+Template sync is only available for WhatsApp channels (Cloud API and Twilio).
+</Note>
+
+## Get Health Status
+
+Check the health status of a WhatsApp Cloud API inbox.
+
+```http
+GET /api/v1/accounts/{account_id}/inboxes/{id}/health
+```
+
+### Example Request
+
+```bash
+curl -X GET https://app.chatwoot.com/api/v1/accounts/1/inboxes/1/health \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+### Example Response
+
+```json
+{
+  "status": "healthy",
+  "quality_rating": "green",
+  "messaging_limit": "tier_1k"
+}
+```
+
+## Channel Types
+
+### Web Widget
+Embeddable chat widget for websites.
+
+**Required channel parameters:**
+- `website_url` - Website URL
+- `welcome_title` - Welcome message title
+- `welcome_tagline` - Welcome message tagline
+- `widget_color` - Widget theme color
+
+### API
+Programmatic messaging channel.
+
+**Required channel parameters:**
+- `webhook_url` - Webhook URL for callbacks (optional)
+
+### Email
+Email-based inbox with IMAP/SMTP.
+
+**Required channel parameters:**
+- `email` - Email address
+- `imap_enabled` - Enable IMAP
+- `imap_address` - IMAP server address
+- `imap_port` - IMAP port
+- `imap_email` - IMAP login email
+- `imap_password` - IMAP password
+- `smtp_enabled` - Enable SMTP
+- `smtp_address` - SMTP server address
+- `smtp_port` - SMTP port
+- `smtp_email` - SMTP login email
+- `smtp_password` - SMTP password
+
+### Line
+LINE messaging integration.
+
+**Required channel parameters:**
+- `line_channel_id` - LINE channel ID
+- `line_channel_secret` - LINE channel secret
+- `line_channel_token` - LINE channel access token
+
+### Telegram
+Telegram bot integration.
+
+**Required channel parameters:**
+- `bot_token` - Telegram bot token
+
+### WhatsApp
+WhatsApp Business API integration.
+
+**Required channel parameters:**
+- `phone_number` - WhatsApp phone number
+- `provider` - Provider: `whatsapp_cloud` or `default`
+- `api_key` - API key (provider-specific)
+
+### SMS
+SMS messaging via Twilio.
+
+**Required channel parameters:**
+- `phone_number` - SMS phone number
+- `account_sid` - Twilio account SID
+- `auth_token` - Twilio auth token
+
+## Working Hours
+
+Configure working hours for an inbox:
+
+```json
+{
+  "working_hours_enabled": true,
+  "timezone": "America/New_York",
+  "working_hours": [
+    {
+      "day_of_week": 1,
+      "open_hour": 9,
+      "open_minutes": 0,
+      "close_hour": 17,
+      "close_minutes": 0,
+      "closed_all_day": false
+    }
+  ]
+}
+```
+
+## CSAT Survey
+
+Configure CSAT (Customer Satisfaction) surveys:
+
+```json
+{
+  "csat_survey_enabled": true,
+  "csat_config": {
+    "display_type": "emoji",
+    "message": "How would you rate your experience?",
+    "button_text": "Rate us",
+    "language": "en",
+    "survey_rules": {
+      "operator": "contains",
+      "values": ["resolved"]
+    }
+  }
+}
+```
+
+## Error Responses
+
+### Inbox Not Found
+
+```json
+{
+  "error": "Inbox not found"
+}
+```
+
+### Invalid Channel Type
+
+```json
+{
+  "error": "Invalid channel type"
+}
+```
+
+### Account Limit Exceeded
+
+```json
+{
+  "error": "Account limit exceeded. Please upgrade your plan"
+}
+```

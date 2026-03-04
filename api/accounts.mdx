@@ -1,0 +1,378 @@
+---
+title: Accounts
+description: Manage Chatwoot accounts via API - create, retrieve, and update account information
+---
+
+## Overview
+
+Accounts are the top-level resource in Chatwoot. Each account contains inboxes, agents, contacts, and conversations.
+
+## Get Account Details
+
+Retrieve information about a specific account.
+
+```http
+GET /api/v1/accounts/{account_id}
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+### Response
+
+<ResponseField name="id" type="integer">
+  Account ID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Account name
+</ResponseField>
+
+<ResponseField name="locale" type="string">
+  Account default locale (e.g., "en")
+</ResponseField>
+
+<ResponseField name="domain" type="string">
+  Custom domain for the account
+</ResponseField>
+
+<ResponseField name="support_email" type="string">
+  Support email address
+</ResponseField>
+
+<ResponseField name="custom_attributes" type="object">
+  Custom attributes for the account
+</ResponseField>
+
+<ResponseField name="settings" type="object">
+  Account settings configuration
+</ResponseField>
+
+### Example Request
+
+```bash
+curl -X GET https://app.chatwoot.com/api/v1/accounts/1 \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+### Example Response
+
+```json
+{
+  "id": 1,
+  "name": "Acme Corporation",
+  "locale": "en",
+  "domain": "acme.chatwoot.com",
+  "support_email": "support@acme.com",
+  "custom_attributes": {
+    "industry": "technology",
+    "company_size": "50-100",
+    "timezone": "America/New_York"
+  },
+  "settings": {
+    "auto_resolve_after": 30,
+    "audio_transcriptions": true
+  }
+}
+```
+
+## Create Account
+
+Create a new Chatwoot account with a user.
+
+```http
+POST /api/v1/accounts
+```
+
+<Note>
+Account creation must be enabled by the system administrator. Check the `ENABLE_ACCOUNT_SIGNUP` environment variable.
+</Note>
+
+### Request Body
+
+<ParamField body="account_name" type="string" required>
+  Name for the new account
+</ParamField>
+
+<ParamField body="email" type="string" required>
+  Email address for the account owner
+</ParamField>
+
+<ParamField body="user_full_name" type="string" required>
+  Full name of the account owner
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  Password for the account owner
+</ParamField>
+
+<ParamField body="locale" type="string" default="en">
+  Preferred locale (language code)
+</ParamField>
+
+<ParamField body="h_captcha_client_response" type="string">
+  Captcha response token (if captcha is enabled)
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST https://app.chatwoot.com/api/v1/accounts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "account_name": "Acme Corporation",
+    "email": "admin@acme.com",
+    "user_full_name": "John Doe",
+    "password": "securePassword123",
+    "locale": "en"
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "id": 1,
+  "uid": "admin@acme.com",
+  "email": "admin@acme.com",
+  "name": "John Doe",
+  "account_id": 1,
+  "accounts": [
+    {
+      "id": 1,
+      "name": "Acme Corporation",
+      "locale": "en"
+    }
+  ]
+}
+```
+
+## Update Account
+
+Update account information and settings.
+
+```http
+PATCH /api/v1/accounts/{account_id}
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account to update
+</ParamField>
+
+### Request Body
+
+<ParamField body="name" type="string">
+  Account name
+</ParamField>
+
+<ParamField body="locale" type="string">
+  Account locale (e.g., "en", "es", "fr")
+</ParamField>
+
+<ParamField body="domain" type="string">
+  Custom domain
+</ParamField>
+
+<ParamField body="support_email" type="string">
+  Support email address
+</ParamField>
+
+<ParamField body="industry" type="string">
+  Industry type (stored in custom_attributes)
+</ParamField>
+
+<ParamField body="company_size" type="string">
+  Company size range (stored in custom_attributes)
+</ParamField>
+
+<ParamField body="timezone" type="string">
+  Timezone (stored in custom_attributes)
+</ParamField>
+
+<ParamField body="auto_resolve_after" type="integer">
+  Number of days to auto-resolve conversations
+</ParamField>
+
+<ParamField body="auto_resolve_message" type="string">
+  Message sent when conversation is auto-resolved
+</ParamField>
+
+<ParamField body="auto_resolve_ignore_waiting" type="boolean">
+  Ignore waiting status when auto-resolving
+</ParamField>
+
+<ParamField body="audio_transcriptions" type="boolean">
+  Enable audio transcriptions
+</ParamField>
+
+<ParamField body="auto_resolve_label" type="string">
+  Label to apply when auto-resolving
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X PATCH https://app.chatwoot.com/api/v1/accounts/1 \
+  -H "api_access_token: YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Acme Corp",
+    "support_email": "support@acme.com",
+    "auto_resolve_after": 30,
+    "industry": "Technology",
+    "timezone": "America/Los_Angeles"
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "id": 1,
+  "name": "Acme Corp",
+  "locale": "en",
+  "support_email": "support@acme.com",
+  "custom_attributes": {
+    "industry": "Technology",
+    "timezone": "America/Los_Angeles"
+  },
+  "settings": {
+    "auto_resolve_after": 30
+  }
+}
+```
+
+## Update Active Status
+
+Update the last active timestamp for the current user in the account.
+
+```http
+POST /api/v1/accounts/{account_id}/update_active_at
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST https://app.chatwoot.com/api/v1/accounts/1/update_active_at \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+### Response
+
+Returns `200 OK` with no body.
+
+## Get Cache Keys
+
+Retrieve cache keys for labels, inboxes, and teams in the account.
+
+```http
+GET /api/v1/accounts/{account_id}/cache_keys
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+### Response
+
+<ResponseField name="cache_keys" type="object">
+  Cache keys for account resources
+</ResponseField>
+
+<ResponseField name="cache_keys.label" type="string">
+  Cache key for labels
+</ResponseField>
+
+<ResponseField name="cache_keys.inbox" type="string">
+  Cache key for inboxes
+</ResponseField>
+
+<ResponseField name="cache_keys.team" type="string">
+  Cache key for teams
+</ResponseField>
+
+### Example Request
+
+```bash
+curl -X GET https://app.chatwoot.com/api/v1/accounts/1/cache_keys \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+### Example Response
+
+```json
+{
+  "cache_keys": {
+    "label": "1234567890",
+    "inbox": "0987654321",
+    "team": "1357924680"
+  }
+}
+```
+
+## Error Responses
+
+### Account Not Found
+
+```json
+{
+  "error": "Account not found"
+}
+```
+
+### Signup Disabled
+
+```json
+{
+  "error": "Account signup is disabled"
+}
+```
+
+### Invalid Parameters
+
+```json
+{
+  "error": "Invalid parameters",
+  "message": "account_name and user_full_name are required"
+}
+```
+
+### User Already Exists
+
+```json
+{
+  "error": "User with this email already exists"
+}
+```
+
+## Account Scoped Resources
+
+All resources in Chatwoot are scoped to an account:
+
+- [Agents](/api/agents)
+- [Contacts](/api/contacts)
+- [Conversations](/api/conversations)
+- [Inboxes](/api/inboxes)
+- [Messages](/api/messages)
+- [Webhooks](/api/webhooks)
+
+Use the account ID in the URL path to access these resources:
+
+```
+/api/v1/accounts/{account_id}/contacts
+/api/v1/accounts/{account_id}/conversations
+/api/v1/accounts/{account_id}/inboxes
+```

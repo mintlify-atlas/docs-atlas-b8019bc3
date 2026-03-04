@@ -1,0 +1,374 @@
+---
+title: Storage Configuration
+description: Configure file storage for Chatwoot using local disk, Amazon S3, Google Cloud Storage, or Azure Storage
+---
+
+Chatwoot stores uploaded files, attachments, and avatars using Active Storage. You can configure storage to use local disk or cloud storage providers.
+
+## Storage Service Selection
+
+<ParamField path="ACTIVE_STORAGE_SERVICE" type="string" required>
+  The storage service to use for file uploads.
+  
+  **Options:**
+  - `local` - Store files on local disk
+  - `amazon` - Amazon S3
+  - `google` - Google Cloud Storage (GCS)
+  - `microsoft` - Azure Storage
+  - `s3_compatible` - S3-compatible services (DigitalOcean Spaces, Minio, etc.)
+  
+  **Default:** `local`
+</ParamField>
+
+<ParamField path="DIRECT_UPLOADS_ENABLED" type="boolean">
+  Enable direct uploads to cloud storage using signed URLs.
+  
+  When enabled, files are uploaded directly from the browser to your cloud storage, reducing server load.
+  
+  **Requirements:**
+  - Proper CORS configuration on your cloud storage bucket
+  - See [Active Storage CORS Configuration](https://edgeguides.rubyonrails.org/active_storage_overview.html#cross-origin-resource-sharing-cors-configuration)
+  
+  **Default:** `false`
+</ParamField>
+
+## Local Storage
+
+Store files on the local filesystem. Suitable for single-server deployments.
+
+**Configuration:**
+```bash
+ACTIVE_STORAGE_SERVICE=local
+```
+
+**Storage location:** `<rails-root>/storage/`
+
+<Warning>
+  Local storage is not recommended for multi-server deployments or containerized environments where data persistence is required. Use cloud storage instead.
+</Warning>
+
+## Amazon S3
+
+Store files in Amazon S3 buckets.
+
+### Configuration Variables
+
+<ParamField path="S3_BUCKET_NAME" type="string" required>
+  Name of your S3 bucket.
+  
+  **Example:** `chatwoot-uploads`
+</ParamField>
+
+<ParamField path="AWS_ACCESS_KEY_ID" type="string" required>
+  AWS access key ID with permissions to access the S3 bucket.
+</ParamField>
+
+<ParamField path="AWS_SECRET_ACCESS_KEY" type="string" required>
+  AWS secret access key corresponding to the access key ID.
+</ParamField>
+
+<ParamField path="AWS_REGION" type="string" required>
+  AWS region where your S3 bucket is located.
+  
+  **Examples:**
+  - `us-east-1`
+  - `eu-west-1`
+  - `ap-southeast-1`
+</ParamField>
+
+### Example Configuration
+
+```bash
+ACTIVE_STORAGE_SERVICE=amazon
+S3_BUCKET_NAME=my-chatwoot-uploads
+AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+AWS_REGION=us-east-1
+```
+
+### S3 Bucket Setup
+
+1. Create an S3 bucket in your AWS account
+2. Configure bucket permissions:
+   - Create an IAM user with S3 access
+   - Attach a policy with `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject` permissions
+3. If using direct uploads, configure CORS:
+
+```json
+[
+  {
+    "AllowedHeaders": ["*"],
+    "AllowedMethods": ["GET", "PUT", "POST", "DELETE"],
+    "AllowedOrigins": ["https://your-chatwoot-domain.com"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3000
+  }
+]
+```
+
+### IAM Policy Example
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:DeleteObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::your-bucket-name",
+        "arn:aws:s3:::your-bucket-name/*"
+      ]
+    }
+  ]
+}
+```
+
+<Note>
+  For detailed S3 setup instructions, see [Configuring S3 Bucket as Cloud Storage](https://www.chatwoot.com/docs/configuring-s3-bucket-as-cloud-storage)
+</Note>
+
+## Google Cloud Storage (GCS)
+
+Store files in Google Cloud Storage buckets.
+
+### Configuration Variables
+
+<ParamField path="GCS_PROJECT" type="string" required>
+  Google Cloud project ID.
+  
+  **Example:** `my-project-12345`
+</ParamField>
+
+<ParamField path="GCS_CREDENTIALS" type="string" required>
+  Google Cloud service account credentials in JSON format.
+  
+  **Note:** This should be the entire JSON key file content, not a file path.
+  
+  **Format:** `{"type":"service_account","project_id":"...","private_key":"..."}`
+</ParamField>
+
+<ParamField path="GCS_BUCKET" type="string" required>
+  Name of your GCS bucket.
+  
+  **Example:** `chatwoot-uploads`
+</ParamField>
+
+### Example Configuration
+
+```bash
+ACTIVE_STORAGE_SERVICE=google
+GCS_PROJECT=my-project-12345
+GCS_BUCKET=chatwoot-uploads
+GCS_CREDENTIALS='{"type":"service_account","project_id":"my-project-12345","private_key_id":"...","private_key":"...","client_email":"..."}'
+```
+
+### GCS Bucket Setup
+
+1. Create a GCS bucket in your Google Cloud project
+2. Create a service account with Storage Object Admin role
+3. Generate and download a JSON key for the service account
+4. Configure CORS if using direct uploads:
+
+```json
+[
+  {
+    "origin": ["https://your-chatwoot-domain.com"],
+    "method": ["GET", "PUT", "POST", "DELETE"],
+    "responseHeader": ["Content-Type", "ETag"],
+    "maxAgeSeconds": 3000
+  }
+]
+```
+
+Apply CORS configuration:
+```bash
+gsutil cors set cors.json gs://your-bucket-name
+```
+
+<Warning>
+  Never commit your GCS credentials JSON to version control. Use environment variables or secrets management.
+</Warning>
+
+## Azure Storage
+
+Store files in Azure Storage containers.
+
+### Configuration Variables
+
+<ParamField path="AZURE_STORAGE_ACCOUNT_NAME" type="string" required>
+  Azure Storage account name.
+  
+  **Example:** `chatwootstorage`
+</ParamField>
+
+<ParamField path="AZURE_STORAGE_ACCESS_KEY" type="string" required>
+  Azure Storage account access key.
+</ParamField>
+
+<ParamField path="AZURE_STORAGE_CONTAINER" type="string" required>
+  Name of the Azure Storage container.
+  
+  **Example:** `uploads`
+</ParamField>
+
+### Example Configuration
+
+```bash
+ACTIVE_STORAGE_SERVICE=microsoft
+AZURE_STORAGE_ACCOUNT_NAME=chatwootstorage
+AZURE_STORAGE_ACCESS_KEY=your-access-key-here
+AZURE_STORAGE_CONTAINER=uploads
+```
+
+### Azure Storage Setup
+
+1. Create a storage account in Azure Portal
+2. Create a container within the storage account
+3. Get the access key from "Access keys" section
+4. Configure CORS if using direct uploads:
+
+**CORS rules:**
+- Allowed origins: `https://your-chatwoot-domain.com`
+- Allowed methods: `GET, PUT, POST, DELETE, OPTIONS`
+- Allowed headers: `*`
+- Exposed headers: `ETag, Content-Type`
+- Max age: `3000`
+
+## S3-Compatible Storage
+
+Use S3-compatible services like DigitalOcean Spaces, Minio, Wasabi, or other providers.
+
+### Configuration Variables
+
+<ParamField path="STORAGE_BUCKET_NAME" type="string" required>
+  Name of your storage bucket.
+  
+  **Example:** `chatwoot-uploads`
+</ParamField>
+
+<ParamField path="STORAGE_ACCESS_KEY_ID" type="string" required>
+  Access key ID for the storage service.
+</ParamField>
+
+<ParamField path="STORAGE_SECRET_ACCESS_KEY" type="string" required>
+  Secret access key for the storage service.
+</ParamField>
+
+<ParamField path="STORAGE_REGION" type="string" required>
+  Region or location of your storage bucket.
+  
+  **Examples:**
+  - `us-east-1` (AWS-style)
+  - `nyc3` (DigitalOcean)
+  - `auto` (Minio)
+</ParamField>
+
+<ParamField path="STORAGE_ENDPOINT" type="string" required>
+  Custom endpoint URL for the S3-compatible service.
+  
+  **Examples:**
+  - DigitalOcean Spaces: `https://nyc3.digitaloceanspaces.com`
+  - Minio: `https://minio.example.com`
+  - Wasabi: `https://s3.wasabisys.com`
+</ParamField>
+
+<ParamField path="STORAGE_FORCE_PATH_STYLE" type="boolean">
+  Force path-style URLs instead of virtual-hosted-style.
+  
+  **Note:** Required for some S3-compatible services like Minio.
+  
+  **Default:** `false`
+</ParamField>
+
+### Example: DigitalOcean Spaces
+
+```bash
+ACTIVE_STORAGE_SERVICE=s3_compatible
+STORAGE_BUCKET_NAME=chatwoot-uploads
+STORAGE_ACCESS_KEY_ID=your-spaces-key
+STORAGE_SECRET_ACCESS_KEY=your-spaces-secret
+STORAGE_REGION=nyc3
+STORAGE_ENDPOINT=https://nyc3.digitaloceanspaces.com
+STORAGE_FORCE_PATH_STYLE=false
+```
+
+### Example: Minio
+
+```bash
+ACTIVE_STORAGE_SERVICE=s3_compatible
+STORAGE_BUCKET_NAME=chatwoot
+STORAGE_ACCESS_KEY_ID=minioadmin
+STORAGE_SECRET_ACCESS_KEY=minioadmin
+STORAGE_REGION=us-east-1
+STORAGE_ENDPOINT=http://minio:9000
+STORAGE_FORCE_PATH_STYLE=true
+```
+
+### Example: Wasabi
+
+```bash
+ACTIVE_STORAGE_SERVICE=s3_compatible
+STORAGE_BUCKET_NAME=chatwoot-uploads
+STORAGE_ACCESS_KEY_ID=your-wasabi-key
+STORAGE_SECRET_ACCESS_KEY=your-wasabi-secret
+STORAGE_REGION=us-east-1
+STORAGE_ENDPOINT=https://s3.wasabisys.com
+STORAGE_FORCE_PATH_STYLE=false
+```
+
+## Storage Migration
+
+If you need to migrate from one storage provider to another:
+
+1. Configure the new storage provider
+2. Update `ACTIVE_STORAGE_SERVICE` to the new provider
+3. Use the Rails Active Storage migration task:
+
+```bash
+rails active_storage:migrate_to_new_service
+```
+
+<Warning>
+  Always backup your data before migrating storage providers.
+</Warning>
+
+## Troubleshooting
+
+### Files not uploading
+
+- Verify storage credentials are correct
+- Check bucket/container exists and is accessible
+- Review Chatwoot logs for detailed error messages
+- Verify IAM/service account permissions
+
+### CORS errors with direct uploads
+
+- Ensure CORS is properly configured on your storage bucket
+- Verify allowed origins match your Chatwoot domain exactly
+- Check browser console for specific CORS error messages
+- Ensure HTTPS is used in production
+
+### Permission errors
+
+- Verify the IAM user or service account has required permissions
+- For S3: Ensure both bucket-level and object-level permissions
+- For GCS: Verify service account has Storage Object Admin role
+- For Azure: Check container access level and access key validity
+
+### Path-style vs virtual-hosted-style
+
+Some S3-compatible services require `STORAGE_FORCE_PATH_STYLE=true`. If you see URL-related errors, try toggling this setting.
+
+**Path-style:** `https://endpoint.com/bucket/object`  
+**Virtual-hosted-style:** `https://bucket.endpoint.com/object`
+
+## Related Configuration
+
+- [Environment Variables](/self-hosting/environment-variables) - Complete environment variable reference
+- [PostgreSQL Configuration](/self-hosting/postgres) - Database configuration

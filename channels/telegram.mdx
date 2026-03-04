@@ -1,0 +1,227 @@
+---
+title: Telegram Integration
+description: Connect Telegram bot to manage customer conversations
+---
+
+Create a Telegram bot and connect it to Chatwoot to manage Telegram conversations from your unified inbox.
+
+## Prerequisites
+
+- Telegram account
+- BotFather bot access
+
+## Setup
+
+<Steps>
+  <Step title="Create Telegram bot">
+    1. Open Telegram and search for `@BotFather`
+    2. Send `/newbot` command
+    3. Follow prompts to set bot name and username
+    4. Copy the API token provided by BotFather
+    
+    ```
+    Use this token to access the HTTP API:
+    1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
+    ```
+  </Step>
+
+  <Step title="Add Telegram inbox in Chatwoot">
+    Go to **Settings** → **Inboxes** → **Add Inbox** → **Telegram**
+  </Step>
+
+  <Step title="Enter bot token">
+    Paste the API token from BotFather
+  </Step>
+
+  <Step title="Configure webhook">
+    Chatwoot automatically sets up the webhook with Telegram.
+  </Step>
+
+  <Step title="Test the bot">
+    1. Search for your bot in Telegram (by username)
+    2. Send `/start` command
+    3. Send a test message
+    4. Verify it appears in Chatwoot
+  </Step>
+</Steps>
+
+## Features
+
+- **Real-time messaging** - Instant message sync
+- **Rich media** - Images, videos, audio, documents, stickers
+- **File sharing** - Send and receive files up to 50MB
+- **Bot commands** - Custom commands for automation
+- **Inline keyboards** - Interactive buttons
+- **Group chats** - Add bot to groups (if enabled)
+- **Location sharing** - Send and receive locations
+
+## Bot Commands
+
+Set up bot commands for quick actions:
+
+### Configure Commands in BotFather
+
+1. Send `/setcommands` to BotFather
+2. Select your bot
+3. Send commands list:
+
+```
+start - Start conversation
+help - Get help
+support - Contact support
+status - Check order status
+```
+
+### Handle Commands in Chatwoot
+
+Commands appear as regular messages in Chatwoot. Use automation rules to respond to specific commands.
+
+## Inline Keyboards
+
+Send interactive buttons to users:
+
+```json
+{
+  "text": "How can we help you?",
+  "reply_markup": {
+    "inline_keyboard": [
+      [
+        {"text": "Sales", "callback_data": "sales"},
+        {"text": "Support", "callback_data": "support"}
+      ],
+      [
+        {"text": "Track Order", "callback_data": "track"}
+      ]
+    ]
+  }
+}
+```
+
+## Configuration Options
+
+<ParamField path="bot_token" type="string" required>
+  Telegram bot API token from BotFather
+</ParamField>
+
+<ParamField path="bot_name" type="string">
+  Bot display name
+</ParamField>
+
+## Privacy & Groups
+
+### Privacy Mode
+
+By default, bots in groups only see:
+- Messages that start with `/` (commands)
+- Messages that mention the bot
+- Messages sent by the bot
+
+Disable privacy mode in BotFather to see all group messages:
+1. Send `/setprivacy` to BotFather
+2. Select your bot
+3. Choose `Disable`
+
+### Adding Bot to Groups
+
+1. Enable group messages in BotFather: `/setjoingroups`
+2. Add bot to your Telegram group
+3. Group conversations appear in Chatwoot
+
+## Media Handling
+
+### Supported File Types
+
+- **Images**: JPEG, PNG, GIF
+- **Videos**: MP4, MOV
+- **Audio**: MP3, OGG, WAV
+- **Documents**: PDF, DOC, DOCX, ZIP, etc.
+- **Stickers**: Telegram stickers
+
+### File Size Limits
+
+- **Photos**: 10MB
+- **Videos**: 50MB
+- **Documents**: 50MB
+- **Audio**: 50MB
+
+## Best Practices
+
+<Check>Set clear bot commands for common actions</Check>
+<Check>Use inline keyboards for interactive options</Check>
+<Check>Respond quickly to maintain engagement</Check>
+<Check>Set bot description and about text in BotFather</Check>
+<Check>Use automation rules for handling commands</Check>
+<Check>Monitor bot usage and response times</Check>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Bot not responding">
+    - Verify bot token is correct
+    - Check bot is not blocked or deleted
+    - Test bot directly in Telegram
+    - Ensure webhook is set correctly
+    - Check Chatwoot logs for errors
+  </Accordion>
+
+  <Accordion title="Messages not syncing">
+    - Verify webhook URL is accessible
+    - Check firewall allows Telegram webhook IPs
+    - Ensure bot has necessary permissions
+    - Test webhook with Telegram API test tool
+  </Accordion>
+
+  <Accordion title="Cannot send media">
+    - Check file size within limits
+    - Verify file format is supported
+    - Ensure file is accessible (not local file path)
+    - Check bot permissions in group (if in group)
+  </Accordion>
+
+  <Accordion title="Bot commands not working">
+    - Verify commands are set in BotFather
+    - Check command syntax (must start with /)
+    - Ensure bot can read messages in group (disable privacy mode)
+    - Check automation rules are configured correctly
+  </Accordion>
+</AccordionGroup>
+
+## Advanced Configuration
+
+### Custom Webhook URL
+
+For self-hosted installations, set custom webhook:
+
+```bash
+curl -X POST "https://api.telegram.org/bot{token}/setWebhook" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://your-chatwoot.com/webhooks/telegram/{inbox_id}",
+    "allowed_updates": ["message", "callback_query"]
+  }'
+```
+
+### Bot Information
+
+Set bot information in BotFather:
+
+```
+/setname - Set bot display name
+/setdescription - Set bot description (shown in chat header)
+/setabouttext - Set about text (shown in profile)
+/setuserpic - Set bot profile picture
+```
+
+## Telegram API Limits
+
+- **Message rate**: 30 messages per second
+- **Group message rate**: 20 messages per minute per group
+- **File size**: 50MB per file
+- **Bot creation**: 20 bots per account
+
+## Related Documentation
+
+- [Telegram Bot API](https://core.telegram.org/bots/api)
+- [Automation Rules](/features/automation)
+- [Canned Responses](/ai/canned-responses)
+- [Webhooks](/developers/webhooks)

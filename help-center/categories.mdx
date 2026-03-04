@@ -1,0 +1,485 @@
+---
+title: 'Categories & Organization'
+description: 'Structure your Help Center with categories, subcategories, and related content'
+icon: 'folder-tree'
+---
+
+Categories provide the organizational structure for your Help Center. Learn how to create categories, build hierarchies, and link related content.
+
+## What are Categories?
+
+Categories group related articles together, making it easier for customers to find information. Each category can contain:
+
+- **Articles** - Individual documentation pages
+- **Subcategories** - Nested child categories
+- **Related categories** - Cross-references to similar topics
+- **Folders** - Additional organizational structure
+
+## Creating Categories
+
+### Required Fields
+
+<ParamField path="name" type="string" required>
+  Display name for the category
+</ParamField>
+
+<ParamField path="slug" type="string" required>
+  URL-friendly identifier (must be unique per portal + locale)
+</ParamField>
+
+<ParamField path="portal_id" type="integer" required>
+  Parent Help Center portal
+</ParamField>
+
+<ParamField path="account_id" type="integer" required>
+  Account ID (automatically set from portal)
+</ParamField>
+
+### Optional Fields
+
+<ParamField path="description" type="text">
+  Brief explanation of the category's content
+</ParamField>
+
+<ParamField path="icon" type="string">
+  Icon identifier for visual representation (default: empty string)
+</ParamField>
+
+<ParamField path="locale" type="string">
+  Language code (default: 'en')
+</ParamField>
+
+<ParamField path="position" type="integer">
+  Sort order for category display
+</ParamField>
+
+<ParamField path="parent_category_id" type="bigint">
+  Parent category for creating subcategories
+</ParamField>
+
+<ParamField path="associated_category_id" type="bigint">
+  Root category for translations
+</ParamField>
+
+<Steps>
+  <Step title="Plan Structure">
+    Outline your content hierarchy before creating categories
+  </Step>
+  
+  <Step title="Create Parent Categories">
+    Start with top-level categories for main topics
+  </Step>
+  
+  <Step title="Add Subcategories">
+    Create child categories for more specific topics
+  </Step>
+  
+  <Step title="Assign Articles">
+    Move or create articles within each category
+  </Step>
+  
+  <Step title="Link Related Content">
+    Connect related categories for cross-navigation
+  </Step>
+</Steps>
+
+## Category Schema
+
+```ruby
+class Category < ApplicationRecord
+  belongs_to :account
+  belongs_to :portal
+  belongs_to :parent_category, optional: true
+  belongs_to :root_category,
+             foreign_key: :associated_category_id,
+             optional: true
+  
+  has_many :articles
+  has_many :folders
+  has_many :sub_categories,
+           foreign_key: :parent_category_id
+  has_many :associated_categories,
+           foreign_key: :associated_category_id
+  has_many :related_categories,
+           through: :category_related_categories
+end
+```
+
+## Category Hierarchy
+
+### Parent-Child Structure
+
+Create nested categories for detailed organization:
+
+```
+Getting Started                 # Parent category
+├── Installation               # Subcategory
+├── Configuration              # Subcategory
+└── First Steps                # Subcategory
+
+Advanced Features              # Parent category
+├── Automation                 # Subcategory
+├── Integrations               # Subcategory
+└── Custom Workflows           # Subcategory
+```
+
+<CodeGroup>
+```ruby Creating Subcategories
+# Define parent relationship
+subcategory = Category.create!(
+  name: 'Installation',
+  slug: 'installation',
+  parent_category_id: getting_started.id,
+  portal_id: portal.id
+)
+```
+
+```ruby Finding Subcategories
+# Access child categories
+parent_category.sub_categories
+
+# Check if category has parent
+subcategory.parent_category.present?
+```
+</CodeGroup>
+
+### Related Categories
+
+Link categories that cover similar topics:
+
+```ruby
+# Schema
+has_many :category_related_categories,
+         class_name: :RelatedCategory,
+         dependent: :destroy_async
+has_many :related_categories,
+         through: :category_related_categories
+
+# Usage
+category.related_categories << other_category
+```
+
+<Info>
+  Related categories appear as suggestions, helping customers discover relevant content.
+</Info>
+
+## Multi-language Categories
+
+### Locale Support
+
+Categories are language-specific:
+
+```ruby
+# Validation
+validate :allowed_locales
+
+def allowed_locales
+  allowed_locales = portal.config['allowed_locales']
+  return true if allowed_locales.include?(locale)
+  
+  errors.add(:locale, "#{locale} is not part of portal's allowed_locales")
+end
+```
+
+### Associated Categories
+
+Link translations of the same category:
+
+```ruby
+# English version (root)
+category_en = Category.create!(
+  name: 'Getting Started',
+  slug: 'getting-started',
+  locale: 'en',
+  portal_id: portal.id
+)
+
+# Spanish translation
+category_es = Category.create!(
+  name: 'Comenzando',
+  slug: 'getting-started',
+  locale: 'es',
+  associated_category_id: category_en.id,
+  portal_id: portal.id
+)
+```
+
+<Tip>
+  The same slug can be used across locales. The uniqueness constraint is per `(slug, locale, portal_id)` combination.
+</Tip>
+
+## Category Positioning
+
+Control the display order of categories:
+
+```ruby
+# Default ordering
+scope :search, ->(params) {
+  search_by_locale(params[:locale])
+    .page(current_page(params))
+    .order(position: :asc)
+}
+```
+
+<Steps>
+  <Step title="Set Initial Position">
+    Assign position values when creating categories (e.g., 10, 20, 30)
+  </Step>
+  
+  <Step title="Update as Needed">
+    Modify positions to reorder categories
+  </Step>
+  
+  <Step title="Maintain Gaps">
+    Use increments of 10 to allow easy insertion of new categories
+  </Step>
+</Steps>
+
+## Pagination
+
+Categories are paginated for performance:
+
+```ruby
+paginates_per Limits::CATEGORIES_PER_PAGE
+
+# Usage
+Category.search(locale: 'en', page: 2)
+```
+
+## Organizing Articles
+
+### Article Assignment
+
+Articles belong to one category:
+
+```ruby
+has_many :articles, dependent: :nullify
+```
+
+<Info>
+  When a category is deleted, articles are not deleted. Instead, their `category_id` is set to `null`.
+</Info>
+
+### Locale Inheritance
+
+Articles automatically inherit category locale:
+
+```ruby
+# From article.rb
+def ensure_locale_in_article
+  self.locale = if category.present?
+                  category.locale
+                else
+                  locale.presence || portal.default_locale
+                end
+end
+```
+
+<Warning>
+  Articles must have the same locale as their category. Assigning an article to a category with a different locale will update the article's locale.
+</Warning>
+
+## Folders
+
+Categories can contain folders for additional organization:
+
+```ruby
+has_many :folders, dependent: :destroy_async
+```
+
+<Note>
+  Folders provide an extra level of hierarchy beyond categories and subcategories. They're useful for large categories with many articles.
+</Note>
+
+## Searching Categories
+
+### By Locale
+
+Filter categories by language:
+
+```ruby
+scope :search_by_locale, ->(locale) {
+  where(locale: locale) if locale.present?
+}
+
+# Usage
+Category.search_by_locale('en')
+```
+
+### Search Method
+
+Combine locale filtering with pagination:
+
+```ruby
+Category.search(
+  locale: 'en',
+  page: 1
+)
+```
+
+## Category URLs
+
+Category pages follow this structure:
+
+```
+https://your-domain.com/hc/{portal-slug}/{locale}/categories/{category-slug}
+```
+
+**Example:**
+```
+https://app.chatwoot.com/hc/my-portal/en/categories/getting-started
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Naming Conventions">
+    - Use clear, descriptive category names
+    - Keep names concise (2-4 words)
+    - Use title case for consistency
+    - Avoid technical jargon in top-level categories
+    - Use specific terms for subcategories
+  </Accordion>
+  
+  <Accordion title="Structure Design">
+    - Limit hierarchy depth to 2-3 levels
+    - Group 5-10 articles per category
+    - Create subcategories when a category exceeds 15 articles
+    - Balance category sizes for easy navigation
+    - Use folders for very large categories
+  </Accordion>
+  
+  <Accordion title="Multi-language Strategy">
+    - Create categories for all supported locales
+    - Link translations with associated_category_id
+    - Use consistent slug structure across locales
+    - Maintain same hierarchy in all languages
+    - Translate category descriptions and icons
+  </Accordion>
+  
+  <Accordion title="Related Categories">
+    - Link 2-4 related categories per category
+    - Connect categories with complementary content
+    - Avoid circular relationships
+    - Review relationships regularly
+  </Accordion>
+</AccordionGroup>
+
+## Common Patterns
+
+### Feature-based Organization
+
+```
+Messaging
+├── Live Chat
+├── Email Integration
+└── WhatsApp
+
+Automation
+├── Canned Responses
+├── Chatbots
+└── Workflows
+```
+
+### User Journey Organization
+
+```
+Getting Started
+├── Installation
+├── Setup
+└── First Steps
+
+Daily Use
+├── Managing Conversations
+├── Team Collaboration
+└── Reporting
+
+Advanced
+├── Custom Development
+├── API Integration
+└── Performance Tuning
+```
+
+### Role-based Organization
+
+```
+For Agents
+├── Handling Conversations
+├── Using Tools
+└── Best Practices
+
+For Administrators
+├── Account Settings
+├── Team Management
+└── Security
+```
+
+## Validation Rules
+
+<ResponseField name="name" required>
+  Must be present
+</ResponseField>
+
+<ResponseField name="slug" required>
+  Must be present and unique per `(slug, locale, portal_id)`
+</ResponseField>
+
+<ResponseField name="locale" required>
+  Must be in portal's `allowed_locales` list
+</ResponseField>
+
+<ResponseField name="account_id" required>
+  Automatically set from portal
+</ResponseField>
+
+## API Operations
+
+### Create Category
+
+```ruby
+category = portal.categories.create!(
+  name: 'Getting Started',
+  slug: 'getting-started',
+  description: 'Learn the basics of Chatwoot',
+  locale: 'en',
+  position: 10
+)
+```
+
+### Update Category
+
+```ruby
+category.update!(
+  name: 'Updated Name',
+  description: 'New description',
+  position: 20
+)
+```
+
+### Delete Category
+
+```ruby
+category.destroy
+# Articles in this category will have category_id set to null
+# Subcategories will have parent_category_id set to null
+```
+
+## Troubleshooting
+
+<Warning>
+  **Category not appearing** - Check that the locale matches the portal's allowed locales and that the category is not a draft (if draft mode exists).
+</Warning>
+
+<Warning>
+  **Slug conflict** - Ensure the slug is unique for the combination of slug, locale, and portal_id.
+</Warning>
+
+<Warning>
+  **Articles changing locale** - When assigning an article to a category, the article's locale will update to match the category's locale.
+</Warning>
+
+## Related Resources
+
+- [Help Center Overview](/help-center/overview)
+- [Managing Articles](/help-center/articles)
+- [Portal Customization](/help-center/portal-customization)

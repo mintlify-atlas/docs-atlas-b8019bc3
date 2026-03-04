@@ -1,0 +1,517 @@
+---
+title: Testing Guide
+description: How to run and write tests for Chatwoot
+---
+
+Testing is essential to ensure Chatwoot's reliability and stability. This guide covers how to run existing tests and write new ones.
+
+## Test Frameworks
+
+Chatwoot uses different testing frameworks for different parts of the codebase:
+
+- **Backend (Ruby/Rails)**: RSpec
+- **Frontend (JavaScript/Vue)**: Vitest with Vue Test Utils
+
+## Running Tests
+
+### Backend Tests (RSpec)
+
+#### Run All Specs
+
+```bash
+bundle exec rspec
+```
+
+#### Run Specific Spec File
+
+```bash
+bundle exec rspec spec/models/contact_spec.rb
+```
+
+#### Run Single Test
+
+Run a specific test by line number:
+
+```bash
+bundle exec rspec spec/models/contact_spec.rb:42
+```
+
+#### Run Tests by Pattern
+
+```bash
+# Run all model specs
+bundle exec rspec spec/models/
+
+# Run all controller specs
+bundle exec rspec spec/controllers/
+
+# Run specs matching a pattern
+bundle exec rspec spec/models/*_spec.rb
+```
+
+#### Run Tests with Filters
+
+RSpec supports tags and filters:
+
+```bash
+# Run only tests tagged with :focus
+bundle exec rspec --tag focus
+
+# Skip tests tagged with :slow
+bundle exec rspec --tag ~slow
+```
+
+### Frontend Tests (Vitest)
+
+#### Run All Tests
+
+```bash
+pnpm test
+```
+
+This runs Vitest with the following configuration:
+- Environment: `TZ=UTC` (consistent timezone)
+- No watch mode
+- No cache
+- No coverage (for speed)
+- Logs heap usage
+
+#### Run Tests in Watch Mode
+
+```bash
+pnpm test:watch
+```
+
+Watch mode automatically reruns tests when files change.
+
+#### Run Tests with Coverage
+
+```bash
+pnpm test:coverage
+```
+
+Generates a coverage report showing which lines are tested.
+
+#### Run Specific Test File
+
+```bash
+pnpm vitest app/javascript/dashboard/components/ContactCard.spec.js
+```
+
+#### Run Tests Matching Pattern
+
+```bash
+# Run tests with "Contact" in the name
+pnpm vitest -t "Contact"
+
+# Run tests in a specific directory
+pnpm vitest dashboard/components
+```
+
+## Test Structure
+
+### Backend Test Structure (RSpec)
+
+RSpec tests are organized under `spec/`:
+
+```
+spec/
+├── models/           # Model tests
+├── controllers/      # Controller tests
+├── services/         # Service object tests
+├── jobs/             # Background job tests
+├── mailers/          # Mailer tests
+├── requests/         # Request/integration tests
+├── factories/        # Factory Bot definitions
+├── support/          # Test helpers and configuration
+└── enterprise/       # Enterprise-specific tests
+```
+
+#### Example RSpec Test
+
+```ruby
+require 'rails_helper'
+
+RSpec.describe Contact, type: :model do
+  describe 'validations' do
+    it { is_expected.to validate_presence_of(:name) }
+    it { is_expected.to validate_uniqueness_of(:email).scoped_to(:account_id) }
+  end
+
+  describe 'associations' do
+    it { is_expected.to belong_to(:account) }
+    it { is_expected.to have_many(:conversations) }
+  end
+
+  describe '#display_name' do
+    let(:contact) { create(:contact, name: 'John Doe') }
+
+    it 'returns the contact name' do
+      expect(contact.display_name).to eq('John Doe')
+    end
+  end
+end
+```
+
+### Frontend Test Structure (Vitest)
+
+Frontend tests are colocated with their components or in `__tests__` directories:
+
+```
+app/javascript/
+├── dashboard/
+│   ├── components/
+│   │   ├── ContactCard.vue
+│   │   └── ContactCard.spec.js
+│   └── __tests__/
+└── widget/
+    └── __tests__/
+```
+
+#### Example Vitest Test
+
+```javascript
+import { mount } from '@vue/test-utils';
+import { describe, it, expect } from 'vitest';
+import ContactCard from './ContactCard.vue';
+
+describe('ContactCard', () => {
+  it('renders contact name', () => {
+    const wrapper = mount(ContactCard, {
+      props: {
+        contact: {
+          id: 1,
+          name: 'John Doe',
+          email: 'john@example.com'
+        }
+      }
+    });
+
+    expect(wrapper.text()).toContain('John Doe');
+  });
+
+  it('emits update event when edited', async () => {
+    const wrapper = mount(ContactCard, {
+      props: {
+        contact: { id: 1, name: 'John Doe' }
+      }
+    });
+
+    await wrapper.find('button.edit').trigger('click');
+
+    expect(wrapper.emitted('updateContact')).toBeTruthy();
+  });
+});
+```
+
+## Writing Tests
+
+### General Testing Guidelines
+
+<Warning>
+**Avoid writing specs unless explicitly asked.** Focus on shipping features first. Tests are important, but over-testing can slow down development.
+</Warning>
+
+When you do write tests:
+- Focus on testing behavior, not implementation
+- Test the happy path and critical edge cases
+- Keep tests simple and readable
+- Use descriptive test names
+- Avoid testing framework internals
+
+### Backend Testing Best Practices
+
+#### Use Factories
+
+Chatwoot uses **Factory Bot** for test data:
+
+```ruby
+# Create a contact
+contact = create(:contact)
+
+# Create with specific attributes
+contact = create(:contact, name: 'John Doe', email: 'john@example.com')
+
+# Build without saving
+contact = build(:contact)
+
+# Create associations
+conversation = create(:conversation, :with_contact, account: account)
+```
+
+#### Use `with_modified_env` for Environment Variables
+
+Prefer `with_modified_env` over stubbing `ENV` directly:
+
+```ruby
+# Good
+with_modified_env(API_KEY: 'test-key', API_SECRET: 'test-secret') do
+  service.call
+end
+
+# Avoid
+allow(ENV).to receive(:[]).with('API_KEY').and_return('test-key')
+```
+
+#### Test Error Classes by Name
+
+In parallel/reloading environments, compare error class names:
+
+```ruby
+# Good
+expect { service.call }.to raise_error do |error|
+  expect(error.class.name).to eq('CustomExceptions::InvalidAccount')
+end
+
+# Avoid in parallel specs
+expect { service.call }.to raise_error(CustomExceptions::InvalidAccount)
+```
+
+#### Test Organization
+
+```ruby
+RSpec.describe ConversationService do
+  let(:account) { create(:account) }
+  let(:contact) { create(:contact, account: account) }
+  let(:service) { described_class.new(account: account) }
+
+  describe '#create_conversation' do
+    context 'with valid params' do
+      it 'creates a new conversation' do
+        expect {
+          service.create_conversation(contact: contact)
+        }.to change(Conversation, :count).by(1)
+      end
+    end
+
+    context 'with invalid params' do
+      it 'raises an error' do
+        expect {
+          service.create_conversation(contact: nil)
+        }.to raise_error(ArgumentError)
+      end
+    end
+  end
+end
+```
+
+### Frontend Testing Best Practices
+
+#### Use Vue Test Utils
+
+```javascript
+import { mount, shallowMount } from '@vue/test-utils';
+
+// mount: Render component with child components
+const wrapper = mount(Component, { props: { ... } });
+
+// shallowMount: Render component with stubbed children (faster)
+const wrapper = shallowMount(Component, { props: { ... } });
+```
+
+#### Mock Dependencies
+
+```javascript
+import { vi } from 'vitest';
+
+// Mock a module
+vi.mock('@/api/contacts', () => ({
+  fetchContacts: vi.fn().mockResolvedValue([{ id: 1, name: 'John' }])
+}));
+
+// Mock a composable
+vi.mock('@/composables/useI18n', () => ({
+  useI18n: () => ({
+    t: (key) => key
+  })
+}));
+```
+
+#### Test User Interactions
+
+```javascript
+it('calls submit handler when form is submitted', async () => {
+  const onSubmit = vi.fn();
+  const wrapper = mount(ContactForm, {
+    props: { onSubmit }
+  });
+
+  await wrapper.find('input[name="name"]').setValue('John Doe');
+  await wrapper.find('input[name="email"]').setValue('john@example.com');
+  await wrapper.find('form').trigger('submit');
+
+  expect(onSubmit).toHaveBeenCalledWith({
+    name: 'John Doe',
+    email: 'john@example.com'
+  });
+});
+```
+
+#### Test Component State
+
+```javascript
+it('toggles visibility when button is clicked', async () => {
+  const wrapper = mount(Dropdown);
+
+  expect(wrapper.find('.dropdown-menu').exists()).toBe(false);
+
+  await wrapper.find('.dropdown-toggle').trigger('click');
+
+  expect(wrapper.find('.dropdown-menu').exists()).toBe(true);
+});
+```
+
+## Enterprise Edition Tests
+
+Enterprise-specific tests are located under `spec/enterprise/`:
+
+```bash
+# Run all enterprise specs
+bundle exec rspec spec/enterprise/
+
+# Run specific enterprise spec
+bundle exec rspec spec/enterprise/models/enterprise_account_spec.rb
+```
+
+Mirror the OSS spec layout when adding Enterprise tests.
+
+## Test Profiling
+
+Chatwoot includes **test-prof** for performance profiling:
+
+```bash
+# Profile test execution time
+TEST_PROF=1 bundle exec rspec
+
+# Generate a flamegraph
+TEST_STACK_PROF=1 bundle exec rspec spec/models/contact_spec.rb
+
+# Find slow tests
+TEST_PROF=1 bundle exec rspec --profile 10
+```
+
+## Database Cleaner
+
+Chatwoot uses **database_cleaner** to ensure a clean database state between tests:
+
+```ruby
+# Configured in spec/rails_helper.rb
+config.before(:suite) do
+  DatabaseCleaner.clean_with(:truncation)
+end
+
+config.before(:each) do
+  DatabaseCleaner.strategy = :transaction
+end
+
+config.before(:each, js: true) do
+  DatabaseCleaner.strategy = :truncation
+end
+```
+
+## Continuous Integration
+
+Chatwoot uses CircleCI for continuous integration. Tests run automatically on:
+
+- Every pull request
+- Every commit to `develop`
+- Every release tag
+
+View test results:
+- CircleCI: https://app.circleci.com/pipelines/github/chatwoot/chatwoot
+- Badge: ![CircleCI](https://img.shields.io/circleci/build/github/chatwoot/chatwoot)
+
+## Test Coverage
+
+Coverage reports are generated using **SimpleCov** (Ruby) and **Vitest Coverage** (JavaScript).
+
+### View Coverage Reports
+
+**Backend (SimpleCov):**
+```bash
+bundle exec rspec
+open coverage/index.html
+```
+
+**Frontend (Vitest):**
+```bash
+pnpm test:coverage
+open coverage/index.html
+```
+
+## Debugging Tests
+
+### Debug Backend Tests
+
+Use `byebug` or `debug` gem:
+
+```ruby
+it 'creates a conversation' do
+  debugger  # Execution pauses here
+  service.create_conversation(contact: contact)
+end
+```
+
+### Debug Frontend Tests
+
+```javascript
+it('renders contact name', () => {
+  const wrapper = mount(ContactCard, { props: { contact } });
+  
+  console.log(wrapper.html());  // Print HTML
+  debugger;  // Pause execution (use with --inspect)
+});
+```
+
+Run with debugging:
+```bash
+node --inspect-brk node_modules/.bin/vitest
+```
+
+## Common Test Commands Summary
+
+### Backend (RSpec)
+
+```bash
+# Run all tests
+bundle exec rspec
+
+# Run specific file
+bundle exec rspec spec/models/contact_spec.rb
+
+# Run specific test
+bundle exec rspec spec/models/contact_spec.rb:42
+
+# Run with profiling
+TEST_PROF=1 bundle exec rspec
+```
+
+### Frontend (Vitest)
+
+```bash
+# Run all tests
+pnpm test
+
+# Run in watch mode
+pnpm test:watch
+
+# Run with coverage
+pnpm test:coverage
+
+# Run specific file
+pnpm vitest path/to/file.spec.js
+```
+
+## Resources
+
+- [RSpec Documentation](https://rspec.info/)
+- [Vitest Documentation](https://vitest.dev/)
+- [Vue Test Utils](https://test-utils.vuejs.org/)
+- [Factory Bot](https://github.com/thoughtbot/factory_bot)
+- [Test Prof](https://test-prof.evilmartians.io/)
+
+## Next Steps
+
+- Review the [Code Style Guide](/contributing/code-style) for writing maintainable tests
+- Check out [open issues](https://github.com/chatwoot/chatwoot/issues) that need test coverage
+- Join the [Discord community](https://discord.gg/cJXdrwS) to discuss testing strategies

@@ -1,0 +1,413 @@
+---
+title: 'Team Management'
+description: 'Organize agents into teams, manage assignments, and control access'
+icon: 'users'
+---
+
+## Overview
+
+Teams allow you to organize agents into functional groups, manage workload distribution, and route conversations to the right department. Teams can be assigned to conversations, inboxes, and used in automation rules.
+
+<Info>
+  Teams help scale your support operations by organizing agents into specialized groups like Sales, Technical Support, or Billing.
+</Info>
+
+## Creating Teams
+
+```ruby
+team = account.teams.create!(
+  name: "technical-support",
+  description: "Technical support specialists handling product issues",
+  allow_auto_assign: true
+)
+```
+
+<Note>
+  Team names are automatically converted to lowercase and must be unique within an account.
+</Note>
+
+## Team Attributes
+
+```ruby
+team.name                 # Team name (unique, lowercase)
+team.description          # Team description
+team.allow_auto_assign    # Enable auto-assignment to team members
+team.account              # Parent account
+team.members              # Array of User objects
+team.conversations        # Conversations assigned to team
+```
+
+## Managing Team Members
+
+### Adding Members
+
+Add multiple agents to a team:
+
+```ruby
+# Add agents by user IDs
+added_users = team.add_members([agent1.id, agent2.id, agent3.id])
+# => [#<User id: 1>, #<User id: 2>, #<User id: 3>]
+
+# Add single member
+team.add_members([agent.id])
+```
+
+### Removing Members
+
+Remove agents from a team:
+
+```ruby
+# Remove multiple members
+team.remove_members([agent1.id, agent2.id])
+
+# Remove single member
+team.remove_members([agent.id])
+```
+
+### Accessing Members
+
+```ruby
+# Get all team members
+team.members # => [#<User>, #<User>, ...]
+
+# Get team member records
+team.team_members # => [#<TeamMember>, ...]
+
+# Check member count
+team.members.count
+```
+
+## Team-Based Conversation Assignment
+
+### Assign Conversations to Team
+
+```ruby
+# Assign conversation to team
+conversation.update!(team: team)
+
+# Assign via API
+conversation.update!(team_id: team.id)
+```
+
+### Filter by Team
+
+```ruby
+# Get all team conversations
+team.conversations
+
+# Get open conversations for team
+team.conversations.open
+
+# Get team conversations from account
+account.conversations.where(team_id: team.id)
+```
+
+## Auto-Assignment
+
+### Enabling Auto-Assignment
+
+```ruby
+# Enable auto-assignment for team
+team.update!(allow_auto_assign: true)
+
+# Disable auto-assignment
+team.update!(allow_auto_assign: false)
+```
+
+<Accordion title="How Team Auto-Assignment Works">
+  When a conversation is assigned to a team with `allow_auto_assign` enabled:
+  
+  1. System identifies available team members
+  2. Checks each member's current workload
+  3. Assigns to member with lowest conversation count
+  4. Respects max assignment limits per agent
+  5. Skips offline or unavailable agents
+</Accordion>
+
+## Team Messages and Events
+
+### Team Messages
+
+Access all messages from team conversations:
+
+```ruby
+team_messages = team.messages
+# Returns all messages from conversations assigned to this team
+```
+
+### Reporting Events
+
+Access analytics data for team:
+
+```ruby
+team_events = team.reporting_events
+# Returns reporting events for team conversations
+```
+
+## Team-Based Permissions
+
+Teams integrate with Chatwoot's permission system:
+
+- Agents can only see conversations from their teams
+- Administrators see all conversations
+- Team members have access to team inboxes
+
+```ruby
+# Check if user is member of team
+team.members.include?(user)
+
+# Get all teams for a user
+user.teams
+```
+
+## Using Teams with Inboxes
+
+While teams don't have direct inbox associations, you can route inbox conversations to teams:
+
+```ruby
+# Route all conversations from inbox to team via automation
+automation_rule = account.automation_rules.create!(
+  name: "Assign billing inbox to billing team",
+  event_name: "conversation_created",
+  conditions: [
+    {
+      attribute_key: "inbox_id",
+      filter_operator: "equal_to",
+      values: [billing_inbox.id]
+    }
+  ],
+  actions: [
+    {
+      action_name: "assign_team",
+      action_params: [team.id]
+    }
+  ]
+)
+```
+
+## Team Reports
+
+### Performance Metrics
+
+```ruby
+# Generate team report
+report_builder = V2::Reports::Conversations::ReportBuilder.new(
+  account,
+  {
+    type: :team,
+    id: team.id,
+    since: 30.days.ago.to_i,
+    until: Time.now.to_i
+  }
+)
+
+metrics = report_builder.timeseries
+# => {
+#   conversations_count: [...],
+#   incoming_messages_count: [...],
+#   outgoing_messages_count: [...],
+#   avg_first_response_time: [...],
+#   avg_resolution_time: [...]
+# }
+```
+
+### Team Summary
+
+```ruby
+# Get team summary statistics
+summary = V2::Reports::Conversations::MetricBuilder.new(
+  account,
+  {
+    type: :team,
+    id: team.id,
+    since: 1.week.ago.to_i,
+    until: Time.now.to_i
+  }
+).summary
+
+# => {
+#   conversations_count: 150,
+#   incoming_messages_count: 450,
+#   outgoing_messages_count: 380,
+#   avg_first_response_time: 180.5,
+#   avg_resolution_time: 3600.2,
+#   resolutions_count: 120
+# }
+```
+
+## Automation Rules
+
+### Team-Based Conditions
+
+```ruby
+automation_rule = account.automation_rules.create!(
+  name: "Notify team lead for urgent issues",
+  event_name: "conversation_updated",
+  conditions: [
+    {
+      attribute_key: "team_id",
+      filter_operator: "equal_to",
+      values: [team.id]
+    },
+    {
+      attribute_key: "priority",
+      filter_operator: "equal_to",
+      values: ["urgent"]
+    }
+  ],
+  actions: [
+    {
+      action_name: "send_email_to_team",
+      action_params: ["teamlead@example.com"]
+    }
+  ]
+)
+```
+
+### Team Assignment Actions
+
+```ruby
+# Auto-assign to team based on conditions
+automation_rule = account.automation_rules.create!(
+  name: "Assign VIP customers to senior team",
+  event_name: "conversation_created",
+  conditions: [
+    {
+      attribute_key: "priority",
+      filter_operator: "equal_to",
+      values: ["urgent"]
+    }
+  ],
+  actions: [
+    {
+      action_name: "assign_team",
+      action_params: [senior_team.id]
+    }
+  ]
+)
+```
+
+## Team Event Data
+
+Teams provide webhook and event data:
+
+```ruby
+team.push_event_data
+# => {
+#   id: 1,
+#   name: "technical-support"
+# }
+```
+
+## Best Practices
+
+<Tip>
+  **Naming Convention**: Use lowercase, hyphen-separated names like `technical-support`, `sales-team`, or `billing-dept`.
+</Tip>
+
+<Tip>
+  **Team Size**: Keep teams between 5-15 members for optimal management. Create sub-teams for larger departments.
+</Tip>
+
+<Warning>
+  When removing team members, conversations remain assigned to the team. Reassign conversations if the member was the primary handler.
+</Warning>
+
+## Common Use Cases
+
+### Department-Based Teams
+
+```ruby
+# Create teams by department
+sales_team = account.teams.create!(name: "sales", description: "Sales team")
+support_team = account.teams.create!(name: "support", description: "Technical support")
+billing_team = account.teams.create!(name: "billing", description: "Billing and payments")
+```
+
+### Skill-Based Teams
+
+```ruby
+# Create teams by expertise
+ios_team = account.teams.create!(name: "ios-experts", description: "iOS specialists")
+android_team = account.teams.create!(name: "android-experts", description: "Android specialists")
+web_team = account.teams.create!(name: "web-experts", description: "Web specialists")
+```
+
+### Region-Based Teams
+
+```ruby
+# Create teams by region
+na_team = account.teams.create!(name: "north-america", description: "North America support")
+eu_team = account.teams.create!(name: "europe", description: "Europe support")
+apac_team = account.teams.create!(name: "apac", description: "Asia-Pacific support")
+```
+
+## Account Cache Invalidation
+
+Teams automatically invalidate account cache when modified:
+
+```ruby
+# Cache is automatically invalidated on:
+- Adding members
+- Removing members
+- Creating team
+- Updating team
+- Deleting team
+```
+
+## API Examples
+
+### List All Teams
+
+```ruby
+teams = account.teams.order(:name)
+```
+
+### Find Team by Name
+
+```ruby
+team = account.teams.find_by(name: "technical-support")
+```
+
+### Get Team Statistics
+
+```ruby
+team_stats = {
+  name: team.name,
+  member_count: team.members.count,
+  open_conversations: team.conversations.open.count,
+  pending_conversations: team.conversations.pending.count,
+  total_conversations: team.conversations.count
+}
+```
+
+### Bulk Team Assignment
+
+```ruby
+# Assign multiple conversations to team
+conversation_ids = [1, 2, 3, 4, 5]
+Conversation.where(id: conversation_ids).update_all(team_id: team.id)
+```
+
+## Enterprise Features
+
+<Note>
+  Enterprise plans may include additional team features like advanced permissions, team-based SLAs, and custom team roles.
+</Note>
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Conversations" icon="comments" href="/features/conversations">
+    Assign conversations to teams
+  </Card>
+  <Card title="Automation" icon="robot" href="/features/automation">
+    Create team-based automation rules
+  </Card>
+  <Card title="Reports" icon="chart-line" href="/features/reports">
+    View team performance metrics
+  </Card>
+  <Card title="Permissions" icon="shield">
+    Configure team permissions
+  </Card>
+</CardGroup>

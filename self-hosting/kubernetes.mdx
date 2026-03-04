@@ -1,0 +1,894 @@
+---
+title: Kubernetes Deployment
+description: Deploy Chatwoot on Kubernetes using Helm charts for production-grade, scalable deployments
+---
+
+# Kubernetes Deployment
+
+Deploy Chatwoot on Kubernetes for production-grade, highly available, and scalable infrastructure. This guide covers deployment using Helm charts and kubectl manifests.
+
+## Prerequisites
+
+- Kubernetes cluster 1.24+ (EKS, GKE, AKS, or self-hosted)
+- kubectl CLI installed and configured
+- Helm 3.8+ installed
+- 8GB+ RAM available across nodes
+- LoadBalancer or Ingress Controller (for external access)
+
+## Quick Start with Helm
+
+### 1. Install Helm
+
+```bash
+# macOS
+brew install helm
+
+# Linux
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+# Verify installation
+helm version
+```
+
+### 2. Add Chatwoot Helm Repository
+
+```bash
+# Add repository (if available)
+helm repo add chatwoot https://chatwoot.github.io/charts
+helm repo update
+
+# Or clone the repository
+git clone https://github.com/chatwoot/chatwoot.git
+cd chatwoot/kubernetes
+```
+
+### 3. Create Namespace
+
+```bash
+kubectl create namespace chatwoot
+```
+
+### 4. Configure Values
+
+Create `values.yaml`:
+
+```yaml
+# values.yaml
+image:
+  repository: chatwoot/chatwoot
+  tag: latest
+  pullPolicy: IfNotPresent
+
+replicaCount:
+  web: 2
+  worker: 2
+
+resources:
+  web:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+  worker:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+
+env:
+  RAILS_ENV: production
+  NODE_ENV: production
+  RAILS_LOG_TO_STDOUT: "true"
+  FRONTEND_URL: "https://chat.yourdomain.com"
+  ENABLE_ACCOUNT_SIGNUP: "false"
+  FORCE_SSL: "true"
+
+secrets:
+  SECRET_KEY_BASE: "<generate-with-openssl-rand-hex-64>"
+  POSTGRES_PASSWORD: "<secure-password>"
+  REDIS_PASSWORD: "<secure-password>"
+
+postgresql:
+  enabled: true
+  auth:
+    username: chatwoot
+    password: "<secure-password>"
+    database: chatwoot_production
+  primary:
+    persistence:
+      enabled: true
+      size: 20Gi
+  image:
+    registry: docker.io
+    repository: pgvector/pgvector
+    tag: pg16
+
+redis:
+  enabled: true
+  auth:
+    enabled: true
+    password: "<secure-password>"
+  master:
+    persistence:
+      enabled: true
+      size: 8Gi
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: chat.yourdomain.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: chatwoot-tls
+      hosts:
+        - chat.yourdomain.com
+
+service:
+  type: ClusterIP
+  port: 3000
+```
+
+### 5. Install Chatwoot
+
+```bash
+# Install with Helm
+helm install chatwoot chatwoot/chatwoot \
+  --namespace chatwoot \
+  --values values.yaml
+
+# Or from local chart
+helm install chatwoot ./charts/chatwoot \
+  --namespace chatwoot \
+  --values values.yaml
+```
+
+### 6. Wait for Deployment
+
+```bash
+# Watch pod status
+kubectl get pods -n chatwoot -w
+
+# Check deployment status
+kubectl rollout status deployment/chatwoot-web -n chatwoot
+kubectl rollout status deployment/chatwoot-worker -n chatwoot
+```
+
+### 7. Run Database Migrations
+
+```bash
+kubectl exec -it deployment/chatwoot-web -n chatwoot -- \
+  bundle exec rails db:chatwoot_prepare
+```
+
+### 8. Access Chatwoot
+
+```bash
+# Get LoadBalancer IP (if using LoadBalancer service)
+kubectl get service chatwoot-web -n chatwoot
+
+# Or access via Ingress
+kubectl get ingress -n chatwoot
+```
+
+Access at: `https://chat.yourdomain.com`
+
+## Manual Deployment with Kubernetes Manifests
+
+### 1. Create Secrets
+
+Create `secrets.yaml`:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: chatwoot-secrets
+  namespace: chatwoot
+type: Opaque
+stringData:
+  SECRET_KEY_BASE: "<generate-with-openssl-rand-hex-64>"
+  POSTGRES_PASSWORD: "<secure-password>"
+  REDIS_PASSWORD: "<secure-password>"
+  POSTGRES_HOST: "postgres.chatwoot.svc.cluster.local"
+  POSTGRES_USERNAME: "chatwoot"
+  POSTGRES_DATABASE: "chatwoot_production"
+  REDIS_URL: "redis://redis.chatwoot.svc.cluster.local:6379"
+```
+
+Apply:
+
+```bash
+kubectl apply -f secrets.yaml
+```
+
+### 2. Deploy PostgreSQL
+
+Create `postgres.yaml`:
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: chatwoot
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: chatwoot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: pgvector/pgvector:pg16
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_DB
+          valueFrom:
+            secretKeyRef:
+              name: chatwoot-secrets
+              key: POSTGRES_DATABASE
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: chatwoot-secrets
+              key: POSTGRES_USERNAME
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: chatwoot-secrets
+              key: POSTGRES_PASSWORD
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+      volumes:
+      - name: postgres-storage
+        persistentVolumeClaim:
+          claimName: postgres-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: chatwoot
+spec:
+  selector:
+    app: postgres
+  ports:
+  - port: 5432
+    targetPort: 5432
+  type: ClusterIP
+```
+
+### 3. Deploy Redis
+
+Create `redis.yaml`:
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-pvc
+  namespace: chatwoot
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 8Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: chatwoot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:alpine
+        ports:
+        - containerPort: 6379
+        command:
+          - redis-server
+          - --requirepass
+          - $(REDIS_PASSWORD)
+        env:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: chatwoot-secrets
+              key: REDIS_PASSWORD
+        volumeMounts:
+        - name: redis-storage
+          mountPath: /data
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+      volumes:
+      - name: redis-storage
+        persistentVolumeClaim:
+          claimName: redis-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: chatwoot
+spec:
+  selector:
+    app: redis
+  ports:
+  - port: 6379
+    targetPort: 6379
+  type: ClusterIP
+```
+
+### 4. Deploy Chatwoot Web
+
+Create `chatwoot-web.yaml`:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chatwoot-web
+  namespace: chatwoot
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: chatwoot-web
+  template:
+    metadata:
+      labels:
+        app: chatwoot-web
+    spec:
+      containers:
+      - name: chatwoot
+        image: chatwoot/chatwoot:latest
+        ports:
+        - containerPort: 3000
+        command: ["bin/rails", "server", "-p", "3000", "-b", "0.0.0.0"]
+        env:
+        - name: RAILS_ENV
+          value: "production"
+        - name: NODE_ENV
+          value: "production"
+        - name: PORT
+          value: "3000"
+        - name: RAILS_LOG_TO_STDOUT
+          value: "true"
+        - name: FRONTEND_URL
+          value: "https://chat.yourdomain.com"
+        - name: SECRET_KEY_BASE
+          valueFrom:
+            secretKeyRef:
+              name: chatwoot-secrets
+              key: SECRET_KEY_BASE
+        - name: POSTGRES_HOST
+          valueFrom:
+            secretKeyRef:
+              name: chatwoot-secrets
+              key: POSTGRES_HOST
+        - name: POSTGRES_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: chatwoot-secrets
+              key: POSTGRES_USERNAME
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: chatwoot-secrets
+              key: POSTGRES_PASSWORD
+        - name: POSTGRES_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: chatwoot-secrets
+              key: POSTGRES_DATABASE
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: chatwoot-secrets
+              key: REDIS_URL
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: chatwoot-secrets
+              key: REDIS_PASSWORD
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chatwoot-web
+  namespace: chatwoot
+spec:
+  selector:
+    app: chatwoot-web
+  ports:
+  - port: 80
+    targetPort: 3000
+  type: LoadBalancer
+```
+
+### 5. Deploy Chatwoot Workers
+
+Create `chatwoot-worker.yaml`:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chatwoot-worker
+  namespace: chatwoot
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: chatwoot-worker
+  template:
+    metadata:
+      labels:
+        app: chatwoot-worker
+    spec:
+      containers:
+      - name: chatwoot
+        image: chatwoot/chatwoot:latest
+        command: ["bundle", "exec", "sidekiq", "-C", "config/sidekiq.yml"]
+        env:
+        - name: RAILS_ENV
+          value: "production"
+        - name: NODE_ENV
+          value: "production"
+        - name: SECRET_KEY_BASE
+          valueFrom:
+            secretKeyRef:
+              name: chatwoot-secrets
+              key: SECRET_KEY_BASE
+        - name: POSTGRES_HOST
+          valueFrom:
+            secretKeyRef:
+              name: chatwoot-secrets
+              key: POSTGRES_HOST
+        - name: POSTGRES_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: chatwoot-secrets
+              key: POSTGRES_USERNAME
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: chatwoot-secrets
+              key: POSTGRES_PASSWORD
+        - name: POSTGRES_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: chatwoot-secrets
+              key: POSTGRES_DATABASE
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: chatwoot-secrets
+              key: REDIS_URL
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: chatwoot-secrets
+              key: REDIS_PASSWORD
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+```
+
+### 6. Apply All Manifests
+
+```bash
+kubectl apply -f secrets.yaml
+kubectl apply -f postgres.yaml
+kubectl apply -f redis.yaml
+
+# Wait for databases to be ready
+kubectl wait --for=condition=ready pod -l app=postgres -n chatwoot --timeout=300s
+kubectl wait --for=condition=ready pod -l app=redis -n chatwoot --timeout=300s
+
+# Deploy Chatwoot
+kubectl apply -f chatwoot-web.yaml
+kubectl apply -f chatwoot-worker.yaml
+```
+
+## Ingress Configuration
+
+### Install Ingress Controller
+
+```bash
+# Nginx Ingress Controller
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo update
+
+helm install nginx-ingress ingress-nginx/ingress-nginx \
+  --namespace ingress-nginx \
+  --create-namespace
+```
+
+### Create Ingress Resource
+
+Create `ingress.yaml`:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: chatwoot-ingress
+  namespace: chatwoot
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - chat.yourdomain.com
+    secretName: chatwoot-tls
+  rules:
+  - host: chat.yourdomain.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: chatwoot-web
+            port:
+              number: 80
+```
+
+Apply:
+
+```bash
+kubectl apply -f ingress.yaml
+```
+
+## SSL with Cert-Manager
+
+### 1. Install Cert-Manager
+
+```bash
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.0/cert-manager.yaml
+```
+
+### 2. Create ClusterIssuer
+
+Create `cluster-issuer.yaml`:
+
+```yaml
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@yourdomain.com
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    solvers:
+    - http01:
+        ingress:
+          class: nginx
+```
+
+Apply:
+
+```bash
+kubectl apply -f cluster-issuer.yaml
+```
+
+Certificates will be automatically generated when Ingress is created.
+
+## Scaling
+
+### Horizontal Pod Autoscaler (HPA)
+
+Create `hpa.yaml`:
+
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: chatwoot-web-hpa
+  namespace: chatwoot
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: chatwoot-web
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: chatwoot-worker-hpa
+  namespace: chatwoot
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: chatwoot-worker
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+```
+
+Apply:
+
+```bash
+kubectl apply -f hpa.yaml
+```
+
+### Manual Scaling
+
+```bash
+# Scale web pods
+kubectl scale deployment/chatwoot-web -n chatwoot --replicas=4
+
+# Scale worker pods
+kubectl scale deployment/chatwoot-worker -n chatwoot --replicas=3
+```
+
+## Production Best Practices
+
+### 1. Use External Managed Databases
+
+Instead of running databases in Kubernetes, use managed services:
+
+- AWS RDS for PostgreSQL
+- AWS ElastiCache for Redis
+- Google Cloud SQL
+- Azure Database
+
+### 2. Persistent Storage
+
+Use cloud provider storage classes:
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+spec:
+  storageClassName: gp3  # AWS
+  # or pd-ssd  # GCP
+  # or managed-premium  # Azure
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+```
+
+### 3. Resource Requests and Limits
+
+Always set resource requests and limits:
+
+```yaml
+resources:
+  requests:
+    memory: "1Gi"
+    cpu: "500m"
+  limits:
+    memory: "2Gi"
+    cpu: "1000m"
+```
+
+### 4. Health Checks
+
+Configure liveness and readiness probes:
+
+```yaml
+livenessProbe:
+  httpGet:
+    path: /
+    port: 3000
+  initialDelaySeconds: 60
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: 3000
+  initialDelaySeconds: 30
+  periodSeconds: 5
+```
+
+### 5. Pod Disruption Budget
+
+Create `pdb.yaml`:
+
+```yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: chatwoot-web-pdb
+  namespace: chatwoot
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: chatwoot-web
+```
+
+## Monitoring
+
+### Prometheus and Grafana
+
+```bash
+# Install Prometheus
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm install prometheus prometheus-community/kube-prometheus-stack \
+  --namespace monitoring \
+  --create-namespace
+```
+
+### ServiceMonitor
+
+Create `servicemonitor.yaml`:
+
+```yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: chatwoot-metrics
+  namespace: chatwoot
+spec:
+  selector:
+    matchLabels:
+      app: chatwoot-web
+  endpoints:
+  - port: web
+    interval: 30s
+```
+
+## Backup and Disaster Recovery
+
+### Velero for Cluster Backups
+
+```bash
+# Install Velero
+helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts
+helm install velero vmware-tanzu/velero \
+  --namespace velero \
+  --create-namespace \
+  --set configuration.provider=aws \
+  --set configuration.backupStorageLocation.bucket=my-backups
+
+# Create backup
+velero backup create chatwoot-backup --include-namespaces chatwoot
+```
+
+## Troubleshooting
+
+### View Logs
+
+```bash
+# Web logs
+kubectl logs -f deployment/chatwoot-web -n chatwoot
+
+# Worker logs
+kubectl logs -f deployment/chatwoot-worker -n chatwoot
+
+# All pods
+kubectl logs -l app=chatwoot-web -n chatwoot --tail=100
+```
+
+### Debug Pod
+
+```bash
+# Exec into pod
+kubectl exec -it deployment/chatwoot-web -n chatwoot -- /bin/bash
+
+# Rails console
+kubectl exec -it deployment/chatwoot-web -n chatwoot -- \
+  bundle exec rails console
+```
+
+### Check Events
+
+```bash
+kubectl get events -n chatwoot --sort-by='.lastTimestamp'
+```
+
+## Next Steps
+
+- [Configure Storage](/self-hosted/configuration/storage)
+- [Set Up Monitoring](/self-hosting/overview#monitoring--logging)
+- [Production Checklist](/self-hosting/overview#security-best-practices)

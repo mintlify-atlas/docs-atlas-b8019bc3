@@ -1,0 +1,299 @@
+---
+title: Email Setup
+description: Configure email delivery for Chatwoot using SMTP, SendGrid, or Mailgun
+---
+
+Chatwoot requires email configuration for sending notifications, password resets, and other transactional emails. This guide covers all email-related configuration options.
+
+## Email Sender Configuration
+
+<ParamField path="MAILER_SENDER_EMAIL" type="string" required>
+  The email address from which all outgoing emails are sent.
+  
+  **Formats:**
+  - Simple: `email@yourdomain.com`
+  - With name: `BrandName <email@yourdomain.com>`
+  
+  **Example:** `Chatwoot <accounts@chatwoot.com>`
+</ParamField>
+
+## SMTP Configuration
+
+SMTP is the most common method for sending emails. Configure these variables to use your SMTP server.
+
+<ParamField path="SMTP_DOMAIN" type="string">
+  SMTP domain for HELO checking.
+  
+  **Example:** `chatwoot.com`
+</ParamField>
+
+<ParamField path="SMTP_ADDRESS" type="string">
+  SMTP server address.
+  
+  **Special values:**
+  - Leave empty to use sendmail (postfix)
+  - Set to `mailhog` when using docker-compose for development
+  - Set to `localhost` or your SMTP server address in other environments
+  
+  **Examples:**
+  - `smtp.gmail.com`
+  - `smtp.sendgrid.net`
+  - `smtp.mailgun.org`
+</ParamField>
+
+<ParamField path="SMTP_PORT" type="number">
+  SMTP server port.
+  
+  **Common ports:**
+  - `587` - TLS/STARTTLS (recommended)
+  - `465` - SSL
+  - `25` - Unencrypted (not recommended)
+  - `1025` - Mailhog (development)
+  
+  **Default:** `1025`
+</ParamField>
+
+<ParamField path="SMTP_USERNAME" type="string">
+  SMTP authentication username.
+  
+  **Note:** Usually your email address or API username.
+</ParamField>
+
+<ParamField path="SMTP_PASSWORD" type="string">
+  SMTP authentication password or API key.
+</ParamField>
+
+<ParamField path="SMTP_AUTHENTICATION" type="string">
+  SMTP authentication method.
+  
+  **Options:**
+  - `plain`
+  - `login`
+  - `cram_md5`
+  
+  **Note:** Leave empty if authentication is not required.
+</ParamField>
+
+<ParamField path="SMTP_ENABLE_STARTTLS_AUTO" type="boolean">
+  Automatically enable STARTTLS if available.
+  
+  **Default:** `true`
+  
+  **Recommendation:** Keep enabled for secure connections.
+</ParamField>
+
+<ParamField path="SMTP_OPENSSL_VERIFY_MODE" type="string">
+  OpenSSL verification mode for SMTP connections.
+  
+  **Options:**
+  - `none` - No verification (not recommended for production)
+  - `peer` - Verify the server certificate (recommended)
+  - `client_once` - Verify once during initial connection
+  - `fail_if_no_peer_cert` - Fail if no peer certificate
+  
+  **Default:** `peer`
+  
+  See [ActionMailer SSL Documentation](http://api.rubyonrails.org/classes/ActionMailer/Base.html)
+</ParamField>
+
+<ParamField path="SMTP_TLS" type="boolean">
+  Force TLS connection.
+  
+  **Note:** Only set if required by your SMTP server.
+</ParamField>
+
+<ParamField path="SMTP_SSL" type="boolean">
+  Use SSL connection.
+  
+  **Note:** Only set if required by your SMTP server.
+</ParamField>
+
+<ParamField path="SMTP_OPEN_TIMEOUT" type="number">
+  Timeout in seconds for opening SMTP connection.
+  
+  **Example:** `5`
+</ParamField>
+
+<ParamField path="SMTP_READ_TIMEOUT" type="number">
+  Timeout in seconds for reading SMTP responses.
+  
+  **Example:** `10`
+</ParamField>
+
+## Incoming Email Configuration
+
+Configure these settings to handle incoming emails for conversation continuity.
+
+<ParamField path="MAILER_INBOUND_EMAIL_DOMAIN" type="string">
+  Domain for reply email addresses when conversation continuity is enabled.
+  
+  **Example:** `replies.chatwoot.com`
+</ParamField>
+
+<ParamField path="RAILS_INBOUND_EMAIL_SERVICE" type="string">
+  Email ingress service for handling incoming emails.
+  
+  **Options:**
+  - `relay` - For Exim, Postfix, Qmail
+  - `mailgun` - For Mailgun
+  - `mandrill` - For Mandrill
+  - `postmark` - For Postmark
+  - `sendgrid` - For SendGrid
+  - `ses` - For Amazon SES
+  
+  See [ActionMailbox Basics](https://edgeguides.rubyonrails.org/action_mailbox_basics.html)
+</ParamField>
+
+<ParamField path="RAILS_INBOUND_EMAIL_PASSWORD" type="string">
+  Password for inbound email webhook authentication.
+  
+  **Security:** Set this to a strong password of your choice and use it in the inbound webhook URL.
+</ParamField>
+
+### Service-Specific Configuration
+
+#### Mailgun
+
+<ParamField path="MAILGUN_INGRESS_SIGNING_KEY" type="string">
+  Mailgun webhook signing key for verifying incoming requests.
+</ParamField>
+
+#### Mandrill
+
+<ParamField path="MANDRILL_INGRESS_API_KEY" type="string">
+  Mandrill API key for incoming email authentication.
+</ParamField>
+
+#### Amazon SES
+
+<ParamField path="ACTION_MAILBOX_SES_SNS_TOPIC" type="string">
+  SNS topic ARN for ActionMailbox with Amazon SES.
+  
+  **Format:** `arn:aws:sns:region:account-id:topic-name`
+  
+  **Note:** Only required when `RAILS_INBOUND_EMAIL_SERVICE=ses`
+</ParamField>
+
+## Inbound Webhook Setup
+
+For Postmark and SendGrid, configure your inbound webhook with the following URL format:
+
+```
+https://actionmailbox:[YOUR_RAILS_INBOUND_EMAIL_PASSWORD]@[YOUR_CHATWOOT_DOMAIN]/rails/action_mailbox/[RAILS_INBOUND_EMAIL_SERVICE]/inbound_emails
+```
+
+**Example:**
+```
+https://actionmailbox:mYRandomPassword3@chatwoot.example.com/rails/action_mailbox/postmark/inbound_emails
+```
+
+<Note>
+  **For Postmark:** Ensure the "Include raw email content in JSON payload" checkbox is selected in the inbound webhook section.
+</Note>
+
+## Provider-Specific Examples
+
+### Gmail / Google Workspace
+
+```bash
+SMTP_ADDRESS=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your-email@gmail.com
+SMTP_PASSWORD=your-app-specific-password
+SMTP_AUTHENTICATION=plain
+SMTP_ENABLE_STARTTLS_AUTO=true
+SMTP_DOMAIN=gmail.com
+MAILER_SENDER_EMAIL=Your Name <your-email@gmail.com>
+```
+
+<Warning>
+  For Gmail, you need to create an [App Password](https://support.google.com/accounts/answer/185833) instead of using your regular password.
+</Warning>
+
+### SendGrid
+
+```bash
+SMTP_ADDRESS=smtp.sendgrid.net
+SMTP_PORT=587
+SMTP_USERNAME=apikey
+SMTP_PASSWORD=your-sendgrid-api-key
+SMTP_AUTHENTICATION=plain
+SMTP_ENABLE_STARTTLS_AUTO=true
+SMTP_DOMAIN=yourdomain.com
+MAILER_SENDER_EMAIL=Your App <noreply@yourdomain.com>
+```
+
+### Mailgun
+
+```bash
+SMTP_ADDRESS=smtp.mailgun.org
+SMTP_PORT=587
+SMTP_USERNAME=postmaster@yourdomain.com
+SMTP_PASSWORD=your-mailgun-smtp-password
+SMTP_AUTHENTICATION=plain
+SMTP_ENABLE_STARTTLS_AUTO=true
+SMTP_DOMAIN=yourdomain.com
+MAILER_SENDER_EMAIL=Your App <noreply@yourdomain.com>
+```
+
+### Amazon SES
+
+```bash
+SMTP_ADDRESS=email-smtp.us-east-1.amazonaws.com
+SMTP_PORT=587
+SMTP_USERNAME=your-ses-smtp-username
+SMTP_PASSWORD=your-ses-smtp-password
+SMTP_AUTHENTICATION=login
+SMTP_ENABLE_STARTTLS_AUTO=true
+SMTP_DOMAIN=yourdomain.com
+MAILER_SENDER_EMAIL=Your App <noreply@yourdomain.com>
+```
+
+<Note>
+  Make sure your sender email is verified in Amazon SES.
+</Note>
+
+### Postfix (Local Sendmail)
+
+To use local sendmail with Postfix:
+
+```bash
+# Leave SMTP_ADDRESS empty
+SMTP_ADDRESS=
+MAILER_SENDER_EMAIL=Your App <noreply@yourdomain.com>
+```
+
+When `SMTP_ADDRESS` is empty, Chatwoot automatically uses sendmail for email delivery.
+
+## Testing Email Configuration
+
+After configuring your email settings, test the configuration:
+
+1. Start your Chatwoot instance
+2. Attempt to sign up or reset a password
+3. Check your inbox for the email
+4. Check Chatwoot logs for any email delivery errors
+
+### Troubleshooting
+
+**Emails not being delivered:**
+- Verify SMTP credentials are correct
+- Check if your SMTP provider requires additional authentication
+- Verify your sender email is authorized by your SMTP provider
+- Check Chatwoot logs for detailed error messages
+- Ensure your firewall allows outbound connections on the SMTP port
+
+**SSL/TLS connection errors:**
+- Try setting `SMTP_OPENSSL_VERIFY_MODE=none` (temporarily for debugging)
+- Verify the correct port (587 for TLS, 465 for SSL)
+- Check if `SMTP_ENABLE_STARTTLS_AUTO` should be enabled or disabled
+
+**Authentication failures:**
+- Verify the authentication method matches your provider's requirements
+- For Gmail, ensure you're using an App Password
+- Check if your provider requires API keys instead of passwords
+
+## Related Configuration
+
+- [Environment Variables](/self-hosting/environment-variables) - Complete environment variable reference
+- [Redis Configuration](/self-hosting/redis) - Configure Redis for background jobs

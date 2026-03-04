@@ -1,80 +1,391 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick Start Guide
+description: Get started with Chatwoot in minutes. Set up your account, create your first inbox, invite team members, and start handling customer conversations
 ---
 
-## Get started in three steps
+# Quick Start Guide
 
-Get your documentation site running locally and make your first customization.
-
-### Step 1: Set up your local environment
-
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+Get your Chatwoot instance up and running in minutes. This guide will walk you through the essential steps to start managing customer conversations.
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+This guide assumes you already have a Chatwoot instance running. If you need to deploy Chatwoot first, visit [chatwoot.com/deploy](https://chatwoot.com/deploy) for deployment options.
 </Note>
+
+## Prerequisites
+
+Before you begin, ensure you have:
+
+- A running Chatwoot instance (self-hosted or cloud)
+- Admin access to your Chatwoot installation
+- Email address for account creation
+- (Optional) A website domain if you plan to add live chat
+
+## Step 1: Create Your Account
+
+<Steps>
+  <Step title="Navigate to Chatwoot">
+    Open your Chatwoot instance URL in your web browser (e.g., `https://your-domain.com`).
+  </Step>
+  
+  <Step title="Sign Up">
+    Click on **Sign Up** and fill in your details:
+    - Full Name
+    - Email Address
+    - Password (secure password recommended)
+    
+    <Warning>
+    If account signups are disabled (`ENABLE_ACCOUNT_SIGNUP=false`), contact your system administrator to create an account for you.
+    </Warning>
+  </Step>
+  
+  <Step title="Create Your Account">
+    After signing up, you'll be prompted to create your first account:
+    - **Account Name**: Your company or team name
+    - **Account Domain**: Optional subdomain for your help center
+    
+    This creates an `Account` object that serves as the container for all your data.
+  </Step>
+  
+  <Step title="Verify Email">
+    Check your email inbox for a verification link and confirm your email address.
+  </Step>
+</Steps>
+
+<Note>
+In Chatwoot's architecture, an **Account** represents your organization, while **Users** are team members who can access and manage conversations.
+</Note>
+
+## Step 2: Create Your First Inbox
+
+Inboxes are channels through which customers can reach you. Let's create your first inbox.
+
+<Steps>
+  <Step title="Navigate to Inbox Settings">
+    From the sidebar, click **Settings** → **Inboxes** → **Add Inbox**
+  </Step>
+  
+  <Step title="Choose a Channel Type">
+    Select the channel you want to connect:
+    
+    <CardGroup cols={2}>
+      <Card title="Website" icon="globe">
+        Add live chat widget to your website
+      </Card>
+      <Card title="Email" icon="envelope">
+        Connect your support email address
+      </Card>
+      <Card title="Facebook" icon="facebook">
+        Connect Facebook Page for Messenger
+      </Card>
+      <Card title="WhatsApp" icon="whatsapp">
+        Connect WhatsApp Business API
+      </Card>
+      <Card title="Twitter" icon="twitter">
+        Connect Twitter profile for DMs
+      </Card>
+      <Card title="Telegram" icon="telegram">
+        Connect Telegram bot
+      </Card>
+      <Card title="SMS" icon="comment-sms">
+        Connect Twilio for SMS support
+      </Card>
+      <Card title="API Channel" icon="code">
+        Build custom integrations
+      </Card>
+    </CardGroup>
+  </Step>
+  
+  <Step title="Configure Channel Settings">
+    Depending on your channel choice, provide the required details. For example:
+    
+    **For Website Widget:**
+    - Website Name
+    - Website Domain
+    - Widget Color (optional)
+    - Welcome Heading (optional)
+    
+    **For Email:**
+    - Email Address (e.g., support@yourdomain.com)
+    - IMAP/SMTP Settings
+    - Forward incoming emails to Chatwoot
+  </Step>
+  
+  <Step title="Configure Inbox Settings">
+    Set up inbox-specific settings:
+    - **Inbox Name**: Internal name for your team
+    - **Enable Auto Assignment**: Automatically assign conversations to available agents
+    - **Enable CSAT**: Ask customers for satisfaction ratings
+    - **Greeting Message**: Welcome message for new conversations
+    - **Business Hours**: Set your working hours
+  </Step>
+  
+  <Step title="Add Team Members">
+    Select which agents should have access to this inbox. You can add more agents later.
+  </Step>
+</Steps>
+
+### Example: Website Widget Setup
+
+For a website widget, you'll receive an installation script:
+
+```html
+<!-- Chatwoot Widget Script -->
+<script>
+  (function(d,t) {
+    var BASE_URL="https://your-domain.com";
+    var g=d.createElement(t),s=d.getElementsByTagName(t)[0];
+    g.src=BASE_URL+"/packs/js/sdk.js";
+    g.defer = true;
+    g.async = true;
+    s.parentNode.insertBefore(g,s);
+    g.onload=function(){
+      window.chatwootSDK.run({
+        websiteToken: 'your_website_token',
+        baseUrl: BASE_URL
+      })
+    }
+  })(document,"script");
+</script>
+```
+
+<Note>
+Add this script just before the closing `</body>` tag on every page where you want the chat widget to appear.
+</Note>
+
+## Step 3: Invite Team Members
+
+Collaborate with your team by inviting agents to your account.
+
+<Steps>
+  <Step title="Go to Agents Settings">
+    Navigate to **Settings** → **Agents** → **Add Agent**
+  </Step>
+  
+  <Step title="Enter Agent Details">
+    Fill in the agent information:
+    - **Name**: Full name of the team member
+    - **Email**: Their email address
+    - **Role**: Choose from:
+      - **Agent**: Can manage conversations
+      - **Administrator**: Full access to settings and configuration
+  </Step>
+  
+  <Step title="Assign to Inboxes">
+    Select which inboxes this agent should have access to. Agents can only see conversations from their assigned inboxes.
+  </Step>
+  
+  <Step title="Send Invitation">
+    Click **Add Agent**. The team member will receive an email invitation to join your Chatwoot account.
+  </Step>
+</Steps>
+
+<Note>
+Team members can also be organized into **Teams** for better workflow management. Navigate to **Settings** → **Teams** to create teams.
+</Note>
+
+## Step 4: Start Managing Conversations
+
+Now you're ready to handle customer conversations!
+
+<Steps>
+  <Step title="Access Your Inbox">
+    Click **Conversations** in the sidebar to view your unified inbox with all customer messages.
+  </Step>
+  
+  <Step title="View Conversations">
+    Conversations are organized by status:
+    - **Open**: Active conversations requiring attention
+    - **Pending**: Awaiting customer response
+    - **Resolved**: Closed conversations
+    - **Snoozed**: Temporarily hidden conversations
+    
+    Use filters to view:
+    - **Mine**: Conversations assigned to you
+    - **Unassigned**: Conversations without an assigned agent
+    - **All**: Every conversation in the inbox
+  </Step>
+  
+  <Step title="Respond to Customers">
+    Click on a conversation to open it. You can:
+    - Type and send messages
+    - Add attachments (images, files)
+    - Use **Canned Responses** for common replies
+    - Add **Private Notes** for internal communication (use @mentions)
+    - Apply **Labels** to categorize conversations
+    - Change conversation **Status** (Open, Pending, Resolved)
+    - Assign to team members
+  </Step>
+  
+  <Step title="Use Keyboard Shortcuts">
+    Speed up your workflow with keyboard shortcuts:
+    - Press `/` to open the command bar
+    - `Cmd/Ctrl + K` for quick navigation
+    - `R` to resolve a conversation
+    - `E` to send a reply
+    
+    View all shortcuts by pressing `?`
+  </Step>
+</Steps>
+
+## Step 5: Set Up Canned Responses
+
+Save time by creating pre-written responses for common questions.
+
+<Steps>
+  <Step title="Navigate to Canned Responses">
+    Go to **Settings** → **Canned Responses** → **Add Canned Response**
+  </Step>
+  
+  <Step title="Create Response">
+    - **Short Code**: A quick shortcut (e.g., `greeting`, `refund-policy`)
+    - **Content**: Your pre-written message
+    
+    Example:
+    ```
+    Short Code: welcome
+    Content: Hi there! Thanks for reaching out. How can I help you today?
+    ```
+  </Step>
+  
+  <Step title="Use in Conversations">
+    In any conversation, type `/` followed by your short code (e.g., `/welcome`) to insert the canned response.
+  </Step>
+</Steps>
+
+## Step 6: Configure Auto-Assignment
+
+Ensure conversations are automatically distributed to available agents.
+
+<Steps>
+  <Step title="Enable Auto-Assignment">
+    Go to your **Inbox Settings** and toggle **Enable Auto Assignment**
+  </Step>
+  
+  <Step title="Configure Assignment Rules">
+    You can configure:
+    - **Round Robin**: Distribute conversations evenly among agents
+    - **Agent Capacity**: Set maximum conversations per agent
+    - **Online Status**: Only assign to agents who are online
+  </Step>
+</Steps>
+
+<Note>
+The auto-assignment service uses `AutoAssignment::AgentAssignmentService` (app/services/auto_assignment/agent_assignment_service.rb) to intelligently distribute conversations.
+</Note>
+
+## Step 7: Enable Customer Satisfaction (CSAT)
+
+Measure customer satisfaction after conversations are resolved.
+
+<Steps>
+  <Step title="Enable CSAT in Inbox">
+    Navigate to **Inbox Settings** → Enable **CSAT Survey**
+  </Step>
+  
+  <Step title="Configure CSAT">
+    Customize:
+    - Survey message
+    - Rating scale (1-5 stars)
+    - Follow-up questions
+  </Step>
+  
+  <Step title="View CSAT Reports">
+    Access CSAT reports from **Reports** → **CSAT** to see customer satisfaction trends.
+  </Step>
+</Steps>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Explore Features" icon="compass" href="/features">
+    Discover advanced features like automation, labels, and teams
+  </Card>
+  <Card title="Set Up Automation" icon="robot">
+    Create automation rules to handle repetitive tasks
+  </Card>
+  <Card title="Build Help Center" icon="book">
+    Create a self-service portal with articles and FAQs
+  </Card>
+  <Card title="Configure Integrations" icon="plug">
+    Connect Slack, Dialogflow, and other tools
+  </Card>
+</CardGroup>
+
+## Common Configuration
+
+### Environment Variables
+
+Key environment variables to configure (in `.env` file):
+
+```bash
+# Application URL
+FRONTEND_URL=https://your-domain.com
+
+# Secret key for session security
+SECRET_KEY_BASE=your_secure_key_here
+
+# Redis connection
+REDIS_URL=redis://localhost:6379
+
+# Database connection
+DATABASE_URL=postgresql://user:password@localhost/chatwoot
+
+# Email configuration (for notifications)
+SMTP_ADDRESS=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your-email@gmail.com
+SMTP_PASSWORD=your-app-password
+
+# Enable/disable account signups
+ENABLE_ACCOUNT_SIGNUP=true
+```
+
+<Warning>
+Always use strong, unique values for `SECRET_KEY_BASE`. Generate one using: `rails secret`
+</Warning>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Widget not appearing on website">
+    - Verify the script is added before `</body>` tag
+    - Check browser console for JavaScript errors
+    - Ensure `FRONTEND_URL` is correctly configured
+    - Verify website domain matches inbox configuration
+  </Accordion>
+  
+  <Accordion title="Emails not being received">
+    - Verify IMAP/SMTP settings are correct
+    - Check email forwarding rules
+    - Ensure firewall allows connections
+    - Check Chatwoot logs for email processing errors
+  </Accordion>
+  
+  <Accordion title="Auto-assignment not working">
+    - Verify auto-assignment is enabled in inbox settings
+    - Check that agents are added to the inbox
+    - Ensure agents have availability status set to online
+    - Review agent capacity limits
+  </Accordion>
+</AccordionGroup>
+
+## Need Help?
+
+<CardGroup cols={2}>
+  <Card title="Documentation" icon="book" href="https://www.chatwoot.com/help-center">
+    Browse comprehensive guides and tutorials
+  </Card>
+  <Card title="Community Support" icon="discord" href="https://discord.gg/cJXdrwS">
+    Join our Discord community for help
+  </Card>
+  <Card title="GitHub Issues" icon="github" href="https://github.com/chatwoot/chatwoot/issues">
+    Report bugs or request features
+  </Card>
+  <Card title="API Documentation" icon="code" href="https://www.chatwoot.com/developers/api">
+    Explore API endpoints for custom integrations
+  </Card>
+</CardGroup>
+
+---
+
+**Congratulations!** You've successfully set up Chatwoot and are ready to provide exceptional customer support. 🎉

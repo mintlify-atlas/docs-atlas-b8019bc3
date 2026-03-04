@@ -1,0 +1,417 @@
+---
+title: Custom Attributes
+description: Add custom fields to contacts and conversations for enhanced data tracking
+---
+
+Custom attributes allow you to store additional information about contacts and conversations beyond the standard fields. You can use custom attributes to track user properties, conversation metadata, or any business-specific data.
+
+## Overview
+
+Chatwoot supports two types of custom attributes:
+
+- **Contact Attributes**: Store information about contacts (users/customers)
+- **Conversation Attributes**: Store information about specific conversations
+
+Source: `app/models/custom_attribute_definition.rb:42`
+
+## Custom Attribute Types
+
+Chatwoot supports the following display types for custom attributes:
+
+| Type | Value | Description | Example |
+|------|-------|-------------|--------|
+| Text | `0` | Plain text input | "Premium Plan" |
+| Number | `1` | Numeric values | `42` |
+| Currency | `2` | Monetary values | `99.99` |
+| Percent | `3` | Percentage values | `85` |
+| Link | `4` | URLs | `https://example.com` |
+| Date | `5` | Date values | `2026-03-04` |
+| List | `6` | Dropdown selection | One of predefined values |
+| Checkbox | `7` | Boolean toggle | `true` or `false` |
+
+Source: `app/models/custom_attribute_definition.rb:43`
+
+## Creating Custom Attribute Definitions
+
+Before you can set custom attributes, you must create attribute definitions that specify the attribute schema.
+
+### Via API
+
+```http
+POST /api/v1/accounts/{account_id}/custom_attribute_definitions
+Content-Type: application/json
+
+{
+  "attribute_display_name": "Subscription Plan",
+  "attribute_key": "subscription_plan",
+  "attribute_display_type": 0,
+  "attribute_model": 1,
+  "attribute_description": "Customer's current subscription tier",
+  "attribute_values": []
+}
+```
+
+### Parameters
+
+- `attribute_display_name` (required): Human-readable name shown in the UI
+- `attribute_key` (required): Unique identifier for the attribute (used in API calls)
+- `attribute_display_type` (required): Display type (0-7, see table above)
+- `attribute_model` (required): `0` for conversation, `1` for contact
+- `attribute_description`: Optional description for the attribute
+- `attribute_values`: Array of allowed values (required for `list` type)
+- `regex_pattern`: Optional validation pattern
+- `regex_cue`: Optional hint for regex validation
+
+Source: `app/controllers/api/v1/accounts/custom_attribute_definitions_controller.rb:36-45`
+
+### Example: List Type Attribute
+
+```json
+{
+  "attribute_display_name": "Customer Type",
+  "attribute_key": "customer_type",
+  "attribute_display_type": 6,
+  "attribute_model": 1,
+  "attribute_values": ["Individual", "Business", "Enterprise"],
+  "attribute_description": "Type of customer account"
+}
+```
+
+### Example: Date Type Attribute
+
+```json
+{
+  "attribute_display_name": "Trial End Date",
+  "attribute_key": "trial_end_date",
+  "attribute_display_type": 5,
+  "attribute_model": 1,
+  "attribute_description": "Date when the free trial ends"
+}
+```
+
+## Standard Attributes
+
+Certain attribute keys are reserved and cannot be used for custom attributes:
+
+### Contact Standard Attributes
+
+- `name`
+- `email`
+- `phone_number`
+- `identifier`
+- `country_code`
+- `city`
+- `created_at`
+- `last_activity_at`
+- `referer`
+- `blocked`
+
+### Conversation Standard Attributes
+
+- `status`
+- `priority`
+- `assignee_id`
+- `inbox_id`
+- `team_id`
+- `display_id`
+- `campaign_id`
+- `labels`
+- `browser_language`
+- `country_code`
+- `referer`
+- `created_at`
+- `last_activity_at`
+
+Source: `app/models/custom_attribute_definition.rb:25-29`
+
+## Setting Custom Attributes
+
+### For Contacts (via Widget SDK)
+
+```javascript
+window.$chatwoot.setCustomAttributes({
+  subscription_plan: 'premium',
+  account_value: 5000,
+  signup_date: '2026-01-15',
+  is_verified: true
+});
+```
+
+### For Contacts (via API)
+
+```http
+PUT /api/v1/accounts/{account_id}/contacts/{contact_id}
+Content-Type: application/json
+
+{
+  "custom_attributes": {
+    "subscription_plan": "premium",
+    "account_value": 5000,
+    "signup_date": "2026-01-15",
+    "is_verified": true
+  }
+}
+```
+
+### For Conversations (via Widget SDK)
+
+```javascript
+window.$chatwoot.setConversationCustomAttributes({
+  order_id: 'ORD-12345',
+  order_total: 299.99,
+  product_category: 'electronics',
+  requires_technical_support: true
+});
+```
+
+### For Conversations (via API)
+
+```http
+POST /api/v1/accounts/{account_id}/conversations/{conversation_id}/custom_attributes
+Content-Type: application/json
+
+{
+  "custom_attributes": {
+    "order_id": "ORD-12345",
+    "order_total": 299.99,
+    "product_category": "electronics"
+  }
+}
+```
+
+## Deleting Custom Attributes
+
+### For Contacts (via Widget SDK)
+
+```javascript
+// Delete a single custom attribute
+window.$chatwoot.deleteCustomAttribute('subscription_plan');
+```
+
+Source: `app/javascript/entrypoints/sdk.js:147-154`
+
+### For Conversations (via Widget SDK)
+
+```javascript
+// Delete a single conversation custom attribute
+window.$chatwoot.deleteConversationCustomAttribute('order_id');
+```
+
+Source: `app/javascript/entrypoints/sdk.js:167-174`
+
+## Retrieving Custom Attributes
+
+Custom attributes are included in API responses for contacts and conversations:
+
+### Contact Response
+
+```json
+{
+  "id": 101,
+  "name": "John Doe",
+  "email": "john@example.com",
+  "custom_attributes": {
+    "subscription_plan": "premium",
+    "account_value": 5000,
+    "signup_date": "2026-01-15",
+    "is_verified": true
+  }
+}
+```
+
+### Conversation Response
+
+```json
+{
+  "id": 5678,
+  "status": "open",
+  "custom_attributes": {
+    "order_id": "ORD-12345",
+    "order_total": 299.99,
+    "product_category": "electronics",
+    "requires_technical_support": true
+  }
+}
+```
+
+## Using Custom Attributes in Webhooks
+
+Custom attributes are automatically included in webhook payloads:
+
+```json
+{
+  "event": "conversation_status_changed",
+  "id": 5678,
+  "custom_attributes": {
+    "order_id": "ORD-12345",
+    "product_category": "electronics"
+  },
+  "meta": {
+    "sender": {
+      "custom_attributes": {
+        "subscription_plan": "premium",
+        "account_value": 5000
+      }
+    }
+  }
+}
+```
+
+## Pre-chat Form Custom Fields
+
+Custom attributes can be collected via the pre-chat form in the widget. When you create or update contact attributes, they automatically sync to inbox pre-chat forms.
+
+Source: `app/models/custom_attribute_definition.rb:46-57`
+
+## Validation
+
+### Regex Validation
+
+You can enforce validation rules using regex patterns:
+
+```json
+{
+  "attribute_display_name": "Employee ID",
+  "attribute_key": "employee_id",
+  "attribute_display_type": 0,
+  "attribute_model": 1,
+  "regex_pattern": "^EMP-\\d{6}$",
+  "regex_cue": "Format: EMP-123456"
+}
+```
+
+### Required Values for List Type
+
+For list type attributes, you must provide the allowed values:
+
+```json
+{
+  "attribute_display_name": "Priority Level",
+  "attribute_key": "priority_level",
+  "attribute_display_type": 6,
+  "attribute_model": 0,
+  "attribute_values": ["Low", "Medium", "High", "Urgent"]
+}
+```
+
+## Managing Custom Attribute Definitions
+
+### List All Definitions
+
+```http
+GET /api/v1/accounts/{account_id}/custom_attribute_definitions
+  ?attribute_model=1  # 0 for conversation, 1 for contact
+```
+
+### Get Single Definition
+
+```http
+GET /api/v1/accounts/{account_id}/custom_attribute_definitions/{id}
+```
+
+### Update Definition
+
+```http
+PATCH /api/v1/accounts/{account_id}/custom_attribute_definitions/{id}
+Content-Type: application/json
+
+{
+  "attribute_display_name": "Updated Name",
+  "attribute_description": "Updated description"
+}
+```
+
+### Delete Definition
+
+```http
+DELETE /api/v1/accounts/{account_id}/custom_attribute_definitions/{id}
+```
+
+<Warning>
+Deleting a custom attribute definition will also delete all values stored for that attribute across all contacts or conversations.
+</Warning>
+
+## Use Cases
+
+### E-commerce Integration
+
+```javascript
+// Track order details in conversation
+window.$chatwoot.setConversationCustomAttributes({
+  order_id: 'ORD-12345',
+  order_total: 299.99,
+  order_status: 'shipped',
+  tracking_number: '1Z999AA10123456784'
+});
+
+// Track customer lifetime value
+window.$chatwoot.setCustomAttributes({
+  total_orders: 12,
+  lifetime_value: 3499.88,
+  last_purchase_date: '2026-02-28'
+});
+```
+
+### SaaS Application
+
+```javascript
+// Track subscription and usage
+window.$chatwoot.setCustomAttributes({
+  subscription_plan: 'business',
+  monthly_spend: 299,
+  trial_end_date: '2026-03-15',
+  feature_flags: ['advanced_analytics', 'api_access'],
+  usage_quota: 75
+});
+```
+
+### Support Ticketing
+
+```javascript
+// Track ticket metadata
+window.$chatwoot.setConversationCustomAttributes({
+  ticket_type: 'technical_support',
+  severity: 'high',
+  affected_product: 'mobile_app',
+  version: '2.4.1',
+  environment: 'production'
+});
+```
+
+### Lead Qualification
+
+```javascript
+// Qualify leads with custom attributes
+window.$chatwoot.setCustomAttributes({
+  company_size: '50-200',
+  industry: 'technology',
+  budget_range: '10k-50k',
+  decision_maker: true,
+  timeline: 'this_quarter'
+});
+```
+
+## Best Practices
+
+1. **Use semantic keys**: Choose descriptive `attribute_key` values (e.g., `subscription_plan` not `sp1`)
+2. **Document your attributes**: Add meaningful descriptions to help team members understand usage
+3. **Choose appropriate types**: Use the correct display type for better UI rendering and validation
+4. **Limit attribute count**: Too many custom attributes can impact performance
+5. **Use list types**: For predefined values, use list type instead of free text
+6. **Validate input**: Use regex patterns to enforce data quality
+7. **Consider privacy**: Don't store sensitive data like passwords or credit card numbers
+8. **Plan for scale**: Custom attributes are stored as JSONB, so keep values reasonably sized
+
+## Limitations
+
+- Custom attribute keys must be unique per account and attribute model
+- Keys cannot conflict with standard attribute names
+- Maximum JSONB size depends on your PostgreSQL configuration (typically 1GB)
+- Attribute values are not encrypted by default
+- Regex validation is only enforced in the UI, not via API
+
+## Related Resources
+
+- [Webhooks](/developers/webhooks) - Custom attributes are included in webhook payloads
+- [Widget SDK](/developers/widget-sdk) - Set custom attributes from your website
+- [API Reference](/api-reference) - Custom attribute API endpoints

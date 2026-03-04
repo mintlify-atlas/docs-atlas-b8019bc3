@@ -1,0 +1,384 @@
+---
+title: Agents
+description: Manage agents and team members in your Chatwoot account
+---
+
+## Overview
+
+Agents are team members who can access the Chatwoot dashboard and respond to conversations. Use the Agents API to manage your team.
+
+## List All Agents
+
+Retrieve a list of all agents in the account.
+
+```http
+GET /api/v1/accounts/{account_id}/agents
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+### Response
+
+<ResponseField name="id" type="integer">
+  Agent ID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Agent full name
+</ResponseField>
+
+<ResponseField name="email" type="string">
+  Agent email address
+</ResponseField>
+
+<ResponseField name="role" type="string">
+  Agent role: `agent` or `administrator`
+</ResponseField>
+
+<ResponseField name="availability" type="string">
+  Availability status: `available`, `busy`, or `offline`
+</ResponseField>
+
+<ResponseField name="auto_offline" type="boolean">
+  Whether agent automatically goes offline
+</ResponseField>
+
+<ResponseField name="confirmed" type="boolean">
+  Whether the agent has confirmed their email
+</ResponseField>
+
+### Example Request
+
+```bash
+curl -X GET https://app.chatwoot.com/api/v1/accounts/1/agents \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+### Example Response
+
+```json
+[
+  {
+    "id": 1,
+    "name": "John Doe",
+    "email": "john@acme.com",
+    "role": "administrator",
+    "availability": "available",
+    "auto_offline": true,
+    "confirmed": true,
+    "avatar_url": "https://example.com/avatar.jpg"
+  },
+  {
+    "id": 2,
+    "name": "Jane Smith",
+    "email": "jane@acme.com",
+    "role": "agent",
+    "availability": "busy",
+    "auto_offline": false,
+    "confirmed": true,
+    "avatar_url": null
+  }
+]
+```
+
+## Create Agent
+
+Invite a new agent to your account.
+
+```http
+POST /api/v1/accounts/{account_id}/agents
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+### Request Body
+
+<ParamField body="agent[email]" type="string" required>
+  Agent email address
+</ParamField>
+
+<ParamField body="agent[name]" type="string" required>
+  Agent full name
+</ParamField>
+
+<ParamField body="agent[role]" type="string" default="agent">
+  Agent role: `agent` or `administrator`
+</ParamField>
+
+<ParamField body="agent[availability]" type="string" default="available">
+  Initial availability: `available`, `busy`, or `offline`
+</ParamField>
+
+<ParamField body="agent[auto_offline]" type="boolean" default="true">
+  Whether agent automatically goes offline
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST https://app.chatwoot.com/api/v1/accounts/1/agents \
+  -H "api_access_token: YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent": {
+      "email": "newagent@acme.com",
+      "name": "New Agent",
+      "role": "agent",
+      "availability": "available",
+      "auto_offline": true
+    }
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "id": 3,
+  "name": "New Agent",
+  "email": "newagent@acme.com",
+  "role": "agent",
+  "availability": "available",
+  "auto_offline": true,
+  "confirmed": false
+}
+```
+
+<Note>
+An invitation email will be sent to the agent's email address. The agent must confirm their email before they can access the account.
+</Note>
+
+## Update Agent
+
+Update an existing agent's information.
+
+```http
+PATCH /api/v1/accounts/{account_id}/agents/{id}
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+<ParamField path="id" type="integer" required>
+  The ID of the agent to update
+</ParamField>
+
+### Request Body
+
+<ParamField body="agent[name]" type="string">
+  Agent full name
+</ParamField>
+
+<ParamField body="agent[role]" type="string">
+  Agent role: `agent` or `administrator`
+</ParamField>
+
+<ParamField body="agent[availability]" type="string">
+  Availability: `available`, `busy`, or `offline`
+</ParamField>
+
+<ParamField body="agent[auto_offline]" type="boolean">
+  Whether agent automatically goes offline
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X PATCH https://app.chatwoot.com/api/v1/accounts/1/agents/2 \
+  -H "api_access_token: YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent": {
+      "name": "Jane Smith (Updated)",
+      "role": "administrator",
+      "availability": "available"
+    }
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "id": 2,
+  "name": "Jane Smith (Updated)",
+  "email": "jane@acme.com",
+  "role": "administrator",
+  "availability": "available",
+  "auto_offline": false,
+  "confirmed": true
+}
+```
+
+## Delete Agent
+
+Remove an agent from the account.
+
+```http
+DELETE /api/v1/accounts/{account_id}/agents/{id}
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+<ParamField path="id" type="integer" required>
+  The ID of the agent to delete
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X DELETE https://app.chatwoot.com/api/v1/accounts/1/agents/3 \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+### Response
+
+Returns `200 OK` with no body.
+
+<Warning>
+Deleting an agent will remove their access to the account. If the user is not a member of any other accounts, their user record will also be deleted.
+</Warning>
+
+## Bulk Create Agents
+
+Invite multiple agents at once using email addresses.
+
+```http
+POST /api/v1/accounts/{account_id}/agents/bulk_create
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+### Request Body
+
+<ParamField body="emails" type="array" required>
+  Array of email addresses to invite
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST https://app.chatwoot.com/api/v1/accounts/1/agents/bulk_create \
+  -H "api_access_token: YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "emails": [
+      "agent1@acme.com",
+      "agent2@acme.com",
+      "agent3@acme.com"
+    ]
+  }'
+```
+
+### Response
+
+Returns `200 OK` with no body.
+
+<Note>
+Agents created through bulk create will:
+- Have their name derived from their email address
+- Be assigned the default `agent` role
+- Receive invitation emails
+- Any duplicate or invalid emails will be skipped
+</Note>
+
+## Agent Roles
+
+### Agent
+
+Standard team member with permissions to:
+- View and respond to assigned conversations
+- Access contacts and conversation history
+- Use reports and analytics
+- Manage personal settings
+
+### Administrator
+
+Full access to all account features including:
+- All agent permissions
+- Manage team members and agents
+- Configure inboxes and channels
+- Set up automations and workflows
+- Access account settings
+- Manage integrations and webhooks
+
+## Agent Availability Status
+
+### Available
+
+Agent is online and can receive new conversations.
+
+### Busy
+
+Agent is online but should not receive new automatic assignments.
+
+### Offline
+
+Agent is not available to receive conversations.
+
+## Auto Offline Mode
+
+When `auto_offline` is enabled, agents are automatically set to offline when they:
+- Close the browser tab
+- Are inactive for an extended period
+- Log out of the application
+
+## Account Limits
+
+<Warning>
+Accounts have a maximum number of agents based on their plan. Creating agents beyond this limit will result in a `402 Payment Required` error.
+</Warning>
+
+Error response when limit is exceeded:
+
+```json
+{
+  "error": "Account limit exceeded. Please purchase more licenses"
+}
+```
+
+## Error Responses
+
+### Agent Not Found
+
+```json
+{
+  "error": "Agent not found"
+}
+```
+
+### Validation Errors
+
+```json
+{
+  "error": "Validation failed",
+  "message": "Email has already been taken"
+}
+```
+
+### Insufficient Permissions
+
+```json
+{
+  "error": "Access denied"
+}
+```

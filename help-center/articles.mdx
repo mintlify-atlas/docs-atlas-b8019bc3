@@ -1,0 +1,397 @@
+---
+title: 'Managing Articles'
+description: 'Create, edit, and publish help center articles for your knowledge base'
+icon: 'file-lines'
+---
+
+Articles are the core content pieces in your Help Center. Learn how to create, organize, and publish documentation that helps your customers find answers.
+
+## Creating Articles
+
+### Article Structure
+
+Every article requires:
+
+- **Title** - Clear, descriptive heading
+- **Content** - Main article body with rich formatting
+- **Author** - User creating the article
+- **Portal** - Parent Help Center portal
+
+### Optional Fields
+
+- **Description** - Short summary (used for meta tags and search previews)
+- **Category** - Organizational grouping
+- **Slug** - Custom URL identifier (auto-generated if not provided)
+- **Locale** - Language code (inherited from category or portal)
+- **Meta** - Custom JSON metadata
+
+<Steps>
+  <Step title="Navigate to Help Center">
+    Access your portal's article management interface
+  </Step>
+  
+  <Step title="Click Create Article">
+    Start a new article in draft mode
+  </Step>
+  
+  <Step title="Add Content">
+    Write your article with the rich text editor
+  </Step>
+  
+  <Step title="Assign Category">
+    Optionally place the article in a category for organization
+  </Step>
+  
+  <Step title="Publish">
+    Change status from draft to published to make it visible
+  </Step>
+</Steps>
+
+## Article Status Lifecycle
+
+### Draft (Status: 0)
+
+<Info>
+  Articles start as drafts. They are only visible to team members and won't appear on the public portal.
+</Info>
+
+**Use drafts for:**
+- Work-in-progress content
+- Articles pending review
+- Content preparation before launch
+
+### Published (Status: 1)
+
+<Check>
+  Published articles are visible to all customers on your Help Center portal.
+</Check>
+
+**Published articles:**
+- Appear in search results
+- Show in category listings
+- Increment view counts when accessed
+- Are indexed by the full-text search
+
+### Archived (Status: 2)
+
+<Warning>
+  Archived articles are hidden from the public portal but preserved in your database.
+</Warning>
+
+**Archive articles that are:**
+- Outdated or superseded
+- Temporarily irrelevant
+- Historical reference material
+
+## Writing Article Content
+
+### Rich Text Formatting
+
+Articles support full HTML and Markdown:
+
+```markdown
+# Main Heading
+
+## Section Heading
+
+### Subsection
+
+Paragraphs with **bold** and *italic* text.
+
+- Bullet lists
+- Multiple items
+
+1. Numbered lists
+2. Sequential steps
+
+[Links to other pages](https://example.com)
+
+![Images with alt text](image-url.jpg)
+
+```code blocks```
+```
+
+### Automatic Features
+
+<AccordionGroup>
+  <Accordion title="Table of Contents">
+    The portal automatically generates a table of contents from `<h1>`, `<h2>`, and `<h3>` tags in your article.
+    
+    Each heading gets:
+    - A unique slug-based ID
+    - A permalink anchor (`#` link)
+    - An entry in the sidebar TOC
+    
+    ```javascript
+    // From portalHelpers.js
+    element.id = slugifyWithCounter(headingText);
+    element.className = 'scroll-mt-24 heading';
+    ```
+  </Accordion>
+  
+  <Accordion title="External Link Handling">
+    External links automatically open in new tabs with security attributes:
+    
+    ```javascript
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    ```
+    
+    Internal links (same domain, custom domain, or host URL) open normally.
+  </Accordion>
+  
+  <Accordion title="View Tracking">
+    Each article view increments the view counter:
+    
+    ```ruby
+    def increment_view_count
+      update_column(:views, views? ? views + 1 : 1)
+    end
+    ```
+    
+    Use view counts to identify popular content and areas needing improvement.
+  </Accordion>
+</AccordionGroup>
+
+## Article Organization
+
+### Positioning
+
+Articles have a `position` field for manual ordering within categories:
+
+```ruby
+# Auto-generated on creation
+max_position = Article.where(category_id: category_id).maximum(:position)
+new_position = max_position.present? ? max_position + 10 : 10
+```
+
+<Tip>
+  Positions increment by 10 to allow easy re-ordering without affecting all articles.
+</Tip>
+
+### Updating Positions
+
+Reorder articles using the position update API:
+
+```ruby
+Article.update_positions({
+  article_id_1 => 10,
+  article_id_2 => 20,
+  article_id_3 => 30
+})
+```
+
+### Sorting Options
+
+Articles can be sorted by:
+
+- `position` (default within categories)
+- `updated_at` (most recently modified)
+- `views` (most popular)
+
+```ruby
+# Available scopes
+Article.order_by_position
+Article.order_by_updated_at
+Article.order_by_views
+```
+
+## Multi-language Articles
+
+### Associated Articles
+
+Create translations by linking articles:
+
+<CodeGroup>
+```ruby Article Association
+# Link a translation to its root article
+article.associate_root_article(parent_article_id)
+
+# Schema relationship
+belongs_to :root_article,
+           class_name: :Article,
+           foreign_key: :associated_article_id
+
+has_many :associated_articles,
+         class_name: :Article,
+         foreign_key: :associated_article_id
+```
+
+```ruby Finding Root Article
+# Always associate to the parent's root to avoid deep nesting
+def self.find_root_article_id(article)
+  article.associated_article_id || article.id
+end
+```
+</CodeGroup>
+
+### Locale Handling
+
+Article locales are automatically set:
+
+```ruby
+def ensure_locale_in_article
+  self.locale = if category.present?
+                  category.locale
+                else
+                  locale.presence || portal.default_locale
+                end
+end
+```
+
+<Info>
+  Articles inherit locale from their category. If no category is assigned, they use the portal's default locale.
+</Info>
+
+## Searching Articles
+
+### Full-text Search
+
+Articles use PostgreSQL's full-text search with weighted ranking:
+
+```ruby
+pg_search_scope(
+  :text_search,
+  against: {
+    title: 'A',         # Highest weight
+    description: 'B',   # Medium weight
+    content: 'C'        # Lower weight
+  },
+  using: {
+    tsearch: {
+      prefix: true,           # Match partial words
+      normalization: 2        # Divide by log(length)
+    }
+  },
+  ranked_by: ':tsearch'
+)
+```
+
+### Search Filters
+
+Combine search with filters:
+
+```ruby
+Article.search(
+  query: 'installation guide',
+  locale: 'en',
+  category_slug: 'getting-started',
+  author_id: 123,
+  status: 'published'
+)
+```
+
+### API Search Endpoint
+
+```javascript
+// From portal/api/article.js
+searchArticles(portalSlug, locale, query) {
+  let baseUrl = `/hc/${portalSlug}/${locale}/articles.json?query=${query}`;
+  return axios.get(baseUrl);
+}
+```
+
+## Article Slugs
+
+### Auto-generation
+
+Slugs are automatically created from titles:
+
+```ruby
+def ensure_article_slug
+  self.slug ||= "#{Time.now.utc.to_i}-#{title.underscore.parameterize(separator: '-')}"
+end
+```
+
+**Example:**
+```
+Title: "How to Install Chatwoot"
+Slug:  "1709567890-how-to-install-chatwoot"
+```
+
+<Tip>
+  Slugs include timestamps to ensure uniqueness. You can customize the slug before creation.
+</Tip>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Content Structure">
+    - Use clear, descriptive titles
+    - Break long content into sections with headings
+    - Start with a brief introduction
+    - Use bullet points and numbered lists
+    - Add images to illustrate complex steps
+  </Accordion>
+  
+  <Accordion title="SEO Optimization">
+    - Write unique descriptions for each article
+    - Use relevant keywords in titles and headings
+    - Keep slugs concise and descriptive
+    - Structure content with proper heading hierarchy
+  </Accordion>
+  
+  <Accordion title="Maintenance">
+    - Review article view counts regularly
+    - Update articles when product features change
+    - Archive outdated content instead of deleting
+    - Link related articles for better navigation
+  </Accordion>
+  
+  <Accordion title="Multi-language Strategy">
+    - Translate high-traffic articles first
+    - Maintain consistent structure across locales
+    - Use associated_article_id to link translations
+    - Ensure categories exist for all target locales
+  </Accordion>
+</AccordionGroup>
+
+## API Reference
+
+### Key Model Methods
+
+```ruby
+# Status transitions
+article.draft!              # Set status to draft
+article.published?          # Check if published
+article.archived?           # Check if archived
+
+# View tracking
+article.increment_view_count
+
+# Associations
+article.associate_root_article(parent_id)
+
+# Positioning
+Article.update_positions({ article_id => position })
+```
+
+### Scopes
+
+```ruby
+Article.search_by_locale('en')
+Article.search_by_category_slug('getting-started')
+Article.search_by_author(user_id)
+Article.search_by_status('published')
+Article.text_search('search query')
+```
+
+## Troubleshooting
+
+<Warning>
+  **Article not appearing in portal** - Ensure status is "published" and the article's locale matches a portal-supported locale.
+</Warning>
+
+<Warning>
+  **Search not finding article** - Published articles are indexed. Check that the article status is published and the content contains your search terms.
+</Warning>
+
+<Warning>
+  **Category change resets position** - When moving articles between categories, positions are automatically recalculated.
+</Warning>
+
+## Related Resources
+
+- [Help Center Overview](/help-center/overview)
+- [Categories & Organization](/help-center/categories)
+- [Portal Customization](/help-center/portal-customization)

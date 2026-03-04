@@ -1,0 +1,221 @@
+---
+title: Slack Integration
+description: Connect Chatwoot with Slack for real-time notifications and team collaboration
+---
+
+The Slack integration allows you to receive conversation notifications in Slack channels and respond to customer messages directly from Slack. This enables your team to stay in their preferred collaboration tool while managing customer support.
+
+## Features
+
+- **Real-time Notifications**: Get instant alerts for new conversations and messages
+- **Bidirectional Messaging**: Reply to customers directly from Slack
+- **Channel Management**: Connect specific Slack channels to Chatwoot
+- **Team Collaboration**: Leverage Slack's collaboration features for support
+- **Message History**: Access conversation history within Slack threads
+- **Link Unfurling**: Preview Chatwoot conversation links in Slack
+
+## Prerequisites
+
+- Admin access to your Chatwoot account
+- Admin access to your Slack workspace
+- Slack Client ID and Client Secret configured in Chatwoot environment variables:
+  - `SLACK_CLIENT_ID`
+  - `SLACK_CLIENT_SECRET`
+
+## Setup Instructions
+
+### Step 1: Configure Slack App Credentials
+
+First, ensure your Chatwoot instance has Slack OAuth credentials configured. These should be set as environment variables:
+
+```bash
+SLACK_CLIENT_ID=your_slack_client_id
+SLACK_CLIENT_SECRET=your_slack_client_secret
+```
+
+### Step 2: Connect Slack from Chatwoot
+
+1. Navigate to **Settings** > **Integrations** in your Chatwoot dashboard
+2. Find **Slack** in the integrations list
+3. Click **Connect** to initiate the OAuth flow
+4. You'll be redirected to Slack's authorization page
+5. Select the Slack workspace you want to connect
+6. Review the requested permissions and click **Allow**
+
+### Step 3: Select Slack Channel
+
+After authorization:
+
+1. You'll be redirected back to Chatwoot
+2. Select which Slack channel should receive notifications
+3. Click **Update** to save your channel selection
+
+### Step 4: Test the Integration
+
+1. Create a test conversation in Chatwoot
+2. Verify that a notification appears in your configured Slack channel
+3. Try replying to the conversation from Slack
+4. Confirm the reply appears in Chatwoot
+
+## Slack Permissions
+
+The integration requests the following Slack permissions:
+
+- `commands`: Enable slash commands
+- `chat:write`: Send messages as the bot
+- `channels:read`: View basic channel information
+- `channels:manage`: Manage channel settings
+- `channels:join`: Join public channels
+- `channels:history`: Read message history in public channels
+- `groups:read`: View private channel information
+- `groups:write`: Send messages to private channels
+- `groups:history`: Read message history in private channels
+- `im:write`: Send direct messages
+- `im:history`: Read direct message history
+- `mpim:write`: Send messages to group DMs
+- `mpim:history`: Read group DM history
+- `users:read`: View user information
+- `users:read.email`: View user email addresses
+- `chat:write.customize`: Customize message appearance
+- `files:read`: Access file information
+- `files:write`: Upload and share files
+
+## API Integration
+
+You can also manage the Slack integration programmatically:
+
+### Create Integration
+
+```bash
+POST /api/v1/accounts/{account_id}/integrations/slack
+Content-Type: application/json
+
+{
+  "code": "slack_oauth_code",
+  "inbox_id": null
+}
+```
+
+### List Available Channels
+
+```bash
+GET /api/v1/accounts/{account_id}/integrations/slack/list_all_channels
+```
+
+### Update Channel
+
+```bash
+PATCH /api/v1/accounts/{account_id}/integrations/slack
+Content-Type: application/json
+
+{
+  "reference_id": "C01234ABCDE"
+}
+```
+
+### Delete Integration
+
+```bash
+DELETE /api/v1/accounts/{account_id}/integrations/slack
+```
+
+## Implementation Details
+
+The Slack integration is implemented using:
+
+- **Hook Model**: `Integrations::Hook` with `app_id: 'slack'`
+- **Hook Type**: Account-level integration
+- **OAuth Flow**: Uses Slack OAuth v2
+- **Builder Service**: `Integrations::Slack::HookBuilder`
+- **Channel Management**: `Integrations::Slack::ChannelBuilder`
+- **Message Services**:
+  - `Integrations::Slack::IncomingMessageBuilder`
+  - `Integrations::Slack::SendOnSlackService`
+  - `Integrations::Slack::SlackLinkUnfurlService`
+
+### Hook Configuration
+
+The integration stores:
+
+```ruby
+{
+  app_id: 'slack',
+  hook_type: 'account',
+  access_token: 'encrypted_slack_token',
+  reference_id: 'slack_channel_id',
+  status: 'enabled' # or 'disabled'
+}
+```
+
+## Disabling and Re-enabling
+
+You can temporarily disable the Slack integration without removing it:
+
+1. Navigate to **Settings** > **Integrations**
+2. Find your Slack integration
+3. Toggle the **Status** to disabled
+4. Re-enable when needed
+
+This preserves your configuration while stopping notifications.
+
+## Troubleshooting
+
+### Integration Not Appearing
+
+**Issue**: Slack integration doesn't appear in the integrations list.
+
+**Solution**: Ensure `SLACK_CLIENT_SECRET` environment variable is properly configured.
+
+### Channel Not Receiving Notifications
+
+**Issue**: No messages appear in the configured Slack channel.
+
+**Solution**:
+1. Verify the integration status is "enabled"
+2. Check that the bot has been invited to the channel
+3. Review Slack app permissions
+4. Test with a new conversation
+
+### OAuth Redirect Error
+
+**Issue**: Error during OAuth redirect.
+
+**Solution**: Verify that the redirect URI in your Slack app settings matches:
+```
+https://your-chatwoot-domain/app/accounts/{account_id}/settings/integrations/slack
+```
+
+### Invalid Channel ID
+
+**Issue**: "Invalid channel ID" error when updating channel.
+
+**Solution**: 
+1. Use the channel listing API to get valid channel IDs
+2. Ensure the bot has access to the selected channel
+3. Verify the channel still exists in your workspace
+
+## Removing the Integration
+
+To completely remove the Slack integration:
+
+1. Navigate to **Settings** > **Integrations**
+2. Find the Slack integration
+3. Click **Delete** or **Remove**
+4. Confirm the deletion
+
+This will revoke access tokens and remove all configuration.
+
+## Security Notes
+
+- Access tokens are encrypted when encryption is configured
+- Tokens are stored using deterministic encryption
+- Only administrators can configure integrations
+- OAuth flow uses state parameter for CSRF protection
+- Redirect URIs are validated during OAuth
+
+## Next Steps
+
+- Configure notification preferences for your team
+- Set up routing rules to direct conversations to specific channels
+- Train your team on responding from Slack
+- Explore other integrations to enhance your workflow

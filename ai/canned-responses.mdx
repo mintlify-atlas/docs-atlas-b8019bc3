@@ -1,0 +1,450 @@
+---
+title: "Canned Responses"
+description: "Pre-written message templates that help agents respond quickly and consistently to common customer questions"
+---
+
+Canned Responses are pre-written reply templates that enable your support team to respond to conversations quickly and consistently. They help maintain quality while reducing response time.
+
+## Overview
+
+Canned Responses allow you to:
+
+- Save frequently used replies
+- Maintain consistent messaging
+- Reduce typing and response time
+- Standardize answers to common questions
+- Share knowledge across your team
+
+<Card title="Quick Access" icon="keyboard">
+  Type `/` in the message composer followed by a shortcode to insert a canned response
+</Card>
+
+## Creating Canned Responses
+
+Create canned responses through the admin interface or API:
+
+<Steps>
+  <Step title="Navigate to Settings">
+    Go to **Settings** > **Canned Responses**
+  </Step>
+  <Step title="Click Add">
+    Click **Add canned response** button
+  </Step>
+  <Step title="Configure Response">
+    - Enter a short code (e.g., `welcome`, `hours`)
+    - Write your message template
+    - Save the response
+  </Step>
+</Steps>
+
+### Via API
+
+<CodeGroup>
+```bash Create Response
+curl -X POST \
+  https://app.chatwoot.com/api/v1/accounts/{account_id}/canned_responses \
+  -H 'api_access_token: YOUR_ACCESS_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "short_code": "welcome",
+    "content": "Welcome to our support! How can we help you today?"
+  }'
+```
+
+```json Response
+{
+  "id": 1,
+  "short_code": "welcome",
+  "content": "Welcome to our support! How can we help you today?",
+  "account_id": 1,
+  "created_at": "2024-03-04T12:00:00Z",
+  "updated_at": "2024-03-04T12:00:00Z"
+}
+```
+</CodeGroup>
+
+## Using Canned Responses
+
+### In Conversations
+
+There are multiple ways to use canned responses:
+
+<Tabs>
+  <Tab title="Shortcode">
+    Type `/` followed by the shortcode in the message composer:
+    
+    ```
+    /welcome
+    ```
+    
+    The full message will be inserted automatically.
+  </Tab>
+  
+  <Tab title="Search">
+    1. Type `/` in the message composer
+    2. Start typing to search canned responses
+    3. Select from the dropdown list
+    4. Press Enter to insert
+  </Tab>
+  
+  <Tab title="Menu">
+    1. Click the canned responses icon in the composer
+    2. Browse or search available responses
+    3. Click to insert
+  </Tab>
+</Tabs>
+
+### Editing Before Sending
+
+After inserting a canned response:
+
+1. The template text appears in the composer
+2. Edit as needed for the specific situation
+3. Add personalization (customer name, details)
+4. Send the message
+
+<Tip>
+  Canned responses are templates, not automated messages. Always review and personalize before sending.
+</Tip>
+
+## Response Fields
+
+<ResponseField name="short_code" type="string" required>
+  Unique identifier used to trigger the response. Use lowercase, no spaces.
+  
+  **Examples:** `welcome`, `business_hours`, `refund_policy`
+</ResponseField>
+
+<ResponseField name="content" type="text" required>
+  The message template content. Can include:
+  - Plain text
+  - Multiple paragraphs
+  - Links
+  - Formatting (when using rich text editor)
+</ResponseField>
+
+## Best Practices
+
+### Naming Short Codes
+
+<AccordionGroup>
+  <Accordion title="Use Descriptive Names" icon="tag">
+    Choose short codes that clearly describe the content:
+    
+    **Good:**
+    - `welcome`
+    - `business_hours`
+    - `refund_policy`
+    - `shipping_time`
+    
+    **Avoid:**
+    - `msg1`, `msg2`
+    - `temp`
+    - `xyz`
+  </Accordion>
+
+  <Accordion title="Use Consistent Naming" icon="list">
+    Establish a naming convention for your team:
+    
+    - Use underscores: `business_hours`
+    - Group by category: `billing_refund`, `billing_invoice`
+    - Keep it short but meaningful
+  </Accordion>
+
+  <Accordion title="Avoid Special Characters" icon="exclamation-triangle">
+    Stick to lowercase letters, numbers, and underscores:
+    
+    - `support_hours` ✓
+    - `Support Hours` ✗
+    - `support-hours` ✗
+    - `support.hours` ✗
+  </Accordion>
+</AccordionGroup>
+
+### Writing Effective Templates
+
+<AccordionGroup>
+  <Accordion title="Leave Room for Personalization" icon="user">
+    Write templates that can be personalized:
+    
+    ```
+    Hi there!
+    
+    Thanks for reaching out. I'd be happy to help you with [TOPIC].
+    
+    [Add specific details here]
+    
+    Let me know if you have any questions!
+    ```
+  </Accordion>
+
+  <Accordion title="Include Common Variations" icon="clone">
+    Create variations for different scenarios:
+    
+    - `welcome_new` - For first-time customers
+    - `welcome_returning` - For returning customers
+    - `followup_day1` - One day after initial contact
+    - `followup_week1` - One week follow-up
+  </Accordion>
+
+  <Accordion title="Keep It Concise" icon="compress">
+    - Focus on one topic per response
+    - Use clear, simple language
+    - Break long responses into multiple templates
+    - Remove unnecessary words
+  </Accordion>
+
+  <Accordion title="Include Next Steps" icon="list-check">
+    Help customers know what to do next:
+    
+    ```
+    Your refund has been processed.
+    
+    You should see the funds in your account within 5-7 business days.
+    
+    If you don't see the refund after 7 days, please reply to this conversation.
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Common Use Cases
+
+### Greetings and Welcomes
+
+<CodeGroup>
+```text welcome
+Welcome to our support team! How can we help you today?
+```
+
+```text welcome_new
+Hi there! Welcome to [Your Company]!
+
+Thanks for reaching out. I'm here to help you get started.
+
+What questions do you have?
+```
+
+```text away
+Thanks for your message! We're currently away, but we'll get back to you within 24 hours.
+
+In the meantime, check out our Help Center for answers to common questions: [link]
+```
+</CodeGroup>
+
+### Business Information
+
+<CodeGroup>
+```text hours
+Our business hours are:
+
+Monday - Friday: 9 AM - 6 PM EST
+Saturday: 10 AM - 4 PM EST
+Sunday: Closed
+
+We'll respond to your message during our next business hours.
+```
+
+```text contact
+You can reach us at:
+
+Email: support@yourcompany.com
+Phone: +1 (555) 123-4567
+Hours: Monday-Friday, 9 AM - 6 PM EST
+```
+</CodeGroup>
+
+### Common Questions
+
+<CodeGroup>
+```text shipping
+Shipping times vary by location:
+
+- Domestic: 3-5 business days
+- International: 7-14 business days
+
+You'll receive a tracking number once your order ships.
+```
+
+```text refund
+Our refund policy allows returns within 30 days of purchase.
+
+To start a return:
+1. Reply with your order number
+2. Let us know the reason for the return
+3. We'll provide a return shipping label
+
+Refunds are processed within 5-7 business days after we receive the item.
+```
+
+```text password_reset
+To reset your password:
+
+1. Go to the login page
+2. Click "Forgot Password"
+3. Enter your email address
+4. Check your email for reset instructions
+
+If you don't receive the email within 5 minutes, check your spam folder.
+```
+</CodeGroup>
+
+### Handoffs and Transfers
+
+<CodeGroup>
+```text transfer_billing
+I'm transferring your conversation to our billing team. They'll be able to help you with this right away.
+```
+
+```text escalate
+I've escalated your case to our senior support team. You'll hear from them within 4 hours.
+
+Your case number is: [CASE_NUMBER]
+```
+</CodeGroup>
+
+## Managing Canned Responses
+
+### List All Responses
+
+```bash
+curl -X GET \
+  https://app.chatwoot.com/api/v1/accounts/{account_id}/canned_responses \
+  -H 'api_access_token: YOUR_ACCESS_TOKEN'
+```
+
+### Search Responses
+
+Search by short code or content:
+
+```bash
+curl -X GET \
+  'https://app.chatwoot.com/api/v1/accounts/{account_id}/canned_responses?search=refund' \
+  -H 'api_access_token: YOUR_ACCESS_TOKEN'
+```
+
+### Update Response
+
+```bash
+curl -X PATCH \
+  https://app.chatwoot.com/api/v1/accounts/{account_id}/canned_responses/{id} \
+  -H 'api_access_token: YOUR_ACCESS_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "short_code": "welcome",
+    "content": "Updated welcome message"
+  }'
+```
+
+### Delete Response
+
+```bash
+curl -X DELETE \
+  https://app.chatwoot.com/api/v1/accounts/{account_id}/canned_responses/{id} \
+  -H 'api_access_token: YOUR_ACCESS_TOKEN'
+```
+
+## Search Functionality
+
+Canned responses are searchable by:
+
+1. **Short code** - Highest priority
+2. **Content** - Searches within message text
+
+### Search Ranking
+
+Results are sorted by relevance:
+
+- Short code starts with search term (highest)
+- Short code contains search term
+- Content contains search term (lowest)
+
+<Tip>
+  Choose short codes that match common search terms your team will use.
+</Tip>
+
+## Organization Strategies
+
+### By Category
+
+Group related responses:
+
+- `billing_*` - All billing-related responses
+- `technical_*` - Technical support
+- `product_*` - Product information
+- `shipping_*` - Shipping and delivery
+
+### By Frequency
+
+Create shorter codes for frequently used responses:
+
+- `hi` - Common greeting
+- `ty` - Thank you
+- `hours` - Business hours
+- `help` - How we can help
+
+### By Agent Role
+
+Tailor responses to specific roles:
+
+- `sales_*` - Sales team responses
+- `support_*` - Support team responses
+- `billing_*` - Billing team responses
+
+## Advanced Tips
+
+<AccordionGroup>
+  <Accordion title="Use Rich Formatting" icon="paintbrush">
+    Format your canned responses for better readability:
+    
+    - Use **bold** for emphasis
+    - Create bullet lists
+    - Add numbered steps
+    - Include links
+  </Accordion>
+
+  <Accordion title="Include Variables" icon="brackets-curly">
+    Use placeholders for common personalizations:
+    
+    ```
+    Hi [NAME],
+    
+    Your order #[ORDER_NUMBER] has been shipped!
+    ```
+    
+    Replace brackets when using the template.
+  </Accordion>
+
+  <Accordion title="Team Training" icon="users">
+    - Document available canned responses
+    - Train new agents on shortcodes
+    - Review and update regularly
+    - Get feedback from your team
+  </Accordion>
+
+  <Accordion title="Regular Maintenance" icon="wrench">
+    - Remove outdated responses
+    - Update with current information
+    - Consolidate similar responses
+    - Track usage to identify gaps
+  </Accordion>
+</AccordionGroup>
+
+## Validation Rules
+
+<Warning>
+  - Short codes must be unique within an account
+  - Both short code and content are required
+  - Short codes are case-insensitive
+  - Content cannot be empty
+</Warning>
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Captain AI" icon="robot" href="/ai/captain">
+    AI-powered response suggestions
+  </Card>
+  <Card title="Agent Bots" icon="robot" href="/ai/chatbots">
+    Automated conversation handling
+  </Card>
+</CardGroup>

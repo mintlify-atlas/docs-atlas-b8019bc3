@@ -1,0 +1,328 @@
+---
+title: Email Channel
+description: Set up email support inbox and manage customer conversations via email
+---
+
+The Email channel allows you to manage customer support emails directly from Chatwoot. All incoming emails appear as conversations in your inbox, and your replies are sent from your configured email address.
+
+## Features
+
+- **Two-way email communication** - Send and receive emails
+- **IMAP support** - Fetch incoming emails automatically
+- **SMTP configuration** - Send replies from your domain
+- **Email forwarding** - Forward emails to Chatwoot
+- **Thread preservation** - Maintain email conversation threads
+- **Attachment support** - Handle file attachments
+- **Multiple providers** - Gmail, Microsoft, custom SMTP/IMAP
+
+## Setup Methods
+
+There are two ways to set up an email inbox:
+
+### Method 1: Email Forwarding (Recommended for Quick Setup)
+
+Forward emails from your existing email account to Chatwoot.
+
+<Steps>
+  <Step title="Create email inbox in Chatwoot">
+    Navigate to **Settings** → **Inboxes** → **Add Inbox** → **Email**
+    
+    Enter your support email address (e.g., `support@yourdomain.com`)
+  </Step>
+
+  <Step title="Get forwarding address">
+    Chatwoot will generate a unique forwarding address like:
+    ```
+    channel_12345@inbound.chatwoot.com
+    ```
+  </Step>
+
+  <Step title="Set up email forwarding">
+    In your email provider, forward emails to the Chatwoot address.
+    
+    **Gmail:**
+    1. Go to Settings → Forwarding and POP/IMAP
+    2. Add forwarding address
+    3. Confirm forwarding email from Chatwoot
+    
+    **Microsoft/Outlook:**
+    1. Settings → Mail → Forwarding
+    2. Add the Chatwoot forwarding address
+    
+    **Custom domain/cPanel:**
+    Add email forwarder in your hosting control panel
+  </Step>
+
+  <Step title="Configure SMTP for sending (optional)">
+    To send replies from your email address, configure SMTP settings in the inbox configuration.
+  </Step>
+</Steps>
+
+### Method 2: IMAP/SMTP (Full Integration)
+
+Connect Chatwoot directly to your email server.
+
+<Steps>
+  <Step title="Gather IMAP/SMTP credentials">
+    You'll need:
+    - IMAP server address and port
+    - SMTP server address and port
+    - Email address and password
+    - SSL/TLS settings
+  </Step>
+
+  <Step title="Create email inbox">
+    Go to **Settings** → **Inboxes** → **Add Inbox** → **Email**
+  </Step>
+
+  <Step title="Configure IMAP (Incoming)">
+    Enable IMAP and enter:
+    - **Address**: IMAP server (e.g., `imap.gmail.com`)
+    - **Port**: Usually 993 for SSL
+    - **Login**: Your email address
+    - **Password**: Email password or app password
+    - **Enable SSL**: Check if server uses SSL
+  </Step>
+
+  <Step title="Configure SMTP (Outgoing)">
+    Enable SMTP and enter:
+    - **Address**: SMTP server (e.g., `smtp.gmail.com`)
+    - **Port**: Usually 587 (STARTTLS) or 465 (SSL)
+    - **Login**: Your email address
+    - **Password**: Email password or app password
+    - **Authentication**: Usually 'login'
+    - **Enable STARTTLS**: Check for port 587
+    - **Enable SSL/TLS**: Check for port 465
+  </Step>
+
+  <Step title="Test and save">
+    Click **Test Connection** to verify settings, then save the inbox.
+  </Step>
+</Steps>
+
+## Provider-Specific Setup
+
+### Gmail
+
+<Tabs>
+  <Tab title="Using App Password (Recommended)">
+    1. Enable 2-Factor Authentication on your Google account
+    2. Go to [Google App Passwords](https://myaccount.google.com/apppasswords)
+    3. Generate an app password for "Mail"
+    4. Use this password in Chatwoot IMAP/SMTP settings
+    
+    **IMAP Settings:**
+    - Server: `imap.gmail.com`
+    - Port: `993`
+    - SSL: Enabled
+    
+    **SMTP Settings:**
+    - Server: `smtp.gmail.com`
+    - Port: `587`
+    - STARTTLS: Enabled
+  </Tab>
+  
+  <Tab title="Using OAuth (Coming Soon)">
+    OAuth authentication for Gmail is planned for a future release.
+  </Tab>
+</Tabs>
+
+### Microsoft 365 / Outlook
+
+**IMAP Settings:**
+- Server: `outlook.office365.com`
+- Port: `993`
+- SSL: Enabled
+
+**SMTP Settings:**
+- Server: `smtp.office365.com`
+- Port: `587`
+- STARTTLS: Enabled
+
+<Note>
+Microsoft accounts may require OAuth authentication. Check your organization's security policies.
+</Note>
+
+### Custom Domain (cPanel/Plesk)
+
+Ask your hosting provider for IMAP/SMTP details. Common settings:
+
+**IMAP:**
+- Server: `mail.yourdomain.com`
+- Port: `993` (SSL) or `143` (STARTTLS)
+
+**SMTP:**
+- Server: `mail.yourdomain.com`
+- Port: `465` (SSL) or `587` (STARTTLS)
+
+## Email Configuration Options
+
+### Inbox Settings
+
+<ParamField path="email" type="string" required>
+  Your support email address
+</ParamField>
+
+<ParamField path="forward_to_email" type="string">
+  Chatwoot-generated forwarding address for incoming emails
+</ParamField>
+
+### IMAP (Incoming) Settings
+
+<ParamField path="imap_enabled" type="boolean" default="false">
+  Enable IMAP to fetch incoming emails
+</ParamField>
+
+<ParamField path="imap_address" type="string">
+  IMAP server address (e.g., `imap.gmail.com`)
+</ParamField>
+
+<ParamField path="imap_port" type="integer">
+  IMAP port (typically `993` for SSL, `143` for STARTTLS)
+</ParamField>
+
+<ParamField path="imap_login" type="string">
+  IMAP login username (usually your email address)
+</ParamField>
+
+<ParamField path="imap_password" type="string">
+  IMAP password (encrypted at rest)
+</ParamField>
+
+<ParamField path="imap_enable_ssl" type="boolean" default="true">
+  Enable SSL/TLS for IMAP connection
+</ParamField>
+
+### SMTP (Outgoing) Settings
+
+<ParamField path="smtp_enabled" type="boolean" default="false">
+  Enable SMTP to send emails
+</ParamField>
+
+<ParamField path="smtp_address" type="string">
+  SMTP server address (e.g., `smtp.gmail.com`)
+</ParamField>
+
+<ParamField path="smtp_port" type="integer">
+  SMTP port (typically `587` for STARTTLS, `465` for SSL)
+</ParamField>
+
+<ParamField path="smtp_login" type="string">
+  SMTP login username
+</ParamField>
+
+<ParamField path="smtp_password" type="string">
+  SMTP password (encrypted at rest)
+</ParamField>
+
+<ParamField path="smtp_authentication" type="string" default="login">
+  Authentication method (`login`, `plain`, `cram_md5`)
+</ParamField>
+
+<ParamField path="smtp_enable_starttls_auto" type="boolean" default="true">
+  Enable STARTTLS (port 587)
+</ParamField>
+
+<ParamField path="smtp_enable_ssl_tls" type="boolean" default="false">
+  Enable SSL/TLS (port 465)
+</ParamField>
+
+<ParamField path="smtp_openssl_verify_mode" type="string" default="none">
+  SSL certificate verification mode (`none`, `peer`, `client_once`, `fail_if_no_peer_cert`)
+</ParamField>
+
+## Email Workflow
+
+### Incoming Emails
+
+1. Customer sends email to `support@yourdomain.com`
+2. Email is forwarded to Chatwoot or fetched via IMAP
+3. Chatwoot creates a new conversation with the email content
+4. Agents receive notification and can reply
+5. Email thread is preserved with `In-Reply-To` and `References` headers
+
+### Outgoing Emails
+
+1. Agent replies in Chatwoot conversation
+2. Reply is sent via SMTP from your configured email address
+3. Customer receives email from `support@yourdomain.com`
+4. Customer's reply comes back to Chatwoot
+5. Conversation thread continues
+
+## Best Practices
+
+<Check>Use email forwarding for simplest setup</Check>
+<Check>Configure SMTP to send from your domain</Check>
+<Check>Enable IMAP to automatically fetch emails</Check>
+<Check>Use app passwords for Gmail/Microsoft accounts</Check>
+<Check>Test email sending before going live</Check>
+<Check>Set up SPF, DKIM, and DMARC records for deliverability</Check>
+<Check>Monitor IMAP sync for errors</Check>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Emails not arriving in Chatwoot">
+    **For Email Forwarding:**
+    - Verify forwarding is set up correctly in your email provider
+    - Check spam folder in your email account
+    - Ensure forwarding address is correct
+    
+    **For IMAP:**
+    - Test IMAP credentials with an email client (Thunderbird, Outlook)
+    - Check IMAP server address and port
+    - Verify SSL/TLS settings
+    - Check Chatwoot logs for IMAP errors
+  </Accordion>
+
+  <Accordion title="Cannot send replies">
+    - Verify SMTP settings are correct
+    - Test SMTP with an email client
+    - Check SMTP authentication method
+    - Ensure port and SSL/TLS settings match your provider
+    - Check if your email provider blocks less secure apps
+    - For Gmail, use App Password instead of regular password
+  </Accordion>
+
+  <Accordion title="Email threads breaking">
+    - Chatwoot uses `In-Reply-To` and `References` headers to maintain threads
+    - Check if your SMTP provider preserves these headers
+    - Verify `Message-ID` is being set correctly
+  </Accordion>
+
+  <Accordion title="Authentication errors">
+    - For Gmail: Use App Password with 2FA enabled
+    - For Microsoft: Check if OAuth is required
+    - Verify username is correct (usually full email address)
+    - Try re-entering password
+    - Check if account requires 2FA or has security restrictions
+  </Accordion>
+</AccordionGroup>
+
+## Advanced Configuration
+
+### Environment Variables (Self-Hosted)
+
+For self-hosted installations, you can configure global email settings:
+
+```bash
+# SMTP Configuration
+SMTP_ADDRESS=smtp.gmail.com
+SMTP_PORT=587
+SMTP_DOMAIN=yourdomain.com
+SMTP_USERNAME=support@yourdomain.com
+SMTP_PASSWORD=your-password
+SMTP_AUTHENTICATION=login
+SMTP_ENABLE_STARTTLS_AUTO=true
+
+# Email Sender
+MAILER_SENDER_EMAIL=support@yourdomain.com
+```
+
+See [Email Setup Guide](/self-hosting/email-setup) for complete configuration.
+
+## Related Documentation
+
+- [Email Setup (Self-Hosted)](/self-hosting/email-setup)
+- [Webhooks](/developers/webhooks)
+- [Conversations](/features/conversations)

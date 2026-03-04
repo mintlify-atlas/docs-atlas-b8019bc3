@@ -1,0 +1,287 @@
+---
+title: Website Widget
+description: Install and customize the Chatwoot chat widget on your website
+---
+
+The Chatwoot website widget provides a customizable live chat interface for your website visitors. It supports real-time conversations, file attachments, and seamless handoff from AI to human agents.
+
+## Features
+
+- **Real-time messaging** - Instant two-way communication
+- **File attachments** - Share images, documents, and files
+- **Customizable appearance** - Match your brand colors and style
+- **Pre-chat forms** - Collect visitor information before starting chat
+- **Business hours** - Show availability and expected response times
+- **Continuity via email** - Continue conversations over email
+- **HMAC verification** - Secure user identity verification
+- **Mobile responsive** - Works seamlessly on all devices
+
+## Installation
+
+<Steps>
+  <Step title="Create a website inbox">
+    Navigate to **Settings** → **Inboxes** → **Add Inbox** and select **Website**.
+    
+    Configure your inbox:
+    - **Website Name**: Display name for your website
+    - **Website Domain**: Your website URL (e.g., `https://example.com`)
+    - **Widget Color**: Primary color for the widget (hex code)
+  </Step>
+
+  <Step title="Copy the installation code">
+    After creating the inbox, you'll receive a JavaScript snippet. Copy this code.
+    
+    ```html
+    <script>
+      (function(d,t) {
+        var BASE_URL="https://app.chatwoot.com";
+        var g=d.createElement(t),s=d.getElementsByTagName(t)[0];
+        g.src=BASE_URL+"/packs/js/sdk.js";
+        g.defer = true;
+        g.async = true;
+        s.parentNode.insertBefore(g,s);
+        g.onload=function(){
+          window.chatwootSDK.run({
+            websiteToken: 'YOUR_WEBSITE_TOKEN',
+            baseUrl: BASE_URL
+          })
+        }
+      })(document,"script");
+    </script>
+    ```
+  </Step>
+
+  <Step title="Add to your website">
+    Paste the code before the closing `</body>` tag on every page where you want the widget to appear.
+    
+    <Note>
+    For single-page applications (SPAs) using React, Vue, or Angular, see the [Widget SDK documentation](/developers/widget-sdk) for framework-specific integration.
+    </Note>
+  </Step>
+
+  <Step title="Test the widget">
+    Visit your website and verify the chat widget appears in the bottom-right corner. Click it to send a test message.
+  </Step>
+</Steps>
+
+## Configuration Options
+
+### Widget Appearance
+
+<ParamField path="widget_color" type="string" default="#1f93ff">
+  Primary color for the widget (hex code)
+</ParamField>
+
+<ParamField path="welcome_title" type="string">
+  Welcome message title shown when widget opens
+</ParamField>
+
+<ParamField path="welcome_tagline" type="string">
+  Welcome message subtitle
+</ParamField>
+
+<ParamField path="reply_time" type="enum">
+  Expected response time. Options: `in_a_few_minutes`, `in_a_few_hours`, `in_a_day`
+</ParamField>
+
+### Pre-Chat Form
+
+Collect visitor information before starting a conversation:
+
+<ParamField path="pre_chat_form_enabled" type="boolean" default="false">
+  Enable pre-chat form
+</ParamField>
+
+<ParamField path="pre_chat_form_options.pre_chat_message" type="string">
+  Message shown at the top of the pre-chat form
+</ParamField>
+
+<ParamField path="pre_chat_form_options.require_email" type="boolean" default="false">
+  Make email field required
+</ParamField>
+
+<ParamField path="pre_chat_form_options.pre_chat_fields" type="array">
+  Custom fields to collect. Each field can have:
+  - `label` - Field label
+  - `name` - Field name/key
+  - `type` - Field type (`text`, `email`, `phone`, `select`)
+  - `placeholder` - Placeholder text
+  - `required` - Whether field is required
+  - `values` - Options for select fields
+</ParamField>
+
+### Security
+
+<ParamField path="hmac_mandatory" type="boolean" default="false">
+  Require HMAC verification for user identity
+</ParamField>
+
+<ParamField path="allowed_domains" type="string">
+  Comma-separated list of domains where widget is allowed (prevents unauthorized usage)
+</ParamField>
+
+<ParamField path="continuity_via_email" type="boolean" default="true">
+  Allow continuing conversations via email when visitor is offline
+</ParamField>
+
+## Advanced Configuration
+
+### User Identity
+
+Set user information when visitor is logged in:
+
+```javascript
+window.chatwootSDK.run({
+  websiteToken: 'YOUR_WEBSITE_TOKEN',
+  baseUrl: 'https://app.chatwoot.com',
+  
+  // User identification
+  user: {
+    identifier: 'user@example.com',
+    name: 'John Doe',
+    email: 'user@example.com',
+    avatar_url: 'https://example.com/avatar.jpg',
+    phone_number: '+1234567890'
+  },
+  
+  // Custom attributes
+  customAttributes: {
+    accountId: '12345',
+    pricingPlan: 'premium',
+    signupDate: '2024-01-15'
+  }
+});
+```
+
+### HMAC Verification
+
+Secure user identity with HMAC verification:
+
+```javascript
+// Backend: Generate HMAC
+const crypto = require('crypto');
+const hmacToken = 'YOUR_HMAC_TOKEN'; // From Chatwoot inbox settings
+const identifier = 'user@example.com';
+const hmac = crypto
+  .createHmac('sha256', hmacToken)
+  .update(identifier)
+  .digest('hex');
+
+// Frontend: Pass HMAC to widget
+window.chatwootSDK.run({
+  websiteToken: 'YOUR_WEBSITE_TOKEN',
+  baseUrl: 'https://app.chatwoot.com',
+  user: {
+    identifier: 'user@example.com',
+    identifier_hash: hmac // HMAC from backend
+  }
+});
+```
+
+<Warning>
+Never expose your HMAC token in frontend code. Always generate the HMAC hash on your backend server.
+</Warning>
+
+### Locale/Language
+
+Set the widget language:
+
+```javascript
+window.chatwootSDK.run({
+  websiteToken: 'YOUR_WEBSITE_TOKEN',
+  baseUrl: 'https://app.chatwoot.com',
+  locale: 'es' // Spanish
+});
+```
+
+Supported locales: `en`, `es`, `fr`, `de`, `pt`, `pt_BR`, `ru`, `zh_CN`, `ja`, `ko`, and more.
+
+### Widget Position
+
+Customize widget position:
+
+```javascript
+window.chatwootSDK.run({
+  websiteToken: 'YOUR_WEBSITE_TOKEN',
+  baseUrl: 'https://app.chatwoot.com',
+  position: 'left', // 'left' or 'right' (default)
+  launcherTitle: 'Chat with us'
+});
+```
+
+## Widget SDK Methods
+
+Control the widget programmatically:
+
+```javascript
+// Toggle widget visibility
+window.$chatwoot.toggle();
+
+// Open widget
+window.$chatwoot.toggle('open');
+
+// Close widget
+window.$chatwoot.toggle('close');
+
+// Set user information
+window.$chatwoot.setUser('user@example.com', {
+  name: 'John Doe',
+  email: 'user@example.com'
+});
+
+// Set custom attributes
+window.$chatwoot.setCustomAttributes({
+  accountId: '12345',
+  plan: 'premium'
+});
+
+// Set labels
+window.$chatwoot.setLabel('vip-customer');
+window.$chatwoot.removeLabel('vip-customer');
+
+// Reset session (log out)
+window.$chatwoot.reset();
+```
+
+See [Widget SDK documentation](/developers/widget-sdk) for complete API reference.
+
+## Best Practices
+
+<Check>Load the widget asynchronously to avoid blocking page rendering</Check>
+<Check>Set user identity and custom attributes for better context</Check>
+<Check>Use HMAC verification in production to prevent identity spoofing</Check>
+<Check>Configure pre-chat forms to collect important information upfront</Check>
+<Check>Set appropriate business hours and response time expectations</Check>
+<Check>Test widget behavior on mobile devices</Check>
+<Check>Use allowed domains to prevent unauthorized usage</Check>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Widget not appearing">
+    - Verify the installation code is placed before `</body>`
+    - Check browser console for JavaScript errors
+    - Ensure `websiteToken` is correct
+    - Check if domain is in allowed domains list
+    - Verify Content Security Policy (CSP) allows loading from Chatwoot domain
+  </Accordion>
+
+  <Accordion title="Widget showing but messages not sending">
+    - Check if inbox is active in Chatwoot settings
+    - Verify agents are assigned to the inbox
+    - Check browser network tab for API errors
+    - Ensure WebSocket connections are not blocked by firewall
+  </Accordion>
+
+  <Accordion title="User identity not persisting">
+    - Verify `identifier` is set correctly
+    - For HMAC verification, ensure hash is generated correctly
+    - Check that user information is set before widget loads
+  </Accordion>
+</AccordionGroup>
+
+## Related Documentation
+
+- [Widget SDK Reference](/developers/widget-sdk)
+- [Widget APIs](/developers/widget-apis)
+- [Custom Attributes](/developers/custom-attributes)

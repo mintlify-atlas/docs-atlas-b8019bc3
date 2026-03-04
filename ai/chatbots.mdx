@@ -1,0 +1,463 @@
+---
+title: "Agent Bots"
+description: "Automate conversations with webhook-based agent bots that integrate with external services"
+---
+
+Agent Bots allow you to automate customer conversations by connecting Chatwoot to external services, AI platforms, or custom business logic through webhooks.
+
+## Overview
+
+Agent Bots are programmable entities that can:
+
+- Respond to customer messages automatically
+- Process conversations through external systems
+- Integrate with third-party AI services
+- Execute custom business logic
+- Handle conversations before transferring to human agents
+
+<Note>
+  Agent Bots are different from Captain AI Assistants. While Captain provides built-in AI capabilities, Agent Bots give you full control through webhook integrations.
+</Note>
+
+## How Agent Bots Work
+
+When assigned to an inbox, an Agent Bot:
+
+1. Receives conversation events via webhook
+2. Processes the event in your external service
+3. Responds to the customer through Chatwoot API
+4. Can transfer conversations to human agents when needed
+
+<Steps>
+  <Step title="Create Agent Bot">
+    Configure bot with name, description, and webhook URL
+  </Step>
+  <Step title="Assign to Inbox">
+    Connect the bot to one or more inboxes
+  </Step>
+  <Step title="Receive Events">
+    Your webhook receives conversation events
+  </Step>
+  <Step title="Send Responses">
+    Use Chatwoot API to respond to customers
+  </Step>
+</Steps>
+
+## Creating an Agent Bot
+
+Create an agent bot through the API or admin interface:
+
+<CodeGroup>
+```bash cURL
+curl -X POST \
+  https://app.chatwoot.com/api/v1/accounts/{account_id}/agent_bots \
+  -H 'api_access_token: YOUR_ACCESS_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "Support Bot",
+    "description": "Handles initial customer inquiries",
+    "outgoing_url": "https://your-service.com/webhook",
+    "bot_config": {}
+  }'
+```
+
+```json Response
+{
+  "id": 1,
+  "name": "Support Bot",
+  "description": "Handles initial customer inquiries",
+  "outgoing_url": "https://your-service.com/webhook",
+  "bot_type": "webhook",
+  "bot_config": {},
+  "account_id": 1,
+  "access_token": "generated_token_here"
+}
+```
+</CodeGroup>
+
+### Bot Configuration
+
+<ResponseField name="name" type="string" required>
+  Display name for the bot (shown to agents)
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Description of what the bot does
+</ResponseField>
+
+<ResponseField name="outgoing_url" type="string" required>
+  Webhook URL where events will be sent. Must start with `http://` or `https://`
+</ResponseField>
+
+<ResponseField name="bot_type" type="enum">
+  Currently only `webhook` is supported
+</ResponseField>
+
+<ResponseField name="bot_config" type="object">
+  Custom configuration data for your bot integration
+</ResponseField>
+
+<ResponseField name="avatar_url" type="string">
+  URL to the bot's avatar image
+</ResponseField>
+
+## Assigning to Inboxes
+
+Connect an agent bot to an inbox:
+
+<CodeGroup>
+```bash Create Connection
+curl -X POST \
+  https://app.chatwoot.com/api/v1/accounts/{account_id}/agent_bots/{bot_id}/agent_bot_inboxes \
+  -H 'api_access_token: YOUR_ACCESS_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "inbox_id": 123
+  }'
+```
+
+```bash UI Path
+Settings > Inboxes > Select Inbox > Collaborators > Agent Bots
+```
+</CodeGroup>
+
+### Multiple Inboxes
+
+A single agent bot can be assigned to multiple inboxes:
+
+- Website chat
+- Email inbox
+- Social media channels
+- WhatsApp Business
+
+## Webhook Events
+
+Your webhook URL will receive POST requests for conversation events:
+
+### Event Payload
+
+```json
+{
+  "event": "message_created",
+  "message": {
+    "id": 123,
+    "content": "Hello, I need help",
+    "message_type": 0,
+    "created_at": "2024-03-04T12:00:00Z",
+    "sender": {
+      "id": 456,
+      "name": "John Doe",
+      "type": "contact"
+    }
+  },
+  "conversation": {
+    "id": 789,
+    "inbox_id": 1,
+    "status": "open",
+    "assignee_id": null
+  },
+  "account": {
+    "id": 1,
+    "name": "Your Company"
+  }
+}
+```
+
+### Event Types
+
+- `message_created`: New message in conversation
+- `conversation_created`: New conversation started
+- `conversation_status_changed`: Status updated
+- `conversation_resolved`: Conversation marked as resolved
+
+## Responding to Messages
+
+Use the agent bot's access token to send messages:
+
+<CodeGroup>
+```bash Send Message
+curl -X POST \
+  https://app.chatwoot.com/api/v1/accounts/{account_id}/conversations/{conversation_id}/messages \
+  -H 'api_access_token: BOT_ACCESS_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "content": "Hello! How can I help you today?",
+    "message_type": "outgoing"
+  }'
+```
+
+```javascript Node.js Example
+const axios = require('axios');
+
+async function sendBotMessage(conversationId, content) {
+  await axios.post(
+    `https://app.chatwoot.com/api/v1/accounts/${accountId}/conversations/${conversationId}/messages`,
+    {
+      content: content,
+      message_type: 'outgoing'
+    },
+    {
+      headers: {
+        'api_access_token': process.env.BOT_ACCESS_TOKEN,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+}
+```
+
+```python Python Example
+import requests
+import os
+
+def send_bot_message(conversation_id, content):
+    response = requests.post(
+        f"https://app.chatwoot.com/api/v1/accounts/{account_id}/conversations/{conversation_id}/messages",
+        json={
+            "content": content,
+            "message_type": "outgoing"
+        },
+        headers={
+            "api_access_token": os.getenv("BOT_ACCESS_TOKEN"),
+            "Content-Type": "application/json"
+        }
+    )
+    return response.json()
+```
+</CodeGroup>
+
+## Managing Agent Bots
+
+### List All Bots
+
+```bash
+curl -X GET \
+  https://app.chatwoot.com/api/v1/accounts/{account_id}/agent_bots \
+  -H 'api_access_token: YOUR_ACCESS_TOKEN'
+```
+
+### Update Bot
+
+```bash
+curl -X PATCH \
+  https://app.chatwoot.com/api/v1/accounts/{account_id}/agent_bots/{bot_id} \
+  -H 'api_access_token: YOUR_ACCESS_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "Updated Bot Name",
+    "description": "New description",
+    "outgoing_url": "https://new-url.com/webhook"
+  }'
+```
+
+### Delete Bot
+
+```bash
+curl -X DELETE \
+  https://app.chatwoot.com/api/v1/accounts/{account_id}/agent_bots/{bot_id} \
+  -H 'api_access_token: YOUR_ACCESS_TOKEN'
+```
+
+### Regenerate Access Token
+
+```bash
+curl -X POST \
+  https://app.chatwoot.com/api/v1/accounts/{account_id}/agent_bots/{bot_id}/reset_access_token \
+  -H 'api_access_token: YOUR_ACCESS_TOKEN'
+```
+
+<Warning>
+  Regenerating the access token will invalidate the old token immediately. Update your integration before regenerating.
+</Warning>
+
+## Bot Types and Scopes
+
+### Account Bots
+
+Bots created by users belong to an account:
+
+- Only visible to that account
+- Can be assigned to account inboxes
+- Managed by account administrators
+
+### System Bots
+
+System-level bots are available to all accounts:
+
+- Created by super administrators
+- Available globally across installation
+- Useful for standard integrations
+
+## Integration Examples
+
+### Dialogflow Integration
+
+Connect to Google Dialogflow for natural language understanding:
+
+```javascript
+const dialogflow = require('@google-cloud/dialogflow');
+
+app.post('/webhook', async (req, res) => {
+  const { message, conversation } = req.body;
+  
+  // Send to Dialogflow
+  const sessionClient = new dialogflow.SessionsClient();
+  const sessionPath = sessionClient.projectAgentSessionPath(
+    projectId,
+    conversation.id
+  );
+  
+  const request = {
+    session: sessionPath,
+    queryInput: {
+      text: {
+        text: message.content,
+        languageCode: 'en-US',
+      },
+    },
+  };
+  
+  const responses = await sessionClient.detectIntent(request);
+  const result = responses[0].queryResult;
+  
+  // Send response back to Chatwoot
+  await sendBotMessage(conversation.id, result.fulfillmentText);
+  
+  res.status(200).send('OK');
+});
+```
+
+### OpenAI Integration
+
+Build a custom AI bot with OpenAI:
+
+```python
+from flask import Flask, request
+import openai
+import os
+
+app = Flask(__name__)
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    data = request.json
+    message = data['message']
+    conversation = data['conversation']
+    
+    # Generate AI response
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "You are a helpful customer support assistant."},
+            {"role": "user", "content": message['content']}
+        ]
+    )
+    
+    ai_message = response.choices[0].message.content
+    
+    # Send to Chatwoot
+    send_bot_message(conversation['id'], ai_message)
+    
+    return 'OK', 200
+```
+
+### Custom Business Logic
+
+Route conversations based on custom rules:
+
+```javascript
+app.post('/webhook', async (req, res) => {
+  const { message, conversation } = req.body;
+  const content = message.content.toLowerCase();
+  
+  // Route based on keywords
+  if (content.includes('billing') || content.includes('payment')) {
+    await assignToTeam(conversation.id, 'billing_team');
+    await sendBotMessage(
+      conversation.id,
+      "I'm transferring you to our billing team."
+    );
+  } else if (content.includes('technical') || content.includes('bug')) {
+    await assignToTeam(conversation.id, 'technical_team');
+    await sendBotMessage(
+      conversation.id,
+      "Let me connect you with our technical support team."
+    );
+  } else {
+    await sendBotMessage(
+      conversation.id,
+      "How can I help you today? You can ask about billing or technical issues."
+    );
+  }
+  
+  res.status(200).send('OK');
+});
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Webhook Security" icon="lock">
+    - Validate webhook signatures
+    - Use HTTPS for webhook URLs
+    - Implement rate limiting
+    - Store access tokens securely
+  </Accordion>
+
+  <Accordion title="Error Handling" icon="triangle-exclamation">
+    - Return 200 status quickly
+    - Process events asynchronously
+    - Implement retry logic
+    - Log errors for debugging
+  </Accordion>
+
+  <Accordion title="Response Quality" icon="star">
+    - Keep responses concise
+    - Provide clear next steps
+    - Transfer to humans when needed
+    - Match your brand voice
+  </Accordion>
+
+  <Accordion title="Performance" icon="gauge-high">
+    - Respond within 5 seconds
+    - Use async processing for complex tasks
+    - Cache common responses
+    - Monitor webhook latency
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Bot not receiving events">
+    - Check webhook URL is accessible
+    - Verify bot is assigned to inbox
+    - Check inbox status is active
+    - Review webhook logs
+  </Accordion>
+
+  <Accordion title="Messages not sending">
+    - Verify access token is valid
+    - Check conversation exists and is open
+    - Ensure proper API permissions
+    - Review API error responses
+  </Accordion>
+
+  <Accordion title="Duplicate messages">
+    - Implement idempotency checks
+    - Use message IDs to track processed events
+    - Return 200 status code promptly
+  </Accordion>
+</AccordionGroup>
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Captain AI" icon="robot" href="/ai/captain">
+    Built-in AI assistants
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/agent-bots">
+    Agent Bot API documentation
+  </Card>
+</CardGroup>

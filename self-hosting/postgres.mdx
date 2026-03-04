@@ -1,0 +1,546 @@
+---
+title: PostgreSQL Configuration
+description: Configure PostgreSQL database for Chatwoot self-hosted installations
+---
+
+Chatwoot uses PostgreSQL as its primary database. This guide covers all PostgreSQL configuration options and best practices for self-hosted installations.
+
+## Database Connection Configuration
+
+<ParamField path="POSTGRES_HOST" type="string" required>
+  PostgreSQL server hostname or IP address.
+  
+  **Examples:**
+  - `localhost` - Local installation
+  - `postgres` - Docker Compose service name
+  - `db.example.com` - Remote database server
+  - `10.0.1.5` - IP address
+  
+  **Default:** `localhost`
+</ParamField>
+
+<ParamField path="POSTGRES_PORT" type="number">
+  PostgreSQL server port.
+  
+  **Default:** `5432`
+</ParamField>
+
+<ParamField path="POSTGRES_DATABASE" type="string">
+  Name of the PostgreSQL database.
+  
+  **Defaults by environment:**
+  - Development: `chatwoot_dev`
+  - Test: `chatwoot_test`
+  - Production: `chatwoot_production`
+  
+  **Note:** Leave empty to use environment-specific defaults.
+</ParamField>
+
+<ParamField path="POSTGRES_USERNAME" type="string" required>
+  PostgreSQL user for authentication.
+  
+  **Defaults by environment:**
+  - Development: `postgres`
+  - Test: `postgres`
+  - Production: `chatwoot_prod`
+</ParamField>
+
+<ParamField path="POSTGRES_PASSWORD" type="string" required>
+  Password for PostgreSQL user authentication.
+  
+  **Security:** Use a strong, unique password for production environments.
+</ParamField>
+
+## Performance Configuration
+
+<ParamField path="RAILS_MAX_THREADS" type="number">
+  Maximum number of threads for Rails application.
+  
+  This directly affects the database connection pool size for web processes.
+  
+  **Default:** `5`
+  
+  **Formula:** Database pool size = `RAILS_MAX_THREADS` for web processes
+</ParamField>
+
+<ParamField path="SIDEKIQ_CONCURRENCY" type="number">
+  Number of concurrent Sidekiq worker threads.
+  
+  This affects the database connection pool size for Sidekiq processes.
+  
+  **Default:** `10`
+  
+  **Formula:** Database pool size = `SIDEKIQ_CONCURRENCY` for Sidekiq processes
+</ParamField>
+
+<ParamField path="DB_POOL_REAPING_FREQUENCY" type="number">
+  Frequency in seconds to run the connection pool reaper.
+  
+  The reaper attempts to find and recover connections from dead threads, preventing connection leaks.
+  
+  **Default:** `30`
+  
+  **Range:** 10-60 seconds recommended
+</ParamField>
+
+<ParamField path="POSTGRES_STATEMENT_TIMEOUT" type="string">
+  Maximum time a database query can run before being terminated.
+  
+  **Default:** `14s`
+  
+  **Format:** Number followed by time unit (`ms`, `s`, `min`)
+  
+  **Examples:**
+  - `14s` - 14 seconds
+  - `30s` - 30 seconds
+  - `1min` - 1 minute
+  
+  **Note:** This value is set close to the Rack timeout value. Only modify when required.
+</ParamField>
+
+## Connection Pool Sizing
+
+Chatwoot automatically adjusts the database connection pool based on the process type:
+
+**Web processes:**
+```ruby
+pool_size = ENV.fetch('RAILS_MAX_THREADS', 5)
+```
+
+**Sidekiq processes:**
+```ruby
+pool_size = ENV.fetch('SIDEKIQ_CONCURRENCY', 10)
+```
+
+### Calculating Total Connections
+
+Total database connections required:
+
+```
+Total = (Web workers × RAILS_MAX_THREADS) + (Sidekiq processes × SIDEKIQ_CONCURRENCY) + buffer
+```
+
+**Example calculation:**
+- 4 web workers with `RAILS_MAX_THREADS=5`: 20 connections
+- 2 Sidekiq processes with `SIDEKIQ_CONCURRENCY=10`: 20 connections
+- Buffer for migrations, console, etc.: 10 connections
+- **Total required:** 50 connections
+
+## PostgreSQL Version Requirements
+
+**Minimum version:** PostgreSQL 12  
+**Recommended version:** PostgreSQL 14 or higher
+
+Chatwoot uses modern PostgreSQL features including:
+- JSONB columns
+- Full-text search
+- Partitioning
+- Generated columns
+
+## Configuration Examples
+
+### Local Development
+
+```bash
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_DATABASE=chatwoot_dev
+POSTGRES_USERNAME=postgres
+POSTGRES_PASSWORD=postgres
+RAILS_MAX_THREADS=5
+```
+
+### Docker Compose
+
+```bash
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+POSTGRES_DATABASE=chatwoot
+POSTGRES_USERNAME=postgres
+POSTGRES_PASSWORD=secure_password_here
+RAILS_MAX_THREADS=5
+```
+
+### Production Deployment
+
+```bash
+POSTGRES_HOST=db.example.com
+POSTGRES_PORT=5432
+POSTGRES_DATABASE=chatwoot_production
+POSTGRES_USERNAME=chatwoot_user
+POSTGRES_PASSWORD=very_secure_password_here
+RAILS_MAX_THREADS=5
+POSTGRES_STATEMENT_TIMEOUT=14s
+DB_POOL_REAPING_FREQUENCY=30
+```
+
+### High-Traffic Production
+
+```bash
+POSTGRES_HOST=db.example.com
+POSTGRES_PORT=5432
+POSTGRES_DATABASE=chatwoot_production
+POSTGRES_USERNAME=chatwoot_user
+POSTGRES_PASSWORD=very_secure_password_here
+RAILS_MAX_THREADS=10
+SIDEKIQ_CONCURRENCY=20
+POSTGRES_STATEMENT_TIMEOUT=30s
+DB_POOL_REAPING_FREQUENCY=15
+```
+
+## Database Setup
+
+### Creating the Database
+
+For a new installation:
+
+```bash
+# Create database
+rails db:create
+
+# Run migrations
+rails db:migrate
+
+# Seed initial data (optional)
+rails db:seed
+```
+
+### Database User Setup
+
+Create a dedicated PostgreSQL user for Chatwoot:
+
+```sql
+-- Connect as postgres superuser
+CREATE USER chatwoot_user WITH PASSWORD 'secure_password';
+CREATE DATABASE chatwoot_production OWNER chatwoot_user;
+GRANT ALL PRIVILEGES ON DATABASE chatwoot_production TO chatwoot_user;
+```
+
+## PostgreSQL Server Configuration
+
+Recommended PostgreSQL server settings for production:
+
+### postgresql.conf
+
+```conf
+# Connection Settings
+max_connections = 100
+shared_buffers = 256MB
+
+# Query Performance
+effective_cache_size = 1GB
+random_page_cost = 1.1
+
+# Write Performance
+wal_buffers = 16MB
+checkpoint_completion_target = 0.9
+
+# Logging
+log_statement = 'mod'  # Log data-modifying queries
+log_duration = off
+log_line_prefix = '%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h '
+
+# Timeouts
+statement_timeout = 30000  # 30 seconds
+```
+
+### pg_hba.conf
+
+```conf
+# Allow Chatwoot app servers to connect
+host    chatwoot_production    chatwoot_user    10.0.1.0/24    scram-sha-256
+
+# Local connections
+local   all                    all                             peer
+host    all                    all              127.0.0.1/32   scram-sha-256
+```
+
+## Managed PostgreSQL Services
+
+### AWS RDS PostgreSQL
+
+```bash
+POSTGRES_HOST=your-instance.123456.us-east-1.rds.amazonaws.com
+POSTGRES_PORT=5432
+POSTGRES_DATABASE=chatwoot_production
+POSTGRES_USERNAME=chatwoot_admin
+POSTGRES_PASSWORD=your_secure_password
+```
+
+**Recommendations:**
+- Use db.t3.medium or larger for production
+- Enable automated backups
+- Use Multi-AZ for high availability
+- Enable Performance Insights
+
+### Google Cloud SQL PostgreSQL
+
+```bash
+POSTGRES_HOST=/cloudsql/project:region:instance
+POSTGRES_PORT=5432
+POSTGRES_DATABASE=chatwoot_production
+POSTGRES_USERNAME=chatwoot_user
+POSTGRES_PASSWORD=your_secure_password
+```
+
+**For Cloud Run or App Engine:** Use Unix socket connection with the Cloud SQL Proxy.
+
+### Azure Database for PostgreSQL
+
+```bash
+POSTGRES_HOST=your-server.postgres.database.azure.com
+POSTGRES_PORT=5432
+POSTGRES_DATABASE=chatwoot_production
+POSTGRES_USERNAME=chatwoot_user@your-server
+POSTGRES_PASSWORD=your_secure_password
+```
+
+**Note:** Azure requires the server name suffix in the username.
+
+### DigitalOcean Managed Database
+
+```bash
+POSTGRES_HOST=your-cluster.db.ondigitalocean.com
+POSTGRES_PORT=25060
+POSTGRES_DATABASE=chatwoot_production
+POSTGRES_USERNAME=doadmin
+POSTGRES_PASSWORD=your_secure_password
+```
+
+**Note:** DigitalOcean uses custom ports and provides a connection string.
+
+### Heroku Postgres
+
+```bash
+# Heroku automatically sets DATABASE_URL
+# No manual configuration needed
+```
+
+Heroku provides `DATABASE_URL` which Chatwoot automatically uses.
+
+## Backup and Restore
+
+### Manual Backup
+
+```bash
+# Create backup
+pg_dump -h localhost -U postgres -Fc chatwoot_production > backup.dump
+
+# Create SQL backup
+pg_dump -h localhost -U postgres chatwoot_production > backup.sql
+```
+
+### Restore from Backup
+
+```bash
+# Restore from custom format
+pg_restore -h localhost -U postgres -d chatwoot_production backup.dump
+
+# Restore from SQL
+psql -h localhost -U postgres -d chatwoot_production < backup.sql
+```
+
+### Automated Backups
+
+Set up automated backups using cron:
+
+```bash
+#!/bin/bash
+# backup.sh
+
+BACKUP_DIR="/var/backups/chatwoot"
+DATE=$(date +%Y%m%d_%H%M%S)
+FILENAME="chatwoot_${DATE}.dump"
+
+pg_dump -h localhost -U postgres -Fc chatwoot_production > "${BACKUP_DIR}/${FILENAME}"
+
+# Keep only last 7 days of backups
+find ${BACKUP_DIR} -name "chatwoot_*.dump" -mtime +7 -delete
+```
+
+Cron entry:
+```cron
+0 2 * * * /path/to/backup.sh
+```
+
+## Database Maintenance
+
+### Vacuum and Analyze
+
+Regular maintenance improves query performance:
+
+```sql
+-- Vacuum all tables
+VACUUM ANALYZE;
+
+-- Vacuum specific table
+VACUUM ANALYZE conversations;
+
+-- Full vacuum (locks table)
+VACUUM FULL ANALYZE conversations;
+```
+
+Automate with cron:
+```bash
+# Weekly vacuum
+0 3 * * 0 psql -h localhost -U postgres -d chatwoot_production -c "VACUUM ANALYZE;"
+```
+
+### Reindex
+
+Rebuild indexes periodically:
+
+```sql
+-- Reindex database
+REINDEX DATABASE chatwoot_production;
+
+-- Reindex specific table
+REINDEX TABLE conversations;
+```
+
+## Monitoring
+
+### Key Metrics to Monitor
+
+1. **Connection count**
+   ```sql
+   SELECT count(*) FROM pg_stat_activity;
+   ```
+
+2. **Long-running queries**
+   ```sql
+   SELECT pid, now() - query_start AS duration, query
+   FROM pg_stat_activity
+   WHERE state = 'active'
+   AND now() - query_start > interval '10 seconds';
+   ```
+
+3. **Database size**
+   ```sql
+   SELECT pg_size_pretty(pg_database_size('chatwoot_production'));
+   ```
+
+4. **Table sizes**
+   ```sql
+   SELECT schemaname, tablename,
+          pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size
+   FROM pg_tables
+   WHERE schemaname = 'public'
+   ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC
+   LIMIT 10;
+   ```
+
+5. **Cache hit ratio**
+   ```sql
+   SELECT 
+     sum(heap_blks_read) as heap_read,
+     sum(heap_blks_hit)  as heap_hit,
+     sum(heap_blks_hit) / (sum(heap_blks_hit) + sum(heap_blks_read)) as ratio
+   FROM pg_statio_user_tables;
+   ```
+
+## Troubleshooting
+
+### Connection refused
+
+**Symptoms:** `could not connect to server: Connection refused`
+
+**Solutions:**
+- Verify PostgreSQL is running: `systemctl status postgresql`
+- Check PostgreSQL is listening: `ss -tlnp | grep 5432`
+- Verify `POSTGRES_HOST` and `POSTGRES_PORT` are correct
+- Check firewall rules allow connections
+
+### Authentication failed
+
+**Symptoms:** `FATAL: password authentication failed for user`
+
+**Solutions:**
+- Verify username and password are correct
+- Check `pg_hba.conf` allows connection from your IP
+- Ensure authentication method matches (md5, scram-sha-256)
+- Reload PostgreSQL after config changes: `systemctl reload postgresql`
+
+### Too many connections
+
+**Symptoms:** `FATAL: sorry, too many clients already`
+
+**Solutions:**
+- Increase `max_connections` in postgresql.conf
+- Reduce connection pool sizes in application
+- Check for connection leaks
+- Implement connection pooling with PgBouncer
+
+### Slow queries
+
+**Symptoms:** Requests timeout, `POSTGRES_STATEMENT_TIMEOUT` errors
+
+**Solutions:**
+- Identify slow queries in PostgreSQL logs
+- Add missing indexes: `rails db:migrate`
+- Run `VACUUM ANALYZE` to update statistics
+- Increase `POSTGRES_STATEMENT_TIMEOUT` if needed
+- Consider read replicas for heavy SELECT queries
+
+### Disk space issues
+
+**Symptoms:** `ERROR: could not extend file`
+
+**Solutions:**
+- Check disk space: `df -h`
+- Run `VACUUM FULL` to reclaim space
+- Archive old data
+- Increase disk size
+
+### Migration failures
+
+**Symptoms:** `rails db:migrate` fails
+
+**Solutions:**
+- Check PostgreSQL logs for detailed errors
+- Ensure database user has required permissions
+- Verify PostgreSQL version meets requirements
+- Check for conflicting data before migration
+
+## Security Best Practices
+
+1. **Use strong passwords:** Generate complex passwords for database users
+2. **Limit connections:** Configure `pg_hba.conf` to allow only necessary IPs
+3. **SSL/TLS:** Enable SSL for database connections in production
+4. **Least privilege:** Grant only required permissions to application user
+5. **Regular updates:** Keep PostgreSQL updated with security patches
+6. **Audit logs:** Enable query logging for security monitoring
+7. **Network isolation:** Run database in private network, not exposed to internet
+
+## Performance Optimization
+
+### Connection Pooling with PgBouncer
+
+For high-traffic deployments, use PgBouncer:
+
+```ini
+# pgbouncer.ini
+[databases]
+chatwoot_production = host=localhost dbname=chatwoot_production
+
+[pgbouncer]
+pool_mode = transaction
+max_client_conn = 100
+default_pool_size = 20
+```
+
+Update Chatwoot configuration:
+```bash
+POSTGRES_HOST=localhost
+POSTGRES_PORT=6432  # PgBouncer port
+```
+
+### Read Replicas
+
+For read-heavy workloads, configure read replicas and use Rails multiple databases feature.
+
+## Related Configuration
+
+- [Environment Variables](/self-hosting/environment-variables) - Complete environment variable reference
+- [Redis Configuration](/self-hosting/redis) - Cache and background jobs
+- [Email Setup](/self-hosting/email-setup) - Email configuration

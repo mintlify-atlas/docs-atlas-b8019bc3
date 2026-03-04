@@ -1,0 +1,607 @@
+---
+title: Conversations
+description: Manage customer conversations, their status, assignments, and metadata
+---
+
+## Overview
+
+Conversations represent the communication threads between your team and contacts. Each conversation belongs to an inbox and can contain multiple messages.
+
+## List Conversations
+
+Retrieve a list of conversations with filtering options.
+
+```http
+GET /api/v1/accounts/{account_id}/conversations
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+### Query Parameters
+
+<ParamField query="inbox_id" type="integer">
+  Filter by inbox ID
+</ParamField>
+
+<ParamField query="status" type="string">
+  Filter by status: `open`, `pending`, `resolved`, `snoozed`
+</ParamField>
+
+<ParamField query="assignee_type" type="string">
+  Filter by assignee: `me`, `unassigned`, `all`
+</ParamField>
+
+<ParamField query="page" type="integer" default="1">
+  Page number for pagination
+</ParamField>
+
+### Response
+
+<ResponseField name="id" type="integer">
+  Conversation ID
+</ResponseField>
+
+<ResponseField name="display_id" type="integer">
+  Display ID shown in UI
+</ResponseField>
+
+<ResponseField name="inbox_id" type="integer">
+  Associated inbox ID
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Conversation status: `open`, `pending`, `resolved`, `snoozed`
+</ResponseField>
+
+<ResponseField name="priority" type="string">
+  Priority level: `low`, `medium`, `high`, `urgent`, or `null`
+</ResponseField>
+
+<ResponseField name="assignee" type="object">
+  Assigned agent information
+</ResponseField>
+
+<ResponseField name="contact" type="object">
+  Contact information
+</ResponseField>
+
+<ResponseField name="unread_count" type="integer">
+  Number of unread messages
+</ResponseField>
+
+<ResponseField name="last_activity_at" type="integer">
+  Unix timestamp of last activity
+</ResponseField>
+
+### Example Request
+
+```bash
+curl -X GET "https://app.chatwoot.com/api/v1/accounts/1/conversations?status=open&page=1" \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+### Example Response
+
+```json
+{
+  "data": {
+    "payload": [
+      {
+        "id": 1,
+        "display_id": 1,
+        "inbox_id": 1,
+        "status": "open",
+        "priority": "high",
+        "muted": false,
+        "assignee": {
+          "id": 1,
+          "name": "John Doe",
+          "email": "john@acme.com"
+        },
+        "contact": {
+          "id": 1,
+          "name": "Customer Name",
+          "email": "customer@example.com"
+        },
+        "unread_count": 3,
+        "last_activity_at": 1704067200,
+        "created_at": 1704060000
+      }
+    ],
+    "meta": {
+      "count": 25,
+      "current_page": 1
+    }
+  }
+}
+```
+
+## Get Conversation
+
+Retrieve details of a specific conversation.
+
+```http
+GET /api/v1/accounts/{account_id}/conversations/{id}
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+<ParamField path="id" type="integer" required>
+  The display ID of the conversation
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X GET https://app.chatwoot.com/api/v1/accounts/1/conversations/1 \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+## Create Conversation
+
+Create a new conversation with a contact.
+
+```http
+POST /api/v1/accounts/{account_id}/conversations
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+### Request Body
+
+<ParamField body="contact_id" type="integer" required>
+  Contact ID
+</ParamField>
+
+<ParamField body="inbox_id" type="integer" required>
+  Inbox ID
+</ParamField>
+
+<ParamField body="source_id" type="string">
+  External source identifier
+</ParamField>
+
+<ParamField body="status" type="string" default="open">
+  Initial status: `open`, `pending`, `resolved`
+</ParamField>
+
+<ParamField body="assignee_id" type="integer">
+  Agent ID to assign the conversation to
+</ParamField>
+
+<ParamField body="message" type="object">
+  Initial message object
+</ParamField>
+
+<ParamField body="message.content" type="string">
+  Message content
+</ParamField>
+
+<ParamField body="message.message_type" type="string">
+  Message type: `incoming` or `outgoing`
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST https://app.chatwoot.com/api/v1/accounts/1/conversations \
+  -H "api_access_token: YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "contact_id": 1,
+    "inbox_id": 1,
+    "status": "open",
+    "assignee_id": 1,
+    "message": {
+      "content": "Hello, I need help with my order",
+      "message_type": "incoming"
+    }
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "id": 1,
+  "display_id": 1,
+  "inbox_id": 1,
+  "status": "open",
+  "priority": null,
+  "assignee": {
+    "id": 1,
+    "name": "John Doe"
+  },
+  "contact": {
+    "id": 1,
+    "name": "Customer Name"
+  },
+  "created_at": 1704067200
+}
+```
+
+## Update Conversation
+
+Update conversation properties.
+
+```http
+PATCH /api/v1/accounts/{account_id}/conversations/{id}
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+<ParamField path="id" type="integer" required>
+  The display ID of the conversation
+</ParamField>
+
+### Request Body
+
+<ParamField body="priority" type="string">
+  Priority: `low`, `medium`, `high`, `urgent`, or `null`
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X PATCH https://app.chatwoot.com/api/v1/accounts/1/conversations/1 \
+  -H "api_access_token: YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "priority": "high"
+  }'
+```
+
+## Delete Conversation
+
+Delete a conversation permanently.
+
+```http
+DELETE /api/v1/accounts/{account_id}/conversations/{id}
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+<ParamField path="id" type="integer" required>
+  The display ID of the conversation
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X DELETE https://app.chatwoot.com/api/v1/accounts/1/conversations/1 \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+<Warning>
+Deleting a conversation is permanent and cannot be undone. All messages and metadata will be removed.
+</Warning>
+
+## Toggle Status
+
+Change the conversation status.
+
+```http
+POST /api/v1/accounts/{account_id}/conversations/{id}/toggle_status
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+<ParamField path="id" type="integer" required>
+  The display ID of the conversation
+</ParamField>
+
+### Request Body
+
+<ParamField body="status" type="string" required>
+  New status: `open`, `pending`, `resolved`, `snoozed`
+</ParamField>
+
+<ParamField body="snoozed_until" type="string">
+  ISO 8601 timestamp when to unsnooze (required if status is `snoozed`)
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST https://app.chatwoot.com/api/v1/accounts/1/conversations/1/toggle_status \
+  -H "api_access_token: YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "resolved"
+  }'
+```
+
+## Toggle Priority
+
+Change the conversation priority.
+
+```http
+POST /api/v1/accounts/{account_id}/conversations/{id}/toggle_priority
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+<ParamField path="id" type="integer" required>
+  The display ID of the conversation
+</ParamField>
+
+### Request Body
+
+<ParamField body="priority" type="string" required>
+  Priority: `low`, `medium`, `high`, `urgent`, or `null`
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST https://app.chatwoot.com/api/v1/accounts/1/conversations/1/toggle_priority \
+  -H "api_access_token: YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "priority": "urgent"
+  }'
+```
+
+## Mute Conversation
+
+Mute notifications for a conversation.
+
+```http
+POST /api/v1/accounts/{account_id}/conversations/{id}/mute
+```
+
+### Example Request
+
+```bash
+curl -X POST https://app.chatwoot.com/api/v1/accounts/1/conversations/1/mute \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+## Unmute Conversation
+
+Unmute notifications for a conversation.
+
+```http
+POST /api/v1/accounts/{account_id}/conversations/{id}/unmute
+```
+
+### Example Request
+
+```bash
+curl -X POST https://app.chatwoot.com/api/v1/accounts/1/conversations/1/unmute \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+## Mark as Unread
+
+Mark conversation as unread.
+
+```http
+POST /api/v1/accounts/{account_id}/conversations/{id}/unread
+```
+
+### Example Request
+
+```bash
+curl -X POST https://app.chatwoot.com/api/v1/accounts/1/conversations/1/unread \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+## Update Last Seen
+
+Update agent's last seen timestamp.
+
+```http
+POST /api/v1/accounts/{account_id}/conversations/{id}/update_last_seen
+```
+
+### Example Request
+
+```bash
+curl -X POST https://app.chatwoot.com/api/v1/accounts/1/conversations/1/update_last_seen \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+## Update Custom Attributes
+
+Update conversation custom attributes.
+
+```http
+POST /api/v1/accounts/{account_id}/conversations/{id}/custom_attributes
+```
+
+### Request Body
+
+<ParamField body="custom_attributes" type="object" required>
+  Custom attributes as key-value pairs
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST https://app.chatwoot.com/api/v1/accounts/1/conversations/1/custom_attributes \
+  -H "api_access_token: YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "custom_attributes": {
+      "order_id": "ORD-12345",
+      "product_type": "subscription"
+    }
+  }'
+```
+
+## Get Conversation Transcript
+
+Send conversation transcript via email.
+
+```http
+POST /api/v1/accounts/{account_id}/conversations/{id}/transcript
+```
+
+### Request Body
+
+<ParamField body="email" type="string" required>
+  Email address to send transcript to
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST https://app.chatwoot.com/api/v1/accounts/1/conversations/1/transcript \
+  -H "api_access_token: YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "customer@example.com"
+  }'
+```
+
+<Note>
+Email transcripts may be rate-limited based on your account plan.
+</Note>
+
+## Get Attachments
+
+Retrieve all attachments in a conversation.
+
+```http
+GET /api/v1/accounts/{account_id}/conversations/{id}/attachments
+```
+
+### Query Parameters
+
+<ParamField query="page" type="integer" default="1">
+  Page number (100 attachments per page)
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X GET https://app.chatwoot.com/api/v1/accounts/1/conversations/1/attachments \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+## Search Conversations
+
+Search conversations by content.
+
+```http
+GET /api/v1/accounts/{account_id}/conversations/search
+```
+
+### Query Parameters
+
+<ParamField query="q" type="string" required>
+  Search query
+</ParamField>
+
+<ParamField query="page" type="integer" default="1">
+  Page number
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X GET "https://app.chatwoot.com/api/v1/accounts/1/conversations/search?q=order" \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+## Filter Conversations
+
+Filter conversations using advanced filters.
+
+```http
+POST /api/v1/accounts/{account_id}/conversations/filter
+```
+
+### Request Body
+
+<ParamField body="payload" type="array" required>
+  Array of filter conditions
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST https://app.chatwoot.com/api/v1/accounts/1/conversations/filter \
+  -H "api_access_token: YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "payload": [
+      {
+        "attribute_key": "status",
+        "filter_operator": "equal_to",
+        "values": ["open"]
+      },
+      {
+        "attribute_key": "priority",
+        "filter_operator": "equal_to",
+        "values": ["high"]
+      }
+    ]
+  }'
+```
+
+## Get Conversation Meta
+
+Get conversation count metadata without fetching conversations.
+
+```http
+GET /api/v1/accounts/{account_id}/conversations/meta
+```
+
+### Example Request
+
+```bash
+curl -X GET https://app.chatwoot.com/api/v1/accounts/1/conversations/meta \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+## Conversation Status Types
+
+### Open
+Active conversations requiring attention.
+
+### Pending
+Conversations waiting for customer response.
+
+### Resolved
+Closed conversations that are resolved.
+
+### Snoozed
+Conversations temporarily hidden until a specific time.
+
+## Priority Levels
+
+- **Low**: Non-urgent matters
+- **Medium**: Standard priority
+- **High**: Important issues
+- **Urgent**: Critical issues requiring immediate attention
+- **null**: No priority set

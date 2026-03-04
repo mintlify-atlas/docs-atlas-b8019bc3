@@ -1,0 +1,378 @@
+---
+title: Backup and Restore
+description: Database backup and restore procedures for Chatwoot self-hosted installations
+---
+
+## Overview
+
+Regular backups are critical for protecting your Chatwoot data. This guide covers backup and restore procedures for PostgreSQL databases, Redis data, and file storage.
+
+## Database Backup
+
+### PostgreSQL Backup
+
+Chatwoot uses PostgreSQL with the pgvector extension for storing all application data.
+
+#### Manual Backup
+
+Create a full database backup:
+
+```bash
+# Using pg_dump
+pg_dump -h localhost -U postgres -d chatwoot_production > chatwoot_backup_$(date +%Y%m%d_%H%M%S).sql
+
+# With compression
+pg_dump -h localhost -U postgres -d chatwoot_production | gzip > chatwoot_backup_$(date +%Y%m%d_%H%M%S).sql.gz
+
+# Custom format (recommended for large databases)
+pg_dump -h localhost -U postgres -Fc -d chatwoot_production -f chatwoot_backup_$(date +%Y%m%d_%H%M%S).dump
+```
+
+#### Docker Environment Backup
+
+If running Chatwoot with Docker Compose:
+
+```bash
+# Backup from Docker container
+docker exec -t chatwoot-postgres pg_dump -U postgres chatwoot > chatwoot_backup_$(date +%Y%m%d_%H%M%S).sql
+
+# Or using docker-compose
+docker-compose exec -T postgres pg_dump -U postgres chatwoot > chatwoot_backup_$(date +%Y%m%d_%H%M%S).sql
+```
+
+#### Automated Backup Script
+
+Create a backup script at `/usr/local/bin/chatwoot-backup.sh`:
+
+```bash
+#!/bin/bash
+set -e
+
+# Configuration
+BACKUP_DIR="/var/backups/chatwoot"
+RETENTION_DAYS=30
+DB_NAME="chatwoot_production"
+DB_USER="postgres"
+DB_HOST="localhost"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+# Create backup directory
+mkdir -p "$BACKUP_DIR"
+
+# Backup database
+echo "Starting backup at $(date)"
+pg_dump -h "$DB_HOST" -U "$DB_USER" -Fc "$DB_NAME" > "$BACKUP_DIR/chatwoot_$TIMESTAMP.dump"
+
+# Compress and encrypt (optional)
+# gpg --symmetric --cipher-algo AES256 "$BACKUP_DIR/chatwoot_$TIMESTAMP.dump"
+
+# Remove old backups
+find "$BACKUP_DIR" -name "chatwoot_*.dump" -mtime +$RETENTION_DAYS -delete
+
+echo "Backup completed at $(date)"
+echo "Backup location: $BACKUP_DIR/chatwoot_$TIMESTAMP.dump"
+```
+
+Make it executable and add to crontab:
+
+```bash
+chmod +x /usr/local/bin/chatwoot-backup.sh
+
+# Run daily at 2 AM
+crontab -e
+# Add: 0 2 * * * /usr/local/bin/chatwoot-backup.sh >> /var/log/chatwoot-backup.log 2>&1
+```
+
+### Redis Backup
+
+Redis stores session data, cache, and Sidekiq job queues.
+
+#### Enable RDB Snapshots
+
+Edit Redis configuration:
+
+```bash
+# /etc/redis/redis.conf
+save 900 1      # Save after 900 seconds if at least 1 key changed
+save 300 10     # Save after 300 seconds if at least 10 keys changed
+save 60 10000   # Save after 60 seconds if at least 10000 keys changed
+
+dir /var/lib/redis
+dbfilename dump.rdb
+```
+
+#### Manual Redis Backup
+
+```bash
+# Trigger a save
+redis-cli SAVE
+# or for non-blocking
+redis-cli BGSAVE
+
+# Copy the RDB file
+cp /var/lib/redis/dump.rdb /var/backups/chatwoot/redis_$(date +%Y%m%d_%H%M%S).rdb
+```
+
+#### Docker Redis Backup
+
+```bash
+# Create backup
+docker exec chatwoot-redis redis-cli BGSAVE
+docker cp chatwoot-redis:/data/dump.rdb ./redis_backup_$(date +%Y%m%d_%H%M%S).rdb
+```
+
+## File Storage Backup
+
+Chatwoot stores uploaded files, avatars, and attachments using Active Storage.
+
+### Local Storage
+
+If using local file storage (default):
+
+```bash
+# Backup storage directory
+tar -czf chatwoot_storage_$(date +%Y%m%d_%H%M%S).tar.gz /app/storage
+
+# Or with Docker
+docker run --rm \
+  -v chatwoot_storage:/source:ro \
+  -v /var/backups/chatwoot:/backup \
+  alpine tar -czf /backup/storage_$(date +%Y%m%d_%H%M%S).tar.gz -C /source .
+```
+
+### S3/Cloud Storage
+
+If using cloud storage (S3, GCS, Azure), backups are handled by the provider. Enable versioning:
+
+```bash
+# AWS S3 - Enable versioning
+aws s3api put-bucket-versioning \
+  --bucket your-chatwoot-bucket \
+  --versioning-configuration Status=Enabled
+
+# Set lifecycle policy for old versions
+aws s3api put-bucket-lifecycle-configuration \
+  --bucket your-chatwoot-bucket \
+  --lifecycle-configuration file://lifecycle.json
+```
+
+## Restore Procedures
+
+### Restore PostgreSQL Database
+
+#### From SQL Dump
+
+```bash
+# Stop Chatwoot services
+systemctl stop chatwoot-web chatwoot-worker
+
+# Drop and recreate database (CAUTION: This deletes all data)
+psql -U postgres -c "DROP DATABASE IF EXISTS chatwoot_production;"
+psql -U postgres -c "CREATE DATABASE chatwoot_production;"
+
+# Restore from backup
+psql -U postgres -d chatwoot_production < chatwoot_backup_20240115_020000.sql
+
+# Or from compressed backup
+gunzip -c chatwoot_backup_20240115_020000.sql.gz | psql -U postgres -d chatwoot_production
+
+# Restart services
+systemctl start chatwoot-web chatwoot-worker
+```
+
+#### From Custom Format Dump
+
+```bash
+# Using pg_restore
+pg_restore -U postgres -d chatwoot_production --clean --if-exists chatwoot_backup_20240115_020000.dump
+
+# With Docker
+docker exec -i chatwoot-postgres pg_restore -U postgres -d chatwoot --clean --if-exists < chatwoot_backup_20240115_020000.dump
+```
+
+#### Point-in-Time Recovery (PITR)
+
+For production systems, configure PostgreSQL continuous archiving:
+
+```bash
+# postgresql.conf
+wal_level = replica
+archive_mode = on
+archive_command = 'test ! -f /var/lib/postgresql/wal_archive/%f && cp %p /var/lib/postgresql/wal_archive/%f'
+max_wal_senders = 3
+```
+
+### Restore Redis Data
+
+```bash
+# Stop Redis
+systemctl stop redis
+
+# Restore RDB file
+cp /var/backups/chatwoot/redis_20240115_020000.rdb /var/lib/redis/dump.rdb
+chown redis:redis /var/lib/redis/dump.rdb
+
+# Start Redis
+systemctl start redis
+
+# Verify
+redis-cli INFO keyspace
+```
+
+### Restore File Storage
+
+```bash
+# Stop Chatwoot
+systemctl stop chatwoot-web chatwoot-worker
+
+# Restore storage
+tar -xzf chatwoot_storage_20240115_020000.tar.gz -C /
+
+# Fix permissions
+chown -R chatwoot:chatwoot /app/storage
+
+# Start Chatwoot
+systemctl start chatwoot-web chatwoot-worker
+```
+
+## Disaster Recovery
+
+### Complete System Restore
+
+1. Install Chatwoot on new server
+2. Stop all services
+3. Restore PostgreSQL database
+4. Restore Redis data
+5. Restore file storage
+6. Update environment variables if needed
+7. Run migrations: `bundle exec rails db:migrate`
+8. Restart services
+
+### Migration to New Server
+
+```bash
+# On old server - Create backups
+/usr/local/bin/chatwoot-backup.sh
+
+# Transfer to new server
+rsync -avz /var/backups/chatwoot/ newserver:/var/backups/chatwoot/
+
+# On new server - Install Chatwoot
+# Then restore as above
+```
+
+## Backup Verification
+
+### Test Restore Process
+
+Regularly test your backups:
+
+```bash
+# Create test database
+createdb -U postgres chatwoot_test_restore
+
+# Restore backup
+pg_restore -U postgres -d chatwoot_test_restore chatwoot_backup.dump
+
+# Verify data
+psql -U postgres -d chatwoot_test_restore -c "SELECT COUNT(*) FROM accounts;"
+psql -U postgres -d chatwoot_test_restore -c "SELECT COUNT(*) FROM conversations;"
+
+# Cleanup
+dropdb -U postgres chatwoot_test_restore
+```
+
+### Backup Monitoring
+
+Monitor backup success:
+
+```bash
+#!/bin/bash
+# /usr/local/bin/verify-backup.sh
+
+BACKUP_DIR="/var/backups/chatwoot"
+LATEST_BACKUP=$(ls -t "$BACKUP_DIR"/chatwoot_*.dump | head -1)
+BACKUP_AGE=$(($(date +%s) - $(stat -c %Y "$LATEST_BACKUP")))
+MAX_AGE=$((24 * 3600))  # 24 hours
+
+if [ $BACKUP_AGE -gt $MAX_AGE ]; then
+  echo "WARNING: Latest backup is older than 24 hours!"
+  # Send alert
+  exit 1
+fi
+
+# Verify backup file is not empty
+if [ ! -s "$LATEST_BACKUP" ]; then
+  echo "ERROR: Backup file is empty!"
+  exit 1
+fi
+
+echo "Backup verification passed"
+```
+
+## Backup Best Practices
+
+1. **Frequency**: Daily full backups, hourly incremental (for large databases)
+2. **Retention**: Keep 30 days of daily backups, 12 months of monthly backups
+3. **Off-site**: Store backups in different geographic location
+4. **Encryption**: Encrypt backups containing sensitive data
+5. **Testing**: Test restore process monthly
+6. **Documentation**: Document restore procedures and keep updated
+7. **Monitoring**: Alert on backup failures
+8. **Version Control**: Keep backup scripts in version control
+
+## Related Environment Variables
+
+```bash
+# Database configuration
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_DATABASE=chatwoot_production
+POSTGRES_USERNAME=postgres
+POSTGRES_PASSWORD=your_secure_password
+
+# Redis configuration
+REDIS_URL=redis://localhost:6379
+
+# Storage configuration
+ACTIVE_STORAGE_SERVICE=local  # or s3, gcs, azure
+S3_BUCKET_NAME=chatwoot-uploads
+AWS_ACCESS_KEY_ID=your_key
+AWS_SECRET_ACCESS_KEY=your_secret
+AWS_REGION=us-east-1
+```
+
+## Troubleshooting
+
+### Backup Fails with Disk Space Error
+
+```bash
+# Check available space
+df -h
+
+# Clean old backups
+find /var/backups/chatwoot -name "*.dump" -mtime +7 -delete
+
+# Use compression
+pg_dump -Fc  # Custom format is already compressed
+```
+
+### Restore Fails with Permission Error
+
+```bash
+# Ensure correct ownership
+chown postgres:postgres /var/lib/postgresql/backup.dump
+
+# Restore as postgres user
+sudo -u postgres pg_restore -d chatwoot_production backup.dump
+```
+
+### Incomplete Backup
+
+```bash
+# Verify backup integrity
+pg_restore --list backup.dump | wc -l
+
+# Check for errors in logs
+tail -f /var/log/postgresql/postgresql-*.log
+```

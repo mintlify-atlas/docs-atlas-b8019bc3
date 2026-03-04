@@ -1,0 +1,559 @@
+---
+title: 'Automation Rules'
+description: 'Automate workflows with rules, triggers, conditions, and actions'
+icon: 'robot'
+---
+
+## Overview
+
+Automation rules help you automate repetitive tasks and workflows in Chatwoot. Create rules that trigger actions based on specific conditions, saving time and ensuring consistent processes.
+
+<Info>
+  Automation rules consist of three parts: **Events** (triggers), **Conditions** (filters), and **Actions** (what happens).
+</Info>
+
+## Anatomy of an Automation Rule
+
+```ruby
+automation_rule = account.automation_rules.create!(
+  name: "Auto-assign urgent conversations",
+  description: "Automatically assign urgent priority conversations to senior agents",
+  event_name: "conversation_created",
+  active: true,
+  conditions: [
+    {
+      attribute_key: "priority",
+      filter_operator: "equal_to",
+      values: ["urgent"]
+    }
+  ],
+  actions: [
+    {
+      action_name: "assign_agent",
+      action_params: [senior_agent.id]
+    }
+  ]
+)
+```
+
+## Event Triggers
+
+Automation rules are triggered by specific events:
+
+<Tabs>
+  <Tab title="Conversation Events">
+    - `conversation_created` - New conversation started
+    - `conversation_updated` - Conversation attributes changed
+    - `conversation_opened` - Status changed to open
+    - `conversation_resolved` - Conversation resolved
+    - `conversation_status_changed` - Any status change
+  </Tab>
+  <Tab title="Message Events">
+    - `message_created` - New message received
+  </Tab>
+</Tabs>
+
+```ruby
+# Event trigger example
+automation_rule.event_name = "conversation_created"
+```
+
+## Conditions
+
+Conditions filter when automation rules execute. Multiple conditions can be combined with AND/OR logic.
+
+### Available Condition Attributes
+
+<AccordionGroup>
+  <Accordion title="Conversation Attributes">
+    - `status` - open, resolved, pending, snoozed
+    - `priority` - urgent, high, medium, low
+    - `assignee_id` - Assigned agent ID
+    - `team_id` - Assigned team ID
+    - `inbox_id` - Source inbox ID
+    - `labels` - Applied labels
+    - `conversation_language` - Detected language
+  </Accordion>
+
+  <Accordion title="Contact Attributes">
+    - `email` - Contact email
+    - `phone_number` - Contact phone
+    - `country_code` - Contact country
+    - `city` - Contact city
+    - `company` - Contact company
+  </Accordion>
+
+  <Accordion title="Message Attributes">
+    - `content` - Message text
+    - `message_type` - incoming, outgoing
+    - `mail_subject` - Email subject line
+  </Accordion>
+
+  <Accordion title="Browser Attributes">
+    - `browser_language` - Browser language
+    - `referer` - Referrer URL
+  </Accordion>
+
+  <Accordion title="Custom Attributes">
+    Use any custom attribute key defined in your account
+  </Accordion>
+</AccordionGroup>
+
+### Condition Operators
+
+Depending on the attribute type, different operators are available:
+
+- `equal_to` - Exact match
+- `not_equal_to` - Not equal
+- `contains` - Contains text
+- `does_not_contain` - Doesn't contain text
+- `is_present` - Has value
+- `is_not_present` - Empty/null
+- `is_greater_than` - Numeric comparison
+- `is_less_than` - Numeric comparison
+
+### Combining Conditions
+
+```ruby
+automation_rule = account.automation_rules.create!(
+  name: "High priority VIP customers",
+  event_name: "conversation_created",
+  conditions: [
+    {
+      attribute_key: "priority",
+      filter_operator: "equal_to",
+      values: ["urgent"],
+      query_operator: "and"
+    },
+    {
+      attribute_key: "labels",
+      filter_operator: "contains",
+      values: ["vip"]
+    }
+  ],
+  actions: [...]
+)
+```
+
+<Note>
+  The `query_operator` can be `"and"` or `"or"`. It determines how multiple conditions are combined.
+</Note>
+
+## Actions
+
+Actions are executed when conditions are met. Multiple actions can be chained together.
+
+### Available Actions
+
+<CardGroup cols={2}>
+  <Card title="Assignment Actions" icon="user-plus">
+    - `assign_agent` - Assign to specific agent
+    - `assign_team` - Assign to team
+  </Card>
+  <Card title="Status Actions" icon="toggle-on">
+    - `resolve_conversation` - Mark as resolved
+    - `open_conversation` - Mark as open
+    - `pending_conversation` - Mark as pending
+    - `snooze_conversation` - Snooze conversation
+  </Card>
+  <Card title="Priority Actions" icon="flag">
+    - `change_priority` - Set priority level
+  </Card>
+  <Card title="Label Actions" icon="tags">
+    - `add_label` - Add labels
+    - `remove_label` - Remove labels
+  </Card>
+  <Card title="Communication Actions" icon="paper-plane">
+    - `send_message` - Send automated message
+    - `send_email_to_team` - Email notification
+    - `send_email_transcript` - Send transcript
+    - `send_webhook_event` - Trigger webhook
+  </Card>
+  <Card title="Other Actions" icon="ellipsis">
+    - `mute_conversation` - Mute notifications
+    - `add_private_note` - Add internal note
+    - `send_attachment` - Send file
+  </Card>
+</CardGroup>
+
+### Action Examples
+
+#### Assign to Agent
+
+```ruby
+actions: [
+  {
+    action_name: "assign_agent",
+    action_params: [agent.id]
+  }
+]
+```
+
+#### Send Automated Message
+
+```ruby
+actions: [
+  {
+    action_name: "send_message",
+    action_params: ["Thank you for contacting us! We'll respond shortly."]
+  }
+]
+```
+
+#### Add Labels
+
+```ruby
+actions: [
+  {
+    action_name: "add_label",
+    action_params: ["urgent", "requires-review"]
+  }
+]
+```
+
+#### Change Priority
+
+```ruby
+actions: [
+  {
+    action_name: "change_priority",
+    action_params: ["urgent"]
+  }
+]
+```
+
+#### Send Webhook
+
+```ruby
+actions: [
+  {
+    action_name: "send_webhook_event",
+    action_params: ["https://api.example.com/webhook"]
+  }
+]
+```
+
+#### Send Email Notification
+
+```ruby
+actions: [
+  {
+    action_name: "send_email_to_team",
+    action_params: ["manager@example.com"]
+  }
+]
+```
+
+## File Attachments
+
+Automation rules can include file attachments:
+
+```ruby
+# Attach files to automation rule
+automation_rule.files.attach(file)
+
+# Access attached files
+automation_rule.file_base_data
+# => [
+#   {
+#     id: 1,
+#     automation_rule_id: 123,
+#     file_type: "application/pdf",
+#     account_id: 1,
+#     file_url: "https://...",
+#     blob_id: 456,
+#     filename: "terms.pdf"
+#   }
+# ]
+```
+
+## Activation and Status
+
+```ruby
+# Activate rule
+automation_rule.update!(active: true)
+
+# Deactivate rule
+automation_rule.update!(active: false)
+
+# Get only active rules
+AutomationRule.active
+```
+
+<Tip>
+  Temporarily disable rules instead of deleting them. This allows you to quickly re-enable them later.
+</Tip>
+
+## Real-World Examples
+
+### Example 1: Auto-Assign by Inbox
+
+```ruby
+automation_rule = account.automation_rules.create!(
+  name: "Route billing inquiries to billing team",
+  event_name: "conversation_created",
+  conditions: [
+    {
+      attribute_key: "inbox_id",
+      filter_operator: "equal_to",
+      values: [billing_inbox.id]
+    }
+  ],
+  actions: [
+    {
+      action_name: "assign_team",
+      action_params: [billing_team.id]
+    },
+    {
+      action_name: "add_label",
+      action_params: ["billing"]
+    }
+  ]
+)
+```
+
+### Example 2: VIP Customer Priority
+
+```ruby
+automation_rule = account.automation_rules.create!(
+  name: "Prioritize VIP customers",
+  event_name: "conversation_created",
+  conditions: [
+    {
+      attribute_key: "labels",
+      filter_operator: "contains",
+      values: ["vip"]
+    }
+  ],
+  actions: [
+    {
+      action_name: "change_priority",
+      action_params: ["urgent"]
+    },
+    {
+      action_name: "assign_agent",
+      action_params: [senior_agent.id]
+    },
+    {
+      action_name: "send_message",
+      action_params: ["Thank you for being a valued customer. A senior agent will assist you shortly."]
+    }
+  ]
+)
+```
+
+### Example 3: After-Hours Auto-Response
+
+```ruby
+automation_rule = account.automation_rules.create!(
+  name: "After-hours auto-response",
+  event_name: "conversation_created",
+  conditions: [
+    # Check if current time is outside business hours
+    # This would typically be done via custom attribute or external system
+  ],
+  actions: [
+    {
+      action_name: "send_message",
+      action_params: ["Thanks for reaching out! We're currently closed but will respond when we're back online (Mon-Fri, 9am-5pm EST)."]
+    },
+    {
+      action_name: "pending_conversation"
+    }
+  ]
+)
+```
+
+### Example 4: Keyword-Based Routing
+
+```ruby
+automation_rule = account.automation_rules.create!(
+  name: "Route technical questions to tech team",
+  event_name: "message_created",
+  conditions: [
+    {
+      attribute_key: "content",
+      filter_operator: "contains",
+      values: ["bug", "error", "technical", "not working"],
+      query_operator: "or"
+    },
+    {
+      attribute_key: "message_type",
+      filter_operator: "equal_to",
+      values: ["incoming"]
+    }
+  ],
+  actions: [
+    {
+      action_name: "assign_team",
+      action_params: [tech_team.id]
+    },
+    {
+      action_name: "add_label",
+      action_params: ["technical"]
+    }
+  ]
+)
+```
+
+### Example 5: Auto-Resolve Spam
+
+```ruby
+automation_rule = account.automation_rules.create!(
+  name: "Auto-resolve spam conversations",
+  event_name: "conversation_created",
+  conditions: [
+    {
+      attribute_key: "content",
+      filter_operator: "contains",
+      values: ["spam", "unsubscribe", "lottery"],
+      query_operator: "or"
+    }
+  ],
+  actions: [
+    {
+      action_name: "add_label",
+      action_params: ["spam"]
+    },
+    {
+      action_name: "mute_conversation"
+    },
+    {
+      action_name: "resolve_conversation"
+    }
+  ]
+)
+```
+
+### Example 6: Escalation Notification
+
+```ruby
+automation_rule = account.automation_rules.create!(
+  name: "Notify manager of urgent unassigned conversations",
+  event_name: "conversation_created",
+  conditions: [
+    {
+      attribute_key: "priority",
+      filter_operator: "equal_to",
+      values: ["urgent"],
+      query_operator: "and"
+    },
+    {
+      attribute_key: "assignee_id",
+      filter_operator: "is_not_present",
+      values: []
+    }
+  ],
+  actions: [
+    {
+      action_name: "send_email_to_team",
+      action_params: ["manager@example.com"]
+    },
+    {
+      action_name: "send_webhook_event",
+      action_params: ["https://api.example.com/escalations"]
+    }
+  ]
+)
+```
+
+## Custom Attributes in Conditions
+
+Use custom attributes from contacts or conversations:
+
+```ruby
+# First, ensure custom attribute is defined
+account.custom_attribute_definitions.create!(
+  attribute_key: "subscription_plan",
+  attribute_display_name: "Subscription Plan",
+  attribute_display_type: "text",
+  attribute_model: "contact_attribute"
+)
+
+# Then use in automation rule
+automation_rule = account.automation_rules.create!(
+  name: "VIP treatment for enterprise customers",
+  event_name: "conversation_created",
+  conditions: [
+    {
+      attribute_key: "subscription_plan",
+      filter_operator: "equal_to",
+      values: ["enterprise"]
+    }
+  ],
+  actions: [
+    {
+      action_name: "change_priority",
+      action_params: ["high"]
+    },
+    {
+      action_name: "add_label",
+      action_params: ["enterprise-customer"]
+    }
+  ]
+)
+```
+
+## Validation
+
+Automation rules validate conditions and actions:
+
+```ruby
+# Valid condition attributes
+automation_rule.conditions_attributes
+# => ["content", "email", "country_code", "status", "priority", ...]
+
+# Valid action names
+automation_rule.actions_attributes
+# => ["send_message", "add_label", "assign_team", "resolve_conversation", ...]
+```
+
+<Warning>
+  Invalid conditions or actions will cause validation errors. Ensure attribute keys and action names are correct.
+</Warning>
+
+## Best Practices
+
+<Tip>
+  **Test Rules**: Create rules with descriptive names and test them on a few conversations before enabling for all traffic.
+</Tip>
+
+<Tip>
+  **Use Labels**: Apply labels via automation to track which rules triggered and analyze their effectiveness.
+</Tip>
+
+<Tip>
+  **Chain Actions**: Combine multiple actions to create comprehensive workflows (assign + label + notify).
+</Tip>
+
+<Warning>
+  **Avoid Rule Conflicts**: Be careful with multiple rules that might contradict each other (e.g., assigning to different teams).
+</Warning>
+
+<Note>
+  Rules are evaluated in the order they were created. Consider this when building complex automation workflows.
+</Note>
+
+## Performance Considerations
+
+- Automation rules execute asynchronously
+- Complex conditions may impact performance
+- Limit the number of active rules to reduce overhead
+- Use specific conditions to avoid unnecessary rule evaluations
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Conversations" icon="comments" href="/features/conversations">
+    Understand conversation states
+  </Card>
+  <Card title="Teams" icon="users" href="/features/teams">
+    Team-based assignment
+  </Card>
+  <Card title="Custom Attributes" icon="tags">
+    Use custom data in rules
+  </Card>
+  <Card title="Webhooks" icon="webhook">
+    Configure webhook actions
+  </Card>
+</CardGroup>

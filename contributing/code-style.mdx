@@ -1,0 +1,392 @@
+---
+title: Code Style Guidelines
+description: Code style and formatting standards for Chatwoot development
+---
+
+Chatwoot follows specific code style guidelines to maintain consistency and code quality across the project.
+
+## General Principles
+
+- **MVP focus**: Least code change, happy-path only
+- **No unnecessary defensive programming**: Ship the happy path first; add guards/fallbacks only when production proves them necessary
+- **Prefer minimal, readable code**: Clarity beats cleverness
+- **Break down complex tasks**: Create small, testable units
+- **Remove dead code**: Delete unreachable, unused, or obsolete code
+- **Don't write multiple versions**: Pick the best approach and implement it once
+- **Iterate after confirmation**: Don't over-engineer; iterate based on feedback
+
+## Ruby Code Style
+
+### RuboCop
+
+Chatwoot uses **RuboCop** for Ruby linting and formatting.
+
+**Run linting:**
+```bash
+bundle exec rubocop
+```
+
+**Auto-fix issues:**
+```bash
+bundle exec rubocop -a
+```
+
+### Ruby Style Rules
+
+- **Line length**: Maximum 150 characters
+- **Module/Class definitions**: Use compact format
+  ```ruby
+  # Good
+  class Accounts::ContactsController < ApplicationController
+  end
+
+  # Avoid
+  module Accounts
+    class ContactsController < ApplicationController
+    end
+  end
+  ```
+- **Always use `bundle exec`**: Prefix Ruby CLI tasks with `bundle exec`
+  ```bash
+  bundle exec rspec
+  bundle exec rake
+  bundle exec rubocop
+  ```
+
+### Error Handling
+
+Use custom exceptions from `lib/custom_exceptions/`:
+
+```ruby
+raise CustomExceptions::Account::InvalidAccount, 'Account is invalid'
+```
+
+### Models
+
+- Add proper validations (presence, uniqueness)
+- Add database indexes for frequently queried fields
+- Use strong parameters in controllers
+
+```ruby
+class Contact < ApplicationRecord
+  validates :name, presence: true
+  validates :email, uniqueness: { scope: :account_id }
+end
+```
+
+## JavaScript/Vue Code Style
+
+### ESLint
+
+Chatwoot uses **ESLint** with Airbnb base configuration and Vue 3 recommended rules.
+
+**Run linting:**
+```bash
+pnpm eslint
+```
+
+**Auto-fix issues:**
+```bash
+pnpm eslint:fix
+```
+
+### Vue Style Rules
+
+#### Component API
+
+Always use **Composition API with `<script setup>`**:
+
+```vue
+<script setup>
+import { ref, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
+const count = ref(0);
+const doubleCount = computed(() => count.value * 2);
+</script>
+
+<template>
+  <div>
+    <p>{{ t('count.label') }}: {{ count }}</p>
+    <p>{{ t('double.label') }}: {{ doubleCount }}</p>
+  </div>
+</template>
+```
+
+#### Naming Conventions
+
+- **Component names**: Use PascalCase
+  ```javascript
+  import ContactCard from './ContactCard.vue';
+  ```
+- **Event names**: Use camelCase
+  ```javascript
+  emit('updateContact', contact);
+  ```
+- **Props**: Use camelCase in JavaScript, kebab-case in templates
+  ```vue
+  <script setup>
+  defineProps({
+    contactId: { type: Number, required: true }
+  });
+  </script>
+
+  <template>
+    <ContactCard :contact-id="123" />
+  </template>
+  ```
+
+#### Type Safety
+
+Use PropTypes for Vue components:
+
+```vue
+<script setup>
+defineProps({
+  contact: {
+    type: Object,
+    required: true,
+    validator: (value) => {
+      return value.id && value.name;
+    }
+  },
+  status: {
+    type: String,
+    default: 'active'
+  }
+});
+</script>
+```
+
+#### Internationalization (i18n)
+
+**No bare strings in templates**. Always use i18n:
+
+```vue
+<!-- Bad -->
+<template>
+  <button>Submit</button>
+</template>
+
+<!-- Good -->
+<template>
+  <button>{{ $t('FORM.SUBMIT') }}</button>
+</template>
+```
+
+#### Frontend Components
+
+For message bubbles, use `components-next/` (the rest is being deprecated):
+
+```javascript
+import MessageBubble from '@/components-next/MessageBubble.vue';
+```
+
+## CSS/Styling
+
+### Tailwind CSS Only
+
+Chatwoot uses **Tailwind CSS exclusively** for styling:
+
+- **Do NOT write custom CSS**
+- **Do NOT use scoped CSS**
+- **Do NOT use inline styles**
+- **Always use Tailwind utility classes**
+
+```vue
+<!-- Good -->
+<template>
+  <div class="flex items-center justify-between p-4 bg-white rounded-lg shadow-md">
+    <h2 class="text-lg font-semibold text-gray-800">Title</h2>
+    <button class="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700">
+      Click me
+    </button>
+  </div>
+</template>
+
+<!-- Bad -->
+<template>
+  <div style="display: flex; padding: 16px;">
+    <h2>Title</h2>
+  </div>
+</template>
+
+<style scoped>
+.custom-button {
+  background-color: blue;
+  padding: 8px 16px;
+}
+</style>
+```
+
+### Color Definitions
+
+Refer to `tailwind.config.js` for available color definitions:
+
+```javascript
+class="bg-primary-500 text-white"
+class="border-slate-200 bg-slate-50"
+class="text-red-600 hover:text-red-700"
+```
+
+## Translation Files
+
+### Backend Translations (Rails)
+
+Update only `en.yml` for English translations:
+
+**Location**: `config/locales/en.yml`
+
+```yaml
+en:
+  conversations:
+    index:
+      title: "Conversations"
+      empty_state: "No conversations found"
+```
+
+### Frontend Translations (Vue)
+
+Update only `en.json` for English translations:
+
+**Location**: `app/javascript/dashboard/i18n/locale/en/en.json`
+
+```json
+{
+  "CONVERSATION": {
+    "HEADER": "Conversations",
+    "EMPTY_STATE": "No conversations found"
+  }
+}
+```
+
+<Warning>
+**Only update `en.yml` and `en.json`**. Other languages are handled by the community through [Crowdin](https://translate.chatwoot.com).
+</Warning>
+
+## Branding and White-labeling
+
+For user-facing strings containing "Chatwoot" that should adapt to branded/self-hosted installs:
+
+```vue
+<script setup>
+import { useBranding } from '@/shared/composables/useBranding';
+
+const { replaceInstallationName } = useBranding();
+
+const tooltipText = replaceInstallationName('Powered by Chatwoot');
+</script>
+```
+
+Don't hardcode brand-specific copy in the UI layer.
+
+## Testing Code
+
+### Spec Best Practices
+
+- **Don't write specs unless explicitly asked**: Focus on shipping features
+- **Use `with_modified_env`**: Prefer this over stubbing `ENV` directly
+  ```ruby
+  with_modified_env(API_KEY: 'test-key') do
+    # test code
+  end
+  ```
+- **Error class comparison**: In parallel/reloading environments, compare `error.class.name` instead of constant equality
+  ```ruby
+  # Good
+  expect { raise_error }.to raise_error { |e| expect(e.class.name).to eq('CustomError') }
+
+  # Avoid in parallel environments
+  expect { raise_error }.to raise_error(CustomError)
+  ```
+
+## Linting Commands Reference
+
+### Ruby Linting
+
+```bash
+# Check for issues
+bundle exec rubocop
+
+# Auto-fix issues
+bundle exec rubocop -a
+
+# Check specific file
+bundle exec rubocop app/models/contact.rb
+```
+
+### JavaScript/Vue Linting
+
+```bash
+# Check for issues
+pnpm eslint
+
+# Auto-fix issues
+pnpm eslint:fix
+
+# Check specific file
+pnpm eslint app/javascript/dashboard/components/ContactCard.vue
+```
+
+## Editor Configuration
+
+### VS Code
+
+Recommended extensions:
+- **Ruby**: `rebornix.ruby`
+- **RuboCop**: `misogi.ruby-rubocop`
+- **ESLint**: `dbaeumer.vscode-eslint`
+- **Vetur** or **Volar**: For Vue support
+- **Tailwind CSS IntelliSense**: `bradlc.vscode-tailwindcss`
+
+### EditorConfig
+
+Chatwoot includes an `.editorconfig` file. Ensure your editor respects it:
+
+```ini
+root = true
+
+[*]
+charset = utf-8
+indent_style = space
+indent_size = 2
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+```
+
+## Pre-commit Hooks
+
+Chatwoot uses **Husky** for Git hooks:
+
+**Configured hooks:**
+- Lint staged files before commit
+- Run validation before push
+
+The hooks automatically run linters on changed files:
+
+```json
+{
+  "lint-staged": {
+    "app/**/*.{js,vue}": ["eslint --fix", "git add"]
+  }
+}
+```
+
+## Summary Checklist
+
+Before submitting your code:
+
+- [ ] Ruby code passes `bundle exec rubocop`
+- [ ] JavaScript/Vue code passes `pnpm eslint`
+- [ ] No custom CSS; only Tailwind utility classes used
+- [ ] No bare strings in templates; i18n used throughout
+- [ ] Only `en.yml` and `en.json` updated for translations
+- [ ] PropTypes added for Vue components
+- [ ] Strong params used in Rails controllers
+- [ ] Composition API with `<script setup>` used for Vue
+- [ ] Code is minimal, readable, and focused on the happy path
+- [ ] Dead/unreachable code removed
+
+By following these guidelines, you'll help maintain Chatwoot's code quality and consistency.

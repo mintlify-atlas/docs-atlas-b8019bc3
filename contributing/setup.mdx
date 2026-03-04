@@ -1,0 +1,305 @@
+---
+title: Development Environment Setup
+description: Set up your local development environment for Chatwoot
+---
+
+This guide will help you set up a local development environment for Chatwoot.
+
+## Prerequisites
+
+### Required Software
+
+- **Ruby**: Version `3.4.4` (specified in `.ruby-version`)
+- **Node.js**: Version `24.x`
+- **pnpm**: Version `10.x`
+- **PostgreSQL**: Version 12 or higher
+- **Redis**: Version 6 or higher
+- **rbenv**: For Ruby version management
+
+### Optional Tools
+
+- **Overmind**: Process manager for running multiple services (recommended)
+- **Foreman**: Alternative process manager
+
+## Step-by-Step Setup
+
+### 1. Install Ruby
+
+Use `rbenv` to manage Ruby versions:
+
+```bash
+# Install rbenv (if not already installed)
+curl -fsSL https://github.com/rbenv/rbenv-installer/raw/main/bin/rbenv-installer | bash
+
+# Install the required Ruby version
+rbenv install $(cat .ruby-version)
+
+# Initialize rbenv in your shell
+eval "$(rbenv init -)"
+```
+
+<Note>
+Always run `eval "$(rbenv init -)"` before executing any `bundle` or `rspec` commands to ensure the correct Ruby and Bundler versions are used.
+</Note>
+
+### 2. Install Node.js and pnpm
+
+Install Node.js 24.x and pnpm 10.x:
+
+```bash
+# Using nvm (Node Version Manager)
+nvm install 24
+nvm use 24
+
+# Install pnpm globally
+npm install -g pnpm@10
+```
+
+### 3. Install PostgreSQL and Redis
+
+**macOS (using Homebrew):**
+```bash
+brew install postgresql redis
+brew services start postgresql
+brew services start redis
+```
+
+**Ubuntu/Debian:**
+```bash
+sudo apt-get update
+sudo apt-get install postgresql postgresql-contrib redis-server
+sudo systemctl start postgresql
+sudo systemctl start redis-server
+```
+
+### 4. Clone the Repository
+
+```bash
+git clone https://github.com/chatwoot/chatwoot.git
+cd chatwoot
+```
+
+### 5. Install Dependencies
+
+Install both Ruby and JavaScript dependencies:
+
+```bash
+bundle install && pnpm install
+```
+
+### 6. Set Up the Database
+
+Create and set up the database:
+
+```bash
+# Create database
+bundle exec rails db:create
+
+# Run migrations
+bundle exec rails db:migrate
+
+# Seed with test data
+bundle exec rails db:seed
+```
+
+### 7. Configure Environment Variables
+
+Create a `.env` file in the project root:
+
+```bash
+cp .env.example .env
+```
+
+Edit the `.env` file with your local configuration. At minimum, you'll need:
+
+```env
+# Database
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_DATABASE=chatwoot_dev
+POSTGRES_USERNAME=postgres
+POSTGRES_PASSWORD=
+
+# Redis
+REDIS_URL=redis://localhost:6379
+
+# Frontend URL
+FRONTEND_URL=http://localhost:3000
+```
+
+See the [environment variables documentation](https://www.chatwoot.com/docs/environment-variables) for all available options.
+
+## Running the Application
+
+### Option 1: Using Overmind (Recommended)
+
+Overmind is the recommended way to run all services:
+
+```bash
+overmind start -f Procfile.dev
+```
+
+This starts:
+- Rails server
+- Vite dev server (for frontend assets)
+- Sidekiq (background jobs)
+- Other required services
+
+### Option 2: Using pnpm
+
+```bash
+pnpm dev
+```
+
+This is an alias for `overmind start -f Procfile.dev`.
+
+### Option 3: Using Foreman
+
+```bash
+foreman start -f Procfile.dev
+```
+
+### Option 4: Running Services Individually
+
+In separate terminal windows:
+
+```bash
+# Terminal 1: Rails server
+bundle exec rails server
+
+# Terminal 2: Vite dev server
+pnpm vite dev
+
+# Terminal 3: Sidekiq
+bundle exec sidekiq
+```
+
+## Accessing the Application
+
+Once running, access Chatwoot at:
+
+- **Application**: http://localhost:3000
+- **Vite dev server**: http://localhost:5173
+
+Default login credentials (after seeding):
+- **Email**: Check the console output after running `rails db:seed`
+- **Password**: Check the console output after running `rails db:seed`
+
+## Seeding Test Data
+
+Chatwoot provides multiple seeding options:
+
+### Basic Test Data
+
+Quickly populate minimal data for standard feature verification:
+
+```bash
+bundle exec rails db:seed
+```
+
+### Search Test Data
+
+Bulk fixture generation for search/performance/manual load scenarios:
+
+```bash
+bundle exec rails search:setup_test_data
+```
+
+### Account Sample Data (Richer Test Data)
+
+The `Seeders::AccountSeeder` provides richer test data:
+
+**Via Super Admin UI:**
+1. Log in as Super Admin
+2. Navigate to Accounts
+3. Click "Seed" (enqueues `Internal::SeedAccountJob`)
+
+**Via CLI:**
+```bash
+bundle exec rails runner "Internal::SeedAccountJob.perform_now(Account.find(<id>))"
+
+# Or call the seeder directly
+bundle exec rails runner "Seeders::AccountSeeder.new(account: Account.find(<id>)).perform!"
+```
+
+## Codex Worktree Workflow (Advanced)
+
+For working on multiple features simultaneously:
+
+- Use a separate git worktree + branch per task
+- Keep Codex-specific setup under `.codex/`
+- Use `Procfile.worktree` for process orchestration
+- Dynamically generate per-worktree DB/port values to avoid collisions
+- Start each worktree with its own Overmind socket/title
+
+## Troubleshooting
+
+### Bundle Install Fails
+
+Ensure you have the correct Ruby version:
+
+```bash
+ruby -v  # Should match .ruby-version
+eval "$(rbenv init -)"
+bundle install
+```
+
+### Database Connection Issues
+
+Verify PostgreSQL is running:
+
+```bash
+# macOS
+brew services list
+
+# Linux
+sudo systemctl status postgresql
+```
+
+Check your `.env` file for correct database credentials.
+
+### Redis Connection Issues
+
+Verify Redis is running:
+
+```bash
+# macOS
+brew services list
+
+# Linux
+sudo systemctl status redis-server
+
+# Test connection
+redis-cli ping  # Should return PONG
+```
+
+### Port Already in Use
+
+If port 3000 is already in use:
+
+```bash
+# Find the process
+lsof -ti:3000
+
+# Kill the process
+kill -9 $(lsof -ti:3000)
+```
+
+### Vite Build Issues
+
+Clear the cache and reinstall:
+
+```bash
+rm -rf node_modules
+rm pnpm-lock.yaml
+pnpm install
+```
+
+## Next Steps
+
+Now that your environment is set up:
+
+1. Read the [Code Style Guide](/contributing/code-style)
+2. Learn about [Testing](/contributing/testing)
+3. Check out [open issues](https://github.com/chatwoot/chatwoot/issues) to find something to work on
+4. Join the [Discord community](https://discord.gg/cJXdrwS) to connect with other contributors

@@ -1,0 +1,468 @@
+---
+title: Dashboard Apps
+description: Extend Chatwoot with custom iframe-based applications
+---
+
+Dashboard Apps enable you to embed custom web applications directly into your Chatwoot dashboard using iframes. This powerful feature allows you to integrate proprietary tools, internal systems, or third-party services that aren't available as native integrations.
+
+## Features
+
+- **Iframe Embedding**: Display external web applications in Chatwoot
+- **Multiple Apps**: Configure multiple dashboard apps per account
+- **Flexible Content**: Support for multiple iframe sources per app
+- **HTTPS Support**: Secure iframe loading with HTTPS validation
+- **Account-Level**: Available across all users in the account
+- **Custom Integration**: Build integrations for any web-based tool
+
+## Use Cases
+
+Dashboard Apps are perfect for:
+
+- **Internal Tools**: Embed company-specific dashboards or utilities
+- **Custom CRM**: Display custom CRM interfaces
+- **Analytics Dashboards**: Show real-time metrics and reports
+- **Knowledge Bases**: Quick access to internal documentation
+- **Ticketing Systems**: Integrate with existing ticket management
+- **Admin Panels**: Custom administrative interfaces
+- **Third-Party Apps**: Services that support iframe embedding
+
+## Prerequisites
+
+- Admin access to your Chatwoot account
+- Web application accessible via HTTPS
+- Application supports iframe embedding (no X-Frame-Options restrictions)
+
+## Creating a Dashboard App
+
+### Step 1: Prepare Your Application
+
+Ensure your web application:
+
+1. Is accessible via HTTPS (HTTP URLs are not allowed)
+2. Doesn't block iframe embedding with `X-Frame-Options` or CSP headers
+3. Has a responsive design that works in an iframe context
+4. Handles cross-origin communication if needed
+
+### Step 2: Create the App in Chatwoot
+
+1. Navigate to **Settings** > **Integrations** in Chatwoot
+2. Find **Dashboard Apps** in the integrations list
+3. Click **Configure** or **Add New**
+4. Fill in the required information:
+
+**Title**
+```
+My Custom Tool
+```
+A descriptive name for your dashboard app.
+
+**Content**
+```json
+[
+  {
+    "type": "frame",
+    "url": "https://example.com/dashboard"
+  }
+]
+```
+An array of iframe configurations.
+
+5. Click **Create**
+
+### Step 3: Access Your Dashboard App
+
+1. Navigate to the Dashboard Apps section in Chatwoot
+2. Your custom app will appear in the list
+3. Click to open and view the embedded application
+
+## Content Configuration
+
+Dashboard Apps use a JSON array to define iframe content:
+
+### Basic Configuration
+
+```json
+[
+  {
+    "type": "frame",
+    "url": "https://example.com/dashboard"
+  }
+]
+```
+
+### Multiple Iframes
+
+You can embed multiple iframes in a single dashboard app:
+
+```json
+[
+  {
+    "type": "frame",
+    "url": "https://example.com/dashboard"
+  },
+  {
+    "type": "frame",
+    "url": "https://analytics.example.com/reports"
+  },
+  {
+    "type": "frame",
+    "url": "https://tools.example.com/admin"
+  }
+]
+```
+
+## Schema Validation
+
+The content field is validated against a JSON schema:
+
+```json
+{
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["url", "type"],
+    "properties": {
+      "type": {
+        "enum": ["frame"]
+      },
+      "url": {
+        "format": "uri",
+        "pattern": "^https?://"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "minItems": 1
+}
+```
+
+**Requirements:**
+- Content must be an array
+- At least one item is required
+- Each item must have `type` and `url` properties
+- Type must be "frame"
+- URL must be a valid URI starting with `http://` or `https://`
+- HTTPS is strongly recommended and may be required
+
+## API Integration
+
+### List Dashboard Apps
+
+```bash
+GET /api/v1/accounts/{account_id}/dashboard_apps
+```
+
+**Response:**
+```json
+[
+  {
+    "id": 1,
+    "title": "My Custom Tool",
+    "content": [
+      {
+        "type": "frame",
+        "url": "https://example.com/dashboard"
+      }
+    ],
+    "user_id": 123,
+    "account_id": 1,
+    "created_at": "2024-01-15T10:00:00Z",
+    "updated_at": "2024-01-15T10:00:00Z"
+  }
+]
+```
+
+### Get Single Dashboard App
+
+```bash
+GET /api/v1/accounts/{account_id}/dashboard_apps/{id}
+```
+
+### Create Dashboard App
+
+```bash
+POST /api/v1/accounts/{account_id}/dashboard_apps
+Content-Type: application/json
+
+{
+  "dashboard_app": {
+    "title": "My Custom Tool",
+    "content": [
+      {
+        "type": "frame",
+        "url": "https://example.com/dashboard"
+      }
+    ]
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "id": 1,
+  "title": "My Custom Tool",
+  "content": [...],
+  "user_id": 123,
+  "account_id": 1,
+  "created_at": "2024-01-15T10:00:00Z",
+  "updated_at": "2024-01-15T10:00:00Z"
+}
+```
+
+### Update Dashboard App
+
+```bash
+PATCH /api/v1/accounts/{account_id}/dashboard_apps/{id}
+Content-Type: application/json
+
+{
+  "dashboard_app": {
+    "title": "Updated Tool Name",
+    "content": [
+      {
+        "type": "frame",
+        "url": "https://example.com/new-dashboard"
+      }
+    ]
+  }
+}
+```
+
+### Delete Dashboard App
+
+```bash
+DELETE /api/v1/accounts/{account_id}/dashboard_apps/{id}
+```
+
+**Response:** `204 No Content`
+
+## Implementation Details
+
+Dashboard Apps are implemented using:
+
+- **Model**: `DashboardApp`
+- **Controller**: `Api::V1::Accounts::DashboardAppsController`
+- **Validation**: JSON Schema validation for content structure
+- **Storage**: JSONB field for flexible content structure
+
+### Database Schema
+
+```ruby
+create_table "dashboard_apps" do |t|
+  t.string "title", null: false
+  t.jsonb "content"
+  t.bigint "account_id", null: false
+  t.bigint "user_id"
+  t.datetime "created_at", null: false
+  t.datetime "updated_at", null: false
+  t.index ["account_id"], name: "index_dashboard_apps_on_account_id"
+  t.index ["user_id"], name: "index_dashboard_apps_on_user_id"
+end
+```
+
+### Model Validation
+
+```ruby:workspace/source/app/models/dashboard_app.rb
+class DashboardApp < ApplicationRecord
+  belongs_to :user
+  belongs_to :account
+  validate :validate_content
+
+  private
+
+  def validate_content
+    # Validates content against JSON schema
+    # Ensures proper structure and URL format
+  end
+end
+```
+
+## Advanced Usage
+
+### Passing Context to Iframes
+
+You can pass context to your embedded applications using query parameters:
+
+```json
+[
+  {
+    "type": "frame",
+    "url": "https://example.com/dashboard?account_id={{account_id}}&user_id={{user_id}}"
+  }
+]
+```
+
+**Note**: Query parameter interpolation must be implemented in your frontend code.
+
+### Handling Authentication
+
+For applications requiring authentication:
+
+1. **Token-Based**: Pass authentication tokens via query parameters
+2. **Session Cookies**: Ensure same-origin or proper CORS setup
+3. **OAuth**: Implement OAuth flow before embedding
+4. **SSO**: Use single sign-on for seamless access
+
+### Cross-Origin Communication
+
+If your embedded app needs to communicate with Chatwoot:
+
+```javascript
+// In your embedded application
+window.parent.postMessage({
+  type: 'notification',
+  message: 'Action completed'
+}, 'https://your-chatwoot-domain.com');
+
+// Listen for messages from Chatwoot
+window.addEventListener('message', (event) => {
+  if (event.origin === 'https://your-chatwoot-domain.com') {
+    console.log('Received from Chatwoot:', event.data);
+  }
+});
+```
+
+## Troubleshooting
+
+### Iframe Not Loading
+
+**Issue**: Dashboard app shows blank or refuses to load.
+
+**Solution**:
+1. Verify the URL is accessible and returns content
+2. Check that the site allows iframe embedding:
+   ```bash
+   curl -I https://example.com/dashboard
+   # Look for X-Frame-Options header
+   ```
+3. Ensure HTTPS is used (HTTP may be blocked)
+4. Check browser console for CSP or X-Frame-Options errors
+
+### Validation Error
+
+**Issue**: "Invalid data" error when creating dashboard app.
+
+**Solution**:
+1. Verify content is a valid JSON array
+2. Ensure each item has `type` and `url` properties
+3. Check that URLs start with `http://` or `https://`
+4. Use a JSON validator to check syntax
+
+Example of valid content:
+```json
+[
+  {
+    "type": "frame",
+    "url": "https://example.com/dashboard"
+  }
+]
+```
+
+### Content Not Displaying
+
+**Issue**: Dashboard app created but content doesn't appear.
+
+**Solution**:
+1. Check that content array is not empty (`minItems: 1`)
+2. Verify each URL is valid and accessible
+3. Test URLs directly in a browser
+4. Check network tab for failed iframe requests
+
+### X-Frame-Options Blocking
+
+**Issue**: "Refused to display in a frame" error.
+
+**Solution**:
+1. The target site blocks iframe embedding
+2. Options:
+   - Contact the site owner to allow your Chatwoot domain
+   - Use a proxy service that removes X-Frame-Options
+   - Build a custom integration instead of using iframes
+3. Check the site's Content Security Policy
+
+### Mixed Content Errors
+
+**Issue**: Iframes blocked on HTTPS Chatwoot instances.
+
+**Solution**:
+1. Ensure all iframe URLs use HTTPS
+2. HTTP content cannot be loaded in HTTPS pages
+3. Upgrade your embedded applications to HTTPS
+
+## Security Considerations
+
+### URL Validation
+
+- Only HTTPS URLs should be used in production
+- URLs are validated against URI format
+- Pattern matching ensures proper protocol
+
+### Content Security Policy
+
+If you host Chatwoot with strict CSP:
+
+```
+Content-Security-Policy: frame-src https://example.com https://analytics.example.com;
+```
+
+Add your dashboard app domains to the `frame-src` directive.
+
+### Data Privacy
+
+- Embedded applications can access any data visible in the iframe
+- Be cautious about displaying sensitive information
+- Consider authentication and authorization in embedded apps
+- Review privacy policies of embedded services
+
+### X-Frame-Options
+
+Chatwoot should not set `X-Frame-Options` headers that would block your dashboard apps:
+
+```
+X-Frame-Options: SAMEORIGIN
+```
+
+Or use CSP `frame-ancestors` directive:
+
+```
+Content-Security-Policy: frame-ancestors 'self' https://trusted-domain.com;
+```
+
+## Best Practices
+
+1. **Use HTTPS**: Always use HTTPS for embedded applications
+2. **Test First**: Verify applications work in iframes before adding
+3. **Descriptive Titles**: Use clear, descriptive titles for dashboard apps
+4. **Minimal Apps**: Don't create too many dashboard apps
+5. **Responsive Design**: Ensure embedded apps work at various viewport sizes
+6. **Error Handling**: Implement graceful error handling in embedded apps
+7. **Performance**: Monitor iframe load times and optimize
+8. **Documentation**: Document the purpose and usage of each dashboard app
+
+## Limitations
+
+- **Iframe Restrictions**: Subject to browser iframe security policies
+- **No Server-Side Rendering**: Content is client-side only
+- **Same-Origin Limitations**: Communication requires postMessage API
+- **Performance**: Multiple iframes can impact page load time
+- **Mobile Support**: Some embedded apps may not be mobile-friendly
+
+## Removing Dashboard Apps
+
+To remove a dashboard app:
+
+1. Navigate to **Settings** > **Integrations** > **Dashboard Apps**
+2. Find the app you want to remove
+3. Click **Delete**
+4. Confirm the removal
+
+This permanently deletes the dashboard app configuration.
+
+## Next Steps
+
+- Design responsive embedded applications
+- Implement authentication for embedded apps
+- Set up cross-origin communication if needed
+- Monitor usage and performance of dashboard apps
+- Explore building custom Chatwoot integrations for deeper functionality

@@ -1,0 +1,757 @@
+---
+title: Troubleshooting
+description: Common issues and solutions for Chatwoot self-hosted installations
+---
+
+## Overview
+
+This guide covers common issues you may encounter with self-hosted Chatwoot and their solutions.
+
+## Health Check and Diagnostics
+
+### Quick Health Check
+
+```bash
+#!/bin/bash
+# Quick diagnostic script
+
+echo "=== Chatwoot Health Check ==="
+echo ""
+
+# 1. Web server
+echo "[1/6] Checking web server..."
+if curl -sf http://localhost:3000/health > /dev/null; then
+  echo "✓ Web server is running"
+else
+  echo "✗ Web server is not responding"
+fi
+
+# 2. Database
+echo "[2/6] Checking database connection..."
+if psql -U postgres -d chatwoot_production -c "SELECT 1" > /dev/null 2>&1; then
+  echo "✓ Database is accessible"
+else
+  echo "✗ Database connection failed"
+fi
+
+# 3. Redis
+echo "[3/6] Checking Redis..."
+if redis-cli PING > /dev/null 2>&1; then
+  echo "✓ Redis is running"
+else
+  echo "✗ Redis is not responding"
+fi
+
+# 4. Sidekiq
+echo "[4/6] Checking Sidekiq..."
+if ps aux | grep -v grep | grep -q sidekiq; then
+  echo "✓ Sidekiq process is running"
+else
+  echo "✗ Sidekiq is not running"
+fi
+
+# 5. Disk space
+echo "[5/6] Checking disk space..."
+DISK_USAGE=$(df -h / | awk 'NR==2 {print $5}' | sed 's/%//')
+if [ "$DISK_USAGE" -lt 90 ]; then
+  echo "✓ Disk usage: ${DISK_USAGE}%"
+else
+  echo "⚠ Disk usage critical: ${DISK_USAGE}%"
+fi
+
+# 6. Ports
+echo "[6/6] Checking ports..."
+if netstat -tuln | grep -q ":3000"; then
+  echo "✓ Port 3000 is listening"
+else
+  echo "✗ Port 3000 is not listening"
+fi
+
+echo ""
+echo "=== Diagnostic Complete ==="
+```
+
+## Application Issues
+
+### Service Won't Start
+
+#### Symptom
+Rails server or Sidekiq fails to start
+
+#### Diagnosis
+
+```bash
+# Check service status
+systemctl status chatwoot-web
+systemctl status chatwoot-worker
+
+# View recent logs
+journalctl -u chatwoot-web -n 100
+journalctl -u chatwoot-worker -n 100
+
+# Check application logs
+tail -100 /home/chatwoot/chatwoot/log/production.log
+
+# For Docker
+docker-compose logs rails
+docker-compose logs sidekiq
+```
+
+#### Common Causes & Solutions
+
+**Missing environment variables:**
+
+```bash
+# Verify required variables
+env | grep -E "POSTGRES|REDIS|SECRET_KEY_BASE"
+
+# Generate missing SECRET_KEY_BASE
+bundle exec rails secret
+# Add to .env file
+echo "SECRET_KEY_BASE=$(bundle exec rails secret)" >> .env
+```
+
+**Database connection failure:**
+
+```bash
+# Test database connection
+psql -h localhost -U postgres -d chatwoot_production -c "SELECT 1"
+
+# Check database exists
+psql -h localhost -U postgres -c "\l" | grep chatwoot
+
+# Create if missing
+RAILS_ENV=production bundle exec rails db:create
+RAILS_ENV=production bundle exec rails db:migrate
+```
+
+**Redis connection failure:**
+
+```bash
+# Test Redis connection
+redis-cli -u "$REDIS_URL" PING
+
+# Check Redis is running
+systemctl status redis
+# or
+ps aux | grep redis
+
+# Start if not running
+systemctl start redis
+```
+
+**Port already in use:**
+
+```bash
+# Check what's using port 3000
+lsof -i :3000
+netstat -tuln | grep 3000
+
+# Kill conflicting process
+kill -9 <PID>
+
+# Or use different port
+export PORT=3001
+bundle exec rails s -p 3001
+```
+
+### 500 Internal Server Error
+
+#### Diagnosis
+
+```bash
+# Check production logs for stack trace
+tail -f log/production.log
+
+# Enable debug logging temporarily
+export RAILS_LOG_LEVEL=debug
+systemctl restart chatwoot-web
+
+# Check for specific errors
+grep -A 10 "ERROR" log/production.log | tail -50
+```
+
+#### Common Causes
+
+**Database migration pending:**
+
+```bash
+# Check migration status
+RAILS_ENV=production bundle exec rails db:migrate:status
+
+# Run pending migrations
+RAILS_ENV=production bundle exec rails db:migrate
+
+# Restart services
+systemctl restart chatwoot-web chatwoot-worker
+```
+
+**Asset compilation failed:**
+
+```bash
+# Recompile assets
+RAILS_ENV=production bundle exec rails assets:clobber
+RAILS_ENV=production bundle exec rails assets:precompile
+
+# Check for errors
+ls -lh public/packs/manifest.json
+```
+
+**Permission issues:**
+
+```bash
+# Fix ownership
+sudo chown -R chatwoot:chatwoot /home/chatwoot/chatwoot
+
+# Fix log permissions
+sudo chmod -R 755 /home/chatwoot/chatwoot/log
+sudo chmod -R 755 /home/chatwoot/chatwoot/tmp
+```
+
+### Authentication Failures
+
+#### User can't login
+
+```bash
+# Check user exists
+RAILS_ENV=production bundle exec rails runner "puts User.find_by(email: 'user@example.com').inspect"
+
+# Reset password
+RAILS_ENV=production bundle exec rails runner "
+  user = User.find_by(email: 'user@example.com')
+  user.update(password: 'newpassword123')
+  puts 'Password reset successful'
+"
+
+# Confirm user account
+RAILS_ENV=production bundle exec rails runner "
+  user = User.find_by(email: 'user@example.com')
+  user.confirm
+  puts 'User confirmed'
+"
+```
+
+#### API authentication issues
+
+```bash
+# Verify API token
+curl -H "api_access_token: YOUR_TOKEN" http://localhost:3000/api/v1/profile
+
+# Generate new token
+RAILS_ENV=production bundle exec rails runner "
+  user = User.find_by(email: 'user@example.com')
+  puts user.access_token.token
+"
+```
+
+## Database Issues
+
+### Connection Pool Exhausted
+
+#### Symptom
+`ActiveRecord::ConnectionTimeoutError: could not obtain a database connection within 5.000 seconds`
+
+#### Solution
+
+```bash
+# Check current connections
+psql -U postgres -d chatwoot_production -c "
+  SELECT count(*), state
+  FROM pg_stat_activity
+  WHERE datname = 'chatwoot_production'
+  GROUP BY state;
+"
+
+# Increase pool size
+export RAILS_MAX_THREADS=10
+export SIDEKIQ_CONCURRENCY=20
+
+# Update database.yml or environment
+systemctl restart chatwoot-web chatwoot-worker
+
+# Kill idle connections
+psql -U postgres -d chatwoot_production -c "
+  SELECT pg_terminate_backend(pid)
+  FROM pg_stat_activity
+  WHERE datname = 'chatwoot_production'
+    AND state = 'idle'
+    AND state_change < current_timestamp - INTERVAL '10 minutes';
+"
+```
+
+### Slow Database Queries
+
+#### Diagnosis
+
+```sql
+-- Find slow queries
+SELECT
+  pid,
+  now() - query_start AS duration,
+  state,
+  query
+FROM pg_stat_activity
+WHERE state = 'active'
+  AND now() - query_start > interval '5 seconds'
+ORDER BY duration DESC;
+
+-- Check for locks
+SELECT
+  pg_stat_activity.pid,
+  pg_stat_activity.query,
+  pg_locks.granted
+FROM pg_stat_activity
+JOIN pg_locks ON pg_stat_activity.pid = pg_locks.pid
+WHERE NOT pg_locks.granted;
+```
+
+#### Solutions
+
+```bash
+# Analyze database
+RAILS_ENV=production bundle exec rails runner "ActiveRecord::Base.connection.execute('ANALYZE')"
+
+# Vacuum full (requires downtime)
+psql -U postgres -d chatwoot_production -c "VACUUM FULL ANALYZE;"
+
+# Check for missing indexes
+RAILS_ENV=production bundle exec rails runner "
+  ActiveRecord::Base.connection.tables.each do |table|
+    puts table
+    puts ActiveRecord::Base.connection.indexes(table).inspect
+  end
+"
+```
+
+### Database Disk Full
+
+```bash
+# Check database size
+psql -U postgres -c "
+  SELECT pg_size_pretty(pg_database_size('chatwoot_production'));
+"
+
+# Check table sizes
+psql -U postgres -d chatwoot_production -c "
+  SELECT schemaname, tablename,
+    pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size
+  FROM pg_tables
+  WHERE schemaname = 'public'
+  ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC
+  LIMIT 10;
+"
+
+# Vacuum to reclaim space
+psql -U postgres -d chatwoot_production -c "VACUUM FULL;"
+
+# Archive old data
+RAILS_ENV=production bundle exec rails runner "
+  # Example: Archive conversations older than 1 year
+  Conversation.where('created_at < ?', 1.year.ago).where(status: 'resolved').destroy_all
+"
+```
+
+## Sidekiq Issues
+
+### Jobs Not Processing
+
+#### Diagnosis
+
+```bash
+# Check Sidekiq is running
+ps aux | grep sidekiq
+systemctl status chatwoot-worker
+
+# Check queue sizes
+redis-cli LLEN queue:default
+redis-cli LLEN queue:critical
+redis-cli LLEN queue:high
+
+# Check for failed jobs
+redis-cli ZCARD retry
+redis-cli ZCARD dead
+
+# View Sidekiq web UI
+# Login as super admin and visit /monitoring/sidekiq
+```
+
+#### Solutions
+
+```bash
+# Restart Sidekiq
+systemctl restart chatwoot-worker
+
+# Clear stuck jobs (CAUTION: This deletes all jobs)
+redis-cli DEL queue:default
+
+# Retry all failed jobs
+RAILS_ENV=production bundle exec rails runner "
+  require 'sidekiq/api'
+  Sidekiq::RetrySet.new.retry_all
+"
+
+# Clear dead jobs
+RAILS_ENV=production bundle exec rails runner "
+  require 'sidekiq/api'
+  Sidekiq::DeadSet.new.clear
+"
+```
+
+### High Memory Usage
+
+```bash
+# Check Sidekiq memory
+ps aux | grep sidekiq | awk '{print $6}'
+
+# Reduce concurrency
+export SIDEKIQ_CONCURRENCY=5
+systemctl restart chatwoot-worker
+
+# Restart Sidekiq periodically via cron
+0 */6 * * * systemctl restart chatwoot-worker
+```
+
+### Jobs Timing Out
+
+#### From sidekiq.yml: timeout is 25 seconds
+
+```bash
+# Check for long-running jobs
+RAILS_ENV=production bundle exec rails runner "
+  require 'sidekiq/api'
+  workers = Sidekiq::Workers.new
+  workers.each do |process_id, thread_id, work|
+    puts work.inspect if Time.now - work['run_at'] > 60
+  end
+"
+
+# Increase timeout in config/sidekiq.yml
+# :timeout: 60
+
+# Or optimize the job
+# Break into smaller chunks
+# Add proper error handling
+```
+
+## Redis Issues
+
+### Redis Out of Memory
+
+```bash
+# Check Redis memory
+redis-cli INFO memory | grep used_memory_human
+
+# Check max memory
+redis-cli CONFIG GET maxmemory
+
+# Increase max memory
+redis-cli CONFIG SET maxmemory 4gb
+redis-cli CONFIG SET maxmemory-policy allkeys-lru
+
+# Make permanent in redis.conf
+echo "maxmemory 4gb" | sudo tee -a /etc/redis/redis.conf
+echo "maxmemory-policy allkeys-lru" | sudo tee -a /etc/redis/redis.conf
+sudo systemctl restart redis
+
+# Clear cache if needed (CAUTION: Clears all data)
+redis-cli FLUSHDB
+```
+
+### Redis Connection Refused
+
+```bash
+# Check Redis is running
+systemctl status redis
+
+# Start Redis
+systemctl start redis
+
+# Check Redis port
+netstat -tuln | grep 6379
+
+# Test connection
+redis-cli PING
+
+# Check REDIS_URL
+echo $REDIS_URL
+
+# Test with password
+redis-cli -a your_password PING
+```
+
+### High Redis Latency
+
+```bash
+# Check latency
+redis-cli --latency
+
+# Check slow log
+redis-cli SLOWLOG GET 10
+
+# Identify slow commands
+redis-cli --bigkeys
+
+# Disable persistence temporarily
+redis-cli CONFIG SET save ""
+```
+
+## File Upload Issues
+
+### Attachments Not Uploading
+
+```bash
+# Check storage directory permissions
+ls -la /app/storage
+sudo chown -R chatwoot:chatwoot /app/storage
+
+# Check disk space
+df -h /app/storage
+
+# Check max upload size in nginx
+# /etc/nginx/nginx.conf
+# client_max_body_size 20M;
+
+# Check Rails config
+grep -r "max_file_size" config/
+```
+
+### Active Storage Issues
+
+```bash
+# Check Active Storage service
+RAILS_ENV=production bundle exec rails runner "puts ActiveStorage::Blob.service.inspect"
+
+# Verify S3 credentials (if using S3)
+export AWS_ACCESS_KEY_ID=your_key
+export AWS_SECRET_ACCESS_KEY=your_secret
+export S3_BUCKET_NAME=your_bucket
+
+# Test S3 connection
+RAILS_ENV=production bundle exec rails runner "
+  require 'aws-sdk-s3'
+  s3 = Aws::S3::Client.new
+  puts s3.list_buckets.inspect
+"
+
+# Check blob records
+RAILS_ENV=production bundle exec rails runner "puts ActiveStorage::Blob.count"
+```
+
+## Email Delivery Issues
+
+### Emails Not Sending
+
+```bash
+# Check SMTP configuration
+env | grep SMTP
+
+# Test email sending
+RAILS_ENV=production bundle exec rails runner "
+  ActionMailer::Base.mail(
+    from: 'noreply@example.com',
+    to: 'test@example.com',
+    subject: 'Test email',
+    body: 'Test body'
+  ).deliver_now
+"
+
+# Check Sidekiq mailers queue
+redis-cli LLEN queue:mailers
+
+# View failed email jobs
+grep "ActionMailer" log/production.log | tail -50
+```
+
+### Email Configuration
+
+```bash
+# Required environment variables
+SMTP_ADDRESS=smtp.gmail.com
+SMTP_PORT=587
+SMTP_DOMAIN=example.com
+SMTP_USERNAME=your_email@gmail.com
+SMTP_PASSWORD=your_password
+SMTP_AUTHENTICATION=plain
+SMTP_ENABLE_STARTTLS_AUTO=true
+MAILER_SENDER_EMAIL=noreply@example.com
+```
+
+## WebSocket/Cable Issues
+
+### Real-time Updates Not Working
+
+```bash
+# Check Action Cable configuration
+grep -r "cable" config/environments/production.rb
+
+# Verify Redis connection for Action Cable
+grep REDIS_URL .env
+
+# Check browser console for errors
+# Look for WebSocket connection failures
+
+# Verify nginx WebSocket configuration
+# Ensure proxy_set_header Upgrade $http_upgrade;
+# Ensure proxy_set_header Connection "upgrade";
+```
+
+## Performance Issues
+
+### High CPU Usage
+
+```bash
+# Identify process
+top -c
+
+# Check for runaway jobs
+RAILS_ENV=production bundle exec rails runner "
+  require 'sidekiq/api'
+  Sidekiq::Workers.new.each { |p, t, w| puts w.inspect }
+"
+
+# Check database queries
+# Look for N+1 queries in logs
+grep "SELECT" log/production.log | wc -l
+
+# Enable query logging
+export RAILS_LOG_LEVEL=debug
+```
+
+### High Memory Usage
+
+```bash
+# Check memory by process
+ps aux --sort=-%mem | head -10
+
+# Monitor memory over time
+while true; do
+  ps aux | grep -E "rails|sidekiq" | awk '{sum+=$6} END {print sum/1024 " MB"}'
+  sleep 60
+done
+
+# Restart services to free memory
+systemctl restart chatwoot-web chatwoot-worker
+
+# Add memory limits in systemd
+# MemoryLimit=2G in service file
+```
+
+### Slow Response Times
+
+```bash
+# Enable request timing in logs
+export RAILS_LOG_LEVEL=info
+
+# Find slow requests
+grep "Completed" log/production.log | awk '$NF>1000' | tail -20
+
+# Check database query performance
+psql -U postgres -d chatwoot_production -c "
+  SELECT calls, mean_exec_time, query
+  FROM pg_stat_statements
+  ORDER BY mean_exec_time DESC
+  LIMIT 10;
+"
+
+# Add database indexes
+# See [Scaling Strategies](/self-hosting/scaling) for optimization tips
+```
+
+## Docker-Specific Issues
+
+### Container Crashes
+
+```bash
+# Check container status
+docker-compose ps
+
+# View logs
+docker-compose logs rails
+docker-compose logs sidekiq
+
+# Check resource limits
+docker stats
+
+# Restart containers
+docker-compose restart rails sidekiq
+
+# Rebuild if needed
+docker-compose build
+docker-compose up -d
+```
+
+### Volume Permissions
+
+```bash
+# Check volume ownership
+docker exec chatwoot-rails ls -la /app/storage
+
+# Fix permissions
+docker exec chatwoot-rails chown -R chatwoot:chatwoot /app/storage
+
+# Or rebuild with correct UID/GID
+# In Dockerfile:
+# RUN useradd -u 1000 -m chatwoot
+```
+
+## Getting Help
+
+### Gather Debug Information
+
+```bash
+#!/bin/bash
+# debug-info.sh - Gather system information
+
+echo "=== Chatwoot Debug Information ==="
+echo ""
+
+echo "Version:"
+bundle exec rails runner "puts Chatwoot.config[:version]" 2>/dev/null || echo "Unable to determine"
+
+echo "
+Environment:"
+env | grep -E "RAILS_ENV|NODE_ENV|POSTGRES|REDIS|STORAGE" | sort
+
+echo "
+Ruby Version:"
+ruby --version
+
+echo "
+Rails Version:"
+bundle exec rails --version
+
+echo "
+Database Status:"
+psql -U postgres -d chatwoot_production -c "SELECT version()" 2>/dev/null || echo "Cannot connect"
+
+echo "
+Redis Status:"
+redis-cli PING 2>/dev/null || echo "Cannot connect"
+
+echo "
+Recent Errors (last 20):"
+grep -i error log/production.log | tail -20
+
+echo "
+Disk Usage:"
+df -h
+
+echo "
+Memory Usage:"
+free -h
+```
+
+### Support Channels
+
+- **GitHub Issues**: https://github.com/chatwoot/chatwoot/issues
+- **Discord Community**: https://discord.gg/cJXdrwS
+- **Documentation**: https://www.chatwoot.com/docs
+- **Forum**: https://github.com/chatwoot/chatwoot/discussions
+
+When asking for help, provide:
+1. Chatwoot version
+2. Installation method (Docker/Source)
+3. Operating system
+4. Error messages from logs
+5. Steps to reproduce
+6. Output from debug script above

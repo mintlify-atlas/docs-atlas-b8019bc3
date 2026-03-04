@@ -1,0 +1,271 @@
+---
+title: SMS Channel
+description: Send and receive SMS messages through Twilio integration
+---
+
+Connect your Twilio account to Chatwoot to manage SMS conversations from your unified inbox.
+
+## Prerequisites
+
+- Twilio account
+- Twilio phone number
+- Account SID and Auth Token
+
+## Setup
+
+<Steps>
+  <Step title="Get Twilio credentials">
+    1. Log in to [Twilio Console](https://console.twilio.com/)
+    2. From dashboard, copy:
+       - **Account SID**
+       - **Auth Token**
+    3. Get or purchase a Twilio phone number
+  </Step>
+
+  <Step title="Add SMS inbox in Chatwoot">
+    Go to **Settings** → **Inboxes** → **Add Inbox** → **SMS**
+  </Step>
+
+  <Step title="Select provider">
+    Choose **Twilio** as the SMS provider
+  </Step>
+
+  <Step title="Enter Twilio credentials">
+    - **Account SID**: Your Twilio Account SID
+    - **Auth Token**: Your Twilio Auth Token
+    - **Phone Number**: Your Twilio phone number (with country code, e.g., +1234567890)
+  </Step>
+
+  <Step title="Configure webhook in Twilio">
+    1. Copy the webhook URL from Chatwoot
+    2. In Twilio Console, go to **Phone Numbers** → **Active Numbers**
+    3. Select your phone number
+    4. Under **Messaging**, set:
+       - **A MESSAGE COMES IN**: Webhook, HTTP POST
+       - **URL**: Paste Chatwoot webhook URL
+    5. Save changes
+  </Step>
+
+  <Step title="Test the integration">
+    Send an SMS to your Twilio number. It should appear in Chatwoot within seconds.
+  </Step>
+</Steps>
+
+## Features
+
+- **Two-way SMS** - Send and receive text messages
+- **MMS support** - Send and receive images (if supported by Twilio number)
+- **Message history** - Full conversation threading
+- **Delivery status** - Track message delivery
+- **Contact management** - Automatic contact creation
+- **Phone number masking** - Use Twilio number for privacy
+
+## Twilio Phone Numbers
+
+### Number Types
+
+**Local Numbers**
+- Country-specific phone numbers
+- Best for local businesses
+- Lower cost
+
+**Toll-Free Numbers**
+- 1-800, 1-888, etc. (US/Canada)
+- Professional appearance
+- No charge to sender
+
+**Short Codes**
+- 5-6 digit numbers
+- High throughput
+- Requires approval and higher cost
+
+### Number Capabilities
+
+Ensure your Twilio number has:
+- ✅ SMS enabled
+- ✅ MMS enabled (if you want to send/receive images)
+- ✅ Voice enabled (optional, for call integration)
+
+## Sending SMS Messages
+
+### From Chatwoot UI
+
+1. Select the SMS conversation
+2. Type your message
+3. Click Send
+
+Messages are sent from your configured Twilio number.
+
+### Via API
+
+```http
+POST /api/v1/accounts/{account_id}/conversations/{id}/messages
+Content-Type: application/json
+api_access_token: YOUR_TOKEN
+
+{
+  "content": "Your message here",
+  "message_type": "outgoing",
+  "private": false
+}
+```
+
+## MMS (Multimedia Messages)
+
+### Sending Images
+
+Attach images to messages in Chatwoot. If your Twilio number supports MMS, images will be sent.
+
+### Supported Formats
+- Images: JPEG, PNG, GIF
+- Size limit: 5MB (carrier-dependent)
+
+<Note>
+Not all phone numbers and carriers support MMS. Messages will fail if recipient doesn't support MMS.
+</Note>
+
+## Message Templates
+
+Create canned responses for common SMS scenarios:
+
+- Order confirmations
+- Appointment reminders
+- Delivery notifications
+- Support responses
+
+See [Canned Responses](/ai/canned-responses) for setup.
+
+## Configuration Options
+
+<ParamField path="phone_number" type="string" required>
+  Twilio phone number with country code (e.g., +1234567890)
+</ParamField>
+
+<ParamField path="account_sid" type="string" required>
+  Twilio Account SID
+</ParamField>
+
+<ParamField path="auth_token" type="string" required>
+  Twilio Auth Token (encrypted at rest)
+</ParamField>
+
+<ParamField path="messaging_service_sid" type="string">
+  Optional: Twilio Messaging Service SID for advanced features
+</ParamField>
+
+## Best Practices
+
+<Check>Keep messages under 160 characters to avoid segmentation</Check>
+<Check>Include opt-out instructions (e.g., "Reply STOP to unsubscribe")</Check>
+<Check>Respect quiet hours (don't send messages late at night)</Check>
+<Check>Use canned responses for consistent messaging</Check>
+<Check>Monitor delivery failures and adjust</Check>
+<Check>Comply with SMS regulations (TCPA, GDPR, etc.)</Check>
+<Check>Get consent before sending promotional messages</Check>
+
+## SMS Regulations & Compliance
+
+### United States (TCPA)
+
+- Obtain prior express written consent
+- Include opt-out mechanism (e.g., STOP)
+- Honor opt-out requests immediately
+- Maintain do-not-call list
+
+### GDPR (Europe)
+
+- Get explicit consent before sending messages
+- Provide clear privacy policy
+- Allow users to access and delete their data
+- Keep records of consent
+
+### General Best Practices
+
+- Don't send messages to numbers without consent
+- Honor opt-out requests (STOP, UNSUBSCRIBE)
+- Include your business name in messages
+- Provide help keyword (e.g., HELP)
+- Keep records of consent and opt-outs
+
+## Handling Opt-Outs
+
+Automatically handle STOP keywords:
+
+1. User sends "STOP" or "UNSUBSCRIBE"
+2. Create automation rule to:
+   - Tag conversation as opted-out
+   - Block future messages to this number
+   - Send confirmation: "You've been unsubscribed"
+
+See [Automation Rules](/features/automation) for configuration.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Messages not arriving in Chatwoot">
+    - Verify webhook URL is correct in Twilio
+    - Check webhook is set to HTTP POST
+    - Ensure Chatwoot URL is publicly accessible
+    - Verify firewall allows Twilio webhook IPs
+    - Check Chatwoot logs for errors
+  </Accordion>
+
+  <Accordion title="Cannot send messages">
+    - Verify Twilio Account SID and Auth Token are correct
+    - Check Twilio phone number is correct (with country code)
+    - Ensure phone number has SMS capability
+    - Verify Twilio account has sufficient balance
+    - Check recipient number is valid
+  </Accordion>
+
+  <Accordion title="MMS not working">
+    - Verify Twilio number supports MMS
+    - Check recipient carrier supports MMS
+    - Ensure image file size is under 5MB
+    - Verify image format is supported (JPEG, PNG, GIF)
+    - Some carriers/countries don't support MMS
+  </Accordion>
+
+  <Accordion title="High message costs">
+    - Check message length (over 160 chars = multiple segments)
+    - Use SMS instead of MMS when possible
+    - Consider Twilio Messaging Services for better rates
+    - Monitor usage in Twilio Console
+    - Set up usage alerts
+  </Accordion>
+</AccordionGroup>
+
+## Twilio Pricing
+
+### SMS Costs (US)
+- **Outbound SMS**: ~$0.0079 per message
+- **Inbound SMS**: ~$0.0079 per message
+- **MMS**: ~$0.02 per message
+
+### Phone Number Costs
+- **Local number**: ~$1/month
+- **Toll-free number**: ~$2/month
+- **Short code**: ~$1,000/month
+
+<Note>
+Pricing varies by country. Check [Twilio Pricing](https://www.twilio.com/pricing) for current rates.
+</Note>
+
+## Rate Limits
+
+### Default Limits
+- **Long Code**: 1 message per second
+- **Toll-Free**: 3 messages per second
+- **Short Code**: 100 messages per second
+
+### Increasing Limits
+
+Contact Twilio support to request higher throughput.
+
+## Related Documentation
+
+- [Twilio SMS Documentation](https://www.twilio.com/docs/sms)
+- [TCPA Compliance Guide](https://www.twilio.com/docs/glossary/what-is-tcpa)
+- [Automation Rules](/features/automation)
+- [Canned Responses](/ai/canned-responses)
+- [Webhooks](/developers/webhooks)

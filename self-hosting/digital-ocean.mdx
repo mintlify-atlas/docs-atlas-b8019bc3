@@ -1,0 +1,517 @@
+---
+title: DigitalOcean Deployment
+description: Deploy Chatwoot on DigitalOcean using Droplets, App Platform, or one-click installation
+---
+
+# DigitalOcean Deployment
+
+Deploy Chatwoot on DigitalOcean's cloud infrastructure with multiple deployment options ranging from one-click apps to fully customized Kubernetes clusters.
+
+## Deployment Options
+
+### Option 1: One-Click Droplet (Recommended)
+
+Fastest way to get Chatwoot running on DigitalOcean.
+
+### Option 2: Manual Droplet Setup
+
+Full control over Ubuntu Droplet configuration.
+
+### Option 3: DigitalOcean App Platform
+
+Fully managed platform-as-a-service deployment.
+
+### Option 4: Kubernetes (DOKS)
+
+Scalable, production-ready Kubernetes deployment.
+
+## Option 1: One-Click Droplet
+
+### 1. Create Droplet
+
+1. Log in to [DigitalOcean](https://cloud.digitalocean.com)
+2. Click **Create** → **Droplets**
+3. Choose **Marketplace** tab
+4. Search for "Chatwoot" and select the image
+
+If Chatwoot isn't in the Marketplace, use the manual Ubuntu installation method below.
+
+### 2. Configure Droplet
+
+- **Plan**: Basic
+- **CPU**: Regular (2 GB / 1 CPU minimum)
+- **Region**: Choose closest to your users
+- **Authentication**: SSH keys (recommended) or password
+- **Hostname**: chatwoot-production
+
+### 3. Create & Access
+
+Click **Create Droplet** and wait for provisioning (1-2 minutes).
+
+SSH into your droplet:
+
+```bash
+ssh root@your_droplet_ip
+```
+
+### 4. Complete Setup
+
+Follow the on-screen instructions to configure:
+
+- Domain name
+- SSL certificate
+- Admin email
+
+## Option 2: Manual Droplet Setup
+
+Complete control with Ubuntu and the Chatwoot installation script.
+
+### 1. Create Ubuntu Droplet
+
+Create a new Droplet:
+
+- **Image**: Ubuntu 22.04 LTS x64
+- **Plan**: 
+  - Basic: $24/month (2 GB RAM, 2 vCPUs, 60 GB SSD)
+  - Production: $48/month (4 GB RAM, 2 vCPUs, 80 GB SSD)
+- **Datacenter**: Choose your region
+- **Authentication**: Add SSH key
+- **Hostname**: chatwoot-production
+
+### 2. SSH Into Droplet
+
+```bash
+ssh root@your_droplet_ip
+```
+
+### 3. Update System
+
+```bash
+apt update && apt upgrade -y
+```
+
+### 4. Install Chatwoot
+
+Use the official installation script:
+
+```bash
+wget https://get.chatwoot.app/linux/install.sh
+chmod +x install.sh
+./install.sh --install
+```
+
+### 5. Configure Domain (Optional)
+
+When prompted:
+
+- Enter your domain: `chat.yourdomain.com`
+- Enter email for SSL certificate
+- Confirm DNS is pointed to droplet IP
+
+The script will:
+- Install Nginx
+- Configure SSL via Let's Encrypt
+- Set up automatic renewal
+
+### 6. Access Chatwoot
+
+Once installation completes, access:
+
+```
+http://your_droplet_ip:3000
+# or
+https://chat.yourdomain.com
+```
+
+Create your admin account.
+
+## Option 3: DigitalOcean App Platform
+
+Deploy Chatwoot as a managed application.
+
+### Prerequisites
+
+- GitHub account
+- Fork the Chatwoot repository
+
+### 1. Fork Repository
+
+```bash
+# Visit https://github.com/chatwoot/chatwoot
+# Click "Fork" button
+```
+
+### 2. Create App
+
+1. Go to [App Platform](https://cloud.digitalocean.com/apps)
+2. Click **Create App**
+3. Choose **GitHub** as source
+4. Select your forked `chatwoot` repository
+5. Select branch: `master`
+6. **Autodeploy**: Enable
+
+### 3. Configure Resources
+
+#### Web Service
+
+- **Name**: chatwoot-web
+- **Environment**: 
+  - Type: `Web Service`
+  - Build Command: `bundle install && pnpm install && rake assets:precompile`
+  - Run Command: `bin/rails server -p $PORT -e $RAILS_ENV`
+- **Instance Size**: Professional (2 GB RAM, 1 vCPU) - $24/month
+- **Instance Count**: 1
+
+#### Worker Service
+
+- **Name**: chatwoot-worker
+- **Environment**:
+  - Type: `Worker`
+  - Run Command: `bundle exec sidekiq -C config/sidekiq.yml`
+- **Instance Size**: Professional (2 GB RAM, 1 vCPU) - $24/month
+- **Instance Count**: 1
+
+### 4. Add Databases
+
+Click **Add Resource** → **Database**
+
+#### PostgreSQL
+
+- **Engine**: PostgreSQL 16
+- **Plan**: Basic - $15/month (1 GB RAM, 10 GB disk)
+- **Note**: Requires manual pgvector extension setup
+
+#### Redis
+
+- **Engine**: Redis 7
+- **Plan**: Basic - $15/month (1 GB RAM)
+
+### 5. Environment Variables
+
+Add required environment variables:
+
+```bash
+SECRET_KEY_BASE=${generate_with: openssl rand -hex 64}
+RAILS_ENV=production
+NODE_ENV=production
+FRONTEND_URL=${APP_URL}
+RAILS_LOG_TO_STDOUT=enabled
+RAILS_SERVE_STATIC_FILES=true
+
+# Database (auto-configured by App Platform)
+DATABASE_URL=${chatwoot-db.DATABASE_URL}
+REDIS_URL=${chatwoot-redis.REDIS_URL}
+
+# Email (configure your SMTP)
+MAILER_SENDER_EMAIL=Chatwoot <support@yourdomain.com>
+SMTP_ADDRESS=smtp.sendgrid.net
+SMTP_PORT=587
+SMTP_USERNAME=apikey
+SMTP_PASSWORD=${YOUR_SENDGRID_API_KEY}
+SMTP_AUTHENTICATION=plain
+SMTP_ENABLE_STARTTLS_AUTO=true
+
+# Storage (use Spaces)
+ACTIVE_STORAGE_SERVICE=amazon
+S3_BUCKET_NAME=${YOUR_SPACE_NAME}
+AWS_ACCESS_KEY_ID=${SPACES_KEY}
+AWS_SECRET_ACCESS_KEY=${SPACES_SECRET}
+AWS_REGION=nyc3
+AWS_ENDPOINT=https://nyc3.digitaloceanspaces.com
+```
+
+### 6. Configure pgvector
+
+After database is created:
+
+```bash
+# Get database connection string from App Platform console
+psql "postgresql://user:pass@host:port/db?sslmode=require"
+
+# In psql, run:
+CREATE EXTENSION IF NOT EXISTS vector;
+```
+
+### 7. Deploy
+
+Click **Create Resources** to start deployment (10-15 minutes).
+
+### 8. Run Migrations
+
+After deployment, access the web service console:
+
+```bash
+bundle exec rails db:chatwoot_prepare
+```
+
+### 9. Configure Custom Domain
+
+1. Go to **Settings** → **Domains**
+2. Add domain: `chat.yourdomain.com`
+3. Update DNS:
+   ```
+   Type:  CNAME
+   Name:  chat
+   Value: your-app.ondigitalocean.app
+   ```
+4. Update `FRONTEND_URL` to match custom domain
+
+## DigitalOcean Spaces for Storage
+
+### 1. Create Space
+
+1. Go to **Spaces** in DigitalOcean
+2. Click **Create Space**
+3. Choose region
+4. Name: `chatwoot-uploads`
+5. Set **File Listing**: Private
+
+### 2. Configure CORS
+
+In Space settings, add CORS rule:
+
+```json
+[
+  {
+    "AllowedOrigins": ["https://your-domain.com"],
+    "AllowedMethods": ["GET", "PUT", "POST", "DELETE", "HEAD"],
+    "AllowedHeaders": ["*"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
+
+### 3. Generate API Keys
+
+1. Click **API** in sidebar
+2. **Spaces Keys** → **Generate New Key**
+3. Save Access Key and Secret Key
+
+### 4. Configure Chatwoot
+
+```bash
+# Update environment variables
+heroku config:set ACTIVE_STORAGE_SERVICE=amazon
+heroku config:set S3_BUCKET_NAME=chatwoot-uploads
+heroku config:set AWS_ACCESS_KEY_ID=your-spaces-key
+heroku config:set AWS_SECRET_ACCESS_KEY=your-spaces-secret
+heroku config:set AWS_REGION=nyc3
+heroku config:set AWS_ENDPOINT=https://nyc3.digitaloceanspaces.com
+```
+
+## Managed Database Configuration
+
+### Create Managed Databases
+
+#### PostgreSQL
+
+```bash
+# Create cluster
+doctl databases create chatwoot-pg \
+  --engine pg \
+  --version 16 \
+  --size db-s-2vcpu-4gb \
+  --region nyc3
+
+# Enable pgvector
+doctl databases sql chatwoot-pg \
+  --execute "CREATE EXTENSION IF NOT EXISTS vector;"
+
+# Get connection details
+doctl databases connection chatwoot-pg --format URI
+```
+
+#### Redis
+
+```bash
+# Create cluster
+doctl databases create chatwoot-redis \
+  --engine redis \
+  --version 7 \
+  --size db-s-1vcpu-1gb \
+  --region nyc3
+
+# Get connection details
+doctl databases connection chatwoot-redis --format URI
+```
+
+### Configure Chatwoot to Use Managed Databases
+
+On your Droplet, edit `/home/chatwoot/chatwoot/.env`:
+
+```bash
+# PostgreSQL (replace with your connection string)
+POSTGRES_HOST=chatwoot-pg-do-user-123-0.db.ondigitalocean.com
+POSTGRES_USERNAME=doadmin
+POSTGRES_PASSWORD=your-password
+POSTGRES_DATABASE=defaultdb
+POSTGRES_PORT=25060
+
+# Redis (replace with your connection string)
+REDIS_URL=rediss://default:password@chatwoot-redis-do-user-123-0.db.ondigitalocean.com:25061
+```
+
+Restart Chatwoot:
+
+```bash
+cwctl --restart
+```
+
+## Monitoring & Backups
+
+### Enable Droplet Monitoring
+
+1. Go to Droplet page
+2. Click **Monitoring** tab
+3. View CPU, memory, disk, and bandwidth usage
+
+### Set Up Alerts
+
+1. Click **Create Alert Policy**
+2. Configure thresholds:
+   - CPU usage > 80%
+   - Memory usage > 90%
+   - Disk usage > 80%
+
+### Database Backups
+
+Managed databases have automatic backups:
+
+```bash
+# List backups
+doctl databases backups list chatwoot-pg
+
+# Restore from backup
+doctl databases restore chatwoot-pg <backup-id>
+```
+
+### Droplet Snapshots
+
+Create manual snapshots:
+
+1. Power off Droplet (recommended)
+2. Click **Snapshots** tab
+3. Click **Take Snapshot**
+4. Wait for completion
+
+Restore from snapshot:
+
+1. Go to **Images** → **Snapshots**
+2. Click **More** → **Create Droplet**
+
+## Scaling on DigitalOcean
+
+### Vertical Scaling (Resize Droplet)
+
+1. Power off Droplet
+2. Click **Resize**
+3. Choose new plan
+4. Click **Resize Droplet**
+5. Power on after resize
+
+### Horizontal Scaling (Load Balancer)
+
+#### 1. Create Load Balancer
+
+```bash
+doctl compute load-balancer create \
+  --name chatwoot-lb \
+  --region nyc3 \
+  --forwarding-rules "entry_protocol:https,entry_port:443,target_protocol:http,target_port:3000,tls_passthrough:false" \
+  --health-check "protocol:http,port:3000,path:/api,check_interval_seconds:10,response_timeout_seconds:5,healthy_threshold:5,unhealthy_threshold:3"
+```
+
+#### 2. Create Web-Only Droplets
+
+Create multiple droplets using web-only deployment:
+
+```bash
+# On each droplet
+wget https://get.chatwoot.app/linux/install.sh
+chmod +x install.sh
+./install.sh --install --web-only
+```
+
+#### 3. Add Droplets to Load Balancer
+
+```bash
+doctl compute load-balancer add-droplets <lb-id> \
+  --droplet-ids <droplet-id-1>,<droplet-id-2>
+```
+
+#### 4. Create Worker Droplet
+
+```bash
+# On worker droplet
+./install.sh --install --worker-only
+```
+
+## Cost Estimation
+
+### Small Deployment (10-50 users)
+
+- Droplet (Basic): $24/month
+- Total: $24/month
+
+### Medium Deployment (50-200 users)
+
+- Droplet (4 GB): $48/month
+- Managed PostgreSQL: $15/month
+- Managed Redis: $15/month
+- Spaces: $5/month
+- Total: $83/month
+
+### Large Deployment (200+ users)
+
+- Load Balancer: $12/month
+- Droplets (2×4GB web): $96/month
+- Droplet (4GB worker): $48/month
+- Managed PostgreSQL: $60/month
+- Managed Redis: $15/month
+- Spaces: $5/month
+- Total: $236/month
+
+## Troubleshooting
+
+### Connection Timeout
+
+Check firewall:
+
+```bash
+# View firewall rules
+ufw status
+
+# Allow HTTP/HTTPS
+ufw allow 80/tcp
+ufw allow 443/tcp
+```
+
+### Out of Memory
+
+Resize Droplet or add swap:
+
+```bash
+# Create 2GB swap
+fallocate -l 2G /swapfile
+chmod 600 /swapfile
+mkswap /swapfile
+swapon /swapfile
+echo '/swapfile none swap sw 0 0' >> /etc/fstab
+```
+
+### SSL Certificate Issues
+
+Renew Let's Encrypt certificate:
+
+```bash
+sudo certbot renew --dry-run
+sudo certbot renew
+sudo systemctl reload nginx
+```
+
+## Next Steps
+
+- [Configure Email](/self-hosted/configuration/email)
+- [Set Up Backups](/self-hosting/overview#backup--recovery)
+- [Production Checklist](/self-hosting/overview#security-best-practices)
+- [Kubernetes Deployment](/self-hosting/kubernetes) (for scaling)

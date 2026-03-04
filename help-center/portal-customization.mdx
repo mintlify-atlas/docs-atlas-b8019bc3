@@ -1,0 +1,537 @@
+---
+title: 'Portal Customization'
+description: 'Customize your Help Center appearance, branding, and settings'
+icon: 'palette'
+---
+
+Customize your Help Center portal to match your brand identity and provide the best experience for your customers. Configure colors, domains, locales, and more.
+
+## Portal Configuration
+
+### Core Settings
+
+<ParamField path="name" type="string" required>
+  Portal display name
+</ParamField>
+
+<ParamField path="slug" type="string" required>
+  Unique URL identifier for the portal
+</ParamField>
+
+<ParamField path="page_title" type="string">
+  Browser tab title and meta title tag
+</ParamField>
+
+<ParamField path="header_text" type="text">
+  Text displayed in the portal header
+</ParamField>
+
+<ParamField path="homepage_link" type="string">
+  URL to link back to your main website
+</ParamField>
+
+<ParamField path="color" type="string">
+  Primary brand color (hex code)
+</ParamField>
+
+<ParamField path="custom_domain" type="string">
+  Your own domain for hosting the Help Center (must be unique)
+</ParamField>
+
+<ParamField path="archived" type="boolean">
+  Whether the portal is archived (hidden from public)
+</ParamField>
+
+## Schema Overview
+
+```ruby
+class Portal < ApplicationRecord
+  belongs_to :account
+  belongs_to :channel_web_widget, optional: true
+  
+  has_one_attached :logo
+  has_many :categories
+  has_many :articles
+  has_many :inboxes
+  
+  # Validations
+  validates :name, presence: true
+  validates :slug, presence: true, uniqueness: true
+  validates :custom_domain, uniqueness: true, allow_nil: true
+  validate :config_json_format
+end
+```
+
+## Branding
+
+### Custom Logo
+
+Upload your brand logo using Active Storage:
+
+<CodeGroup>
+```ruby Attach Logo
+# Upload logo via blob
+blob = ActiveStorage::Blob.find_signed(blob_id)
+portal.logo.attach(blob)
+```
+
+```ruby Remove Logo
+# Delete existing logo
+portal.logo.purge if portal.logo.attached?
+```
+
+```ruby Logo Data
+# Access logo information
+portal.file_base_data
+# Returns:
+# {
+#   id: logo.id,
+#   portal_id: id,
+#   file_type: logo.content_type,
+#   account_id: account_id,
+#   file_url: url_for(logo),
+#   blob_id: logo.blob.signed_id,
+#   filename: logo.filename.to_s
+# }
+```
+</CodeGroup>
+
+### Brand Colors
+
+Set your primary brand color:
+
+```ruby
+portal.update(color: '#6366F1')  # Indigo
+```
+
+The portal automatically generates hover states and adjusts colors for contrast:
+
+```javascript
+// From portalThemeHelper.js
+export const setPortalHoverColor = theme => {
+  const resolvedTheme = getResolvedTheme(theme);
+  const portalColor = window.portalConfig.portalColor;
+  const bgColor = resolvedTheme === 'dark' ? '#151718' : 'white';
+  const hoverColor = adjustColorForContrast(portalColor, bgColor);
+  
+  document.documentElement.style.setProperty(
+    '--dynamic-hover-color',
+    hoverColor
+  );
+};
+```
+
+<Info>
+  Colors are automatically adjusted for accessibility in both light and dark themes.
+</Info>
+
+## Theme System
+
+### Supported Themes
+
+The Help Center supports three theme modes:
+
+<CardGroup cols={3}>
+  <Card title="Light" icon="sun">
+    Default bright theme
+  </Card>
+  
+  <Card title="Dark" icon="moon">
+    Dark theme for reduced eye strain
+  </Card>
+  
+  <Card title="System" icon="desktop">
+    Follows user's OS preference
+  </Card>
+</CardGroup>
+
+### Theme Switching
+
+<CodeGroup>
+```javascript Switch Theme
+// From portalThemeHelper.js
+export const switchTheme = theme => {
+  // Update localStorage
+  if (theme === 'system') {
+    localStorage.removeItem('theme');
+  } else {
+    localStorage.theme = theme;
+  }
+  
+  const resolvedTheme = getResolvedTheme(theme);
+  document.documentElement.classList.remove('dark', 'light');
+  document.documentElement.classList.add(resolvedTheme);
+  
+  setPortalHoverColor(theme);
+  updateThemeInHeader(theme);
+};
+```
+
+```javascript Detect System Theme
+const getResolvedTheme = theme => {
+  if (theme === 'system') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+      ? 'dark'
+      : 'light';
+  }
+  return theme;
+};
+```
+
+```javascript Watch System Changes
+// Automatically update when OS theme changes
+const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+mediaQuery.addEventListener('change', () => {
+  if (['light', 'dark'].includes(localStorage.theme)) return;
+  switchTheme('system');
+});
+```
+</CodeGroup>
+
+<Tip>
+  Theme preference is stored in `localStorage` and persists across visits. The portal respects user preference even when OS theme changes.
+</Tip>
+
+## Locale Configuration
+
+### Setting Default Locale
+
+Configure the portal's default language:
+
+```ruby
+portal.config['default_locale'] = 'en'
+
+# Helper method
+portal.default_locale  # Returns 'en' if not set
+```
+
+### Allowed Locales
+
+Specify which languages your portal supports:
+
+```ruby
+portal.update(
+  config: {
+    default_locale: 'en',
+    allowed_locales: ['en', 'es', 'fr', 'de']
+  }
+)
+```
+
+<Warning>
+  Categories and articles must use locales from the `allowed_locales` list. Attempts to create content in unsupported locales will fail validation.
+</Warning>
+
+### Locale Switching
+
+Users can switch languages via the locale switcher:
+
+```javascript
+// From portalHelpers.js
+InitializationHelpers.navigateToLocalePage = () => {
+  document.addEventListener('change', e => {
+    const localeSwitcher = e.target.closest('.locale-switcher');
+    if (!localeSwitcher) return;
+    
+    const { portalSlug } = localeSwitcher.dataset;
+    window.location.href = `/hc/${encodeURIComponent(portalSlug)}/${encodeURIComponent(localeSwitcher.value)}/`;
+  });
+};
+```
+
+## Custom Domain
+
+### Setting Up Custom Domain
+
+<Steps>
+  <Step title="Configure Domain">
+    Add your custom domain to the portal:
+    
+    ```ruby
+    portal.update(custom_domain: 'help.example.com')
+    ```
+  </Step>
+  
+  <Step title="DNS Configuration">
+    Point your domain to Chatwoot:
+    - Add a CNAME record pointing to your Chatwoot installation
+    - Or add A records to Chatwoot's IP addresses
+  </Step>
+  
+  <Step title="SSL Setup">
+    SSL certificates are automatically provisioned
+    
+    ```ruby
+    # SSL settings stored in portal
+    portal.ssl_settings  # jsonb field
+    ```
+  </Step>
+  
+  <Step title="Verify">
+    Access your Help Center at `https://help.example.com`
+  </Step>
+</Steps>
+
+### Domain Validation
+
+Domains must be unique across all portals:
+
+```ruby
+validates :custom_domain, uniqueness: true, allow_nil: true
+```
+
+### CNAME Instructions
+
+Send setup instructions to your DNS administrator:
+
+```ruby
+PortalInstructionsMailer.send_cname_instructions(
+  portal: portal,
+  recipient_email: 'admin@example.com'
+).deliver_later
+```
+
+<Info>
+  The mailer includes detailed DNS configuration instructions specific to your portal.
+</Info>
+
+## Live Chat Integration
+
+### Connect Web Widget
+
+Integrate your Help Center with Chatwoot's live chat:
+
+```ruby
+# Link portal to a web widget inbox
+portal.update(channel_web_widget_id: widget.id)
+
+# Relationship
+belongs_to :channel_web_widget,
+           class_name: 'Channel::WebWidget',
+           optional: true
+```
+
+<AccordionGroup>
+  <Accordion title="Widget Benefits">
+    - Allows customers to contact support directly from Help Center
+    - Contextual help based on article being viewed
+    - Seamless transition from self-service to live support
+  </Accordion>
+  
+  <Accordion title="Configuration">
+    ```ruby
+    # Via controller parameters
+    def live_chat_widget_params
+      return { channel_web_widget_id: nil } if params[:inbox_id].blank?
+      
+      inbox = Inbox.find(params[:inbox_id])
+      return {} unless inbox.web_widget?
+      
+      { channel_web_widget_id: inbox.channel.id }
+    end
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Configuration Schema
+
+Portal configuration is stored as JSONB:
+
+```ruby
+# Allowed configuration keys
+CONFIG_JSON_KEYS = %w[
+  allowed_locales
+  default_locale
+  website_token
+].freeze
+
+# Validation
+def config_json_format
+  config['default_locale'] = default_locale
+  denied_keys = config.keys - CONFIG_JSON_KEYS
+  
+  if denied_keys.any?
+    errors.add(:config, "keys #{denied_keys.join(',')} not supported")
+  end
+end
+```
+
+<ParamField path="config.default_locale" type="string">
+  Default language code (e.g., 'en')
+</ParamField>
+
+<ParamField path="config.allowed_locales" type="array">
+  List of supported language codes (e.g., ['en', 'es', 'fr'])
+</ParamField>
+
+<ParamField path="config.website_token" type="string">
+  Token for web widget integration
+</ParamField>
+
+## Portal Status
+
+### Active Portals
+
+```ruby
+scope :active, -> { where(archived: false) }
+
+# Usage
+Account.portals.active
+```
+
+### Archiving
+
+Hide a portal without deleting it:
+
+```ruby
+portal.update(archived: true)
+```
+
+<Warning>
+  Archived portals are not accessible to customers but remain in the database for reference.
+</Warning>
+
+## Plain Layout Mode
+
+Enable simplified layout for embedding:
+
+```javascript
+// From portalHelpers.js
+if (window.portalConfig.isPlainLayoutEnabled === 'true') {
+  InitializationHelpers.appendPlainParamToURLs();
+} else {
+  // Full portal experience
+  InitializationHelpers.initializeThemesInPortal();
+  InitializationHelpers.navigateToLocalePage();
+  InitializationHelpers.initializeSearch();
+  InitializationHelpers.initializeTableOfContents();
+}
+```
+
+<Info>
+  Plain layout removes navigation, branding, and theme controls for embedding articles in iframes or external sites.
+</Info>
+
+## Accessibility
+
+### RTL Language Support
+
+Automatic text direction for right-to-left languages:
+
+```javascript
+InitializationHelpers.setDirectionAttribute = () => {
+  const htmlElement = document.querySelector('html');
+  const localeFromHtml = htmlElement.lang;
+  
+  htmlElement.dir = 
+    localeFromHtml && getLanguageDirection(localeFromHtml) 
+      ? 'rtl' 
+      : 'ltr';
+};
+```
+
+### External Link Security
+
+Automatic security attributes for external links:
+
+```javascript
+if (!isInternalLink) {
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Branding">
+    - Use high-resolution logos (minimum 200px width)
+    - Choose accessible colors with sufficient contrast
+    - Test appearance in both light and dark themes
+    - Keep header text concise and welcoming
+    - Include a homepage link to your main site
+  </Accordion>
+  
+  <Accordion title="Localization">
+    - Start with your primary language as default_locale
+    - Add locales progressively based on customer demand
+    - Create categories in all supported locales
+    - Maintain consistent structure across languages
+    - Test locale switching functionality
+  </Accordion>
+  
+  <Accordion title="Custom Domains">
+    - Use descriptive subdomains (help., support., docs.)
+    - Verify DNS propagation before announcing
+    - Monitor SSL certificate renewal
+    - Keep domain configuration documented
+    - Test all features after domain changes
+  </Accordion>
+  
+  <Accordion title="Performance">
+    - Optimize logo images (WebP format recommended)
+    - Use vector logos (SVG) when possible
+    - Monitor portal load times
+    - Enable browser caching for static assets
+    - Consider CDN for custom domain portals
+  </Accordion>
+</AccordionGroup>
+
+## API Operations
+
+### Create Portal
+
+```ruby
+portal = account.portals.create!(
+  name: 'Help Center',
+  slug: 'help',
+  page_title: 'Support Documentation',
+  color: '#6366F1',
+  config: {
+    default_locale: 'en',
+    allowed_locales: ['en', 'es', 'fr']
+  }
+)
+```
+
+### Update Portal
+
+```ruby
+portal.update!(
+  header_text: 'How can we help you?',
+  homepage_link: 'https://example.com',
+  color: '#8B5CF6'
+)
+```
+
+### Delete Portal
+
+```ruby
+portal.destroy!
+# Cascades to categories and articles
+```
+
+## Troubleshooting
+
+<Warning>
+  **Custom domain not working** - Verify DNS records have propagated (can take up to 48 hours). Check that the domain points to the correct host.
+</Warning>
+
+<Warning>
+  **Theme not saving** - Ensure JavaScript is enabled and localStorage is accessible. Check browser console for errors.
+</Warning>
+
+<Warning>
+  **Locale not appearing** - Confirm the locale is in the portal's `allowed_locales` array and categories exist for that locale.
+</Warning>
+
+<Warning>
+  **Logo not displaying** - Verify the image format is supported (JPG, PNG, SVG, WebP). Check file size is under maximum limit.
+</Warning>
+
+## Related Resources
+
+- [Help Center Overview](/help-center/overview)
+- [Managing Articles](/help-center/articles)
+- [Categories & Organization](/help-center/categories)

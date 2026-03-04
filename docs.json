@@ -1,122 +1,172 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Chatwoot",
+  "theme": "palm",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#43a9f6",
+    "light": "#85c6f6",
+    "dark": "#43a9f6"
   },
-  "favicon": "/favicon.svg",
+  "logo": {
+    "light": "https://media.brand.dev/fe5a6b5e-4cd5-4464-922a-2dd0034afcd9.png",
+    "dark": "https://media.brand.dev/f6b64db2-f08a-47ae-8058-1aaec232998e.png"
+  },
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/Merkurcode/nauto-console"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/Merkurcode/nauto-console"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get Started",
             "pages": [
-              "index",
+              "introduction",
               "quickstart",
-              "development"
+              "features"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Core Features",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "features/omnichannel",
+              "features/conversations",
+              "features/contacts",
+              "features/teams",
+              "features/automation",
+              "features/reports"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "AI & Automation",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "ai/captain",
+              "ai/chatbots",
+              "ai/canned-responses"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "Channels",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "channels/website-widget",
+              "channels/email",
+              "channels/facebook",
+              "channels/instagram",
+              "channels/twitter",
+              "channels/whatsapp",
+              "channels/telegram",
+              "channels/line",
+              "channels/sms"
+            ]
+          },
+          {
+            "group": "Help Center",
+            "pages": [
+              "help-center/overview",
+              "help-center/articles",
+              "help-center/categories",
+              "help-center/portal-customization"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "Self-Hosting",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Deployment",
             "pages": [
-              "api-reference/introduction"
+              "self-hosting/overview",
+              "self-hosting/docker",
+              "self-hosting/heroku",
+              "self-hosting/digital-ocean",
+              "self-hosting/kubernetes"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Configuration",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "self-hosting/environment-variables",
+              "self-hosting/email-setup",
+              "self-hosting/storage",
+              "self-hosting/redis",
+              "self-hosting/postgres"
+            ]
+          },
+          {
+            "group": "Operations",
+            "pages": [
+              "self-hosting/backup-restore",
+              "self-hosting/monitoring",
+              "self-hosting/upgrades",
+              "self-hosting/scaling",
+              "self-hosting/troubleshooting"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Developers",
+        "groups": [
+          {
+            "group": "API Reference",
+            "pages": [
+              "api/overview",
+              "api/authentication",
+              "api/accounts",
+              "api/agents",
+              "api/contacts",
+              "api/conversations",
+              "api/messages",
+              "api/inboxes",
+              "api/webhooks"
+            ]
+          },
+          {
+            "group": "Integrations",
+            "pages": [
+              "integrations/overview",
+              "integrations/slack",
+              "integrations/dialogflow",
+              "integrations/shopify",
+              "integrations/linear",
+              "integrations/dashboard-apps"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "developers/webhooks",
+              "developers/custom-attributes",
+              "developers/widget-sdk",
+              "developers/widget-apis"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Contributing",
+        "groups": [
+          {
+            "group": "Contributing Guide",
+            "pages": [
+              "contributing/overview",
+              "contributing/setup",
+              "contributing/code-style",
+              "contributing/testing"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

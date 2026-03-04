@@ -1,0 +1,321 @@
+---
+title: Shopify Integration
+description: Connect Chatwoot with Shopify to provide context-aware e-commerce support
+---
+
+The Shopify integration enables your support team to access customer order information directly within Chatwoot conversations. View order history, status, and details without leaving the conversation interface.
+
+## Features
+
+- **Customer Lookup**: Find customers by email or phone number
+- **Order History**: View all orders for a customer
+- **Order Details**: Access order status, fulfillment, and payment information
+- **Admin Links**: Direct links to orders in Shopify admin
+- **OAuth Authentication**: Secure connection to Shopify stores
+- **Account-Level Integration**: One integration serves all inboxes
+
+## Prerequisites
+
+- Admin access to your Chatwoot account
+- Shopify store with admin access
+- Feature flag enabled: `shopify_integration`
+- Shopify OAuth credentials configured:
+  - `SHOPIFY_CLIENT_ID`
+  - `SHOPIFY_CLIENT_SECRET`
+
+## Setup Instructions
+
+### Step 1: Configure Environment Variables
+
+Ensure your Chatwoot instance has Shopify credentials configured:
+
+```bash
+SHOPIFY_CLIENT_ID=your_shopify_client_id
+SHOPIFY_CLIENT_SECRET=your_shopify_client_secret
+```
+
+### Step 2: Enable Feature Flag
+
+The Shopify integration requires the feature flag to be enabled for your account:
+
+```ruby
+account.enable_features('shopify_integration')
+```
+
+### Step 3: Initiate OAuth Flow
+
+1. Navigate to **Settings** > **Integrations** in Chatwoot
+2. Find **Shopify** in the integrations list
+3. Click **Connect**
+4. Enter your Shopify store domain (e.g., `your-store.myshopify.com`)
+5. Click **Authorize**
+
+### Step 4: Authorize Chatwoot
+
+1. You'll be redirected to Shopify's authorization page
+2. Review the requested permissions
+3. Click **Install app** to authorize Chatwoot
+4. You'll be redirected back to Chatwoot
+
+### Step 5: Verify Integration
+
+1. Open a conversation with a contact that has email or phone
+2. Look for the Shopify order information panel
+3. Verify that customer orders are displayed
+
+## OAuth Scopes and Permissions
+
+The integration requests the following Shopify scopes:
+
+- `read_customers`: Access customer information
+- `read_orders`: View order data
+- `read_products`: Access product information
+
+These permissions allow Chatwoot to:
+- Search for customers by email or phone
+- Retrieve order history
+- Display order details
+
+## Using the Integration
+
+### Viewing Customer Orders
+
+When viewing a conversation:
+
+1. The integration automatically searches for the contact in Shopify
+2. Search is performed using:
+   - Contact email (if available)
+   - Contact phone number (if available)
+3. If a matching customer is found, their orders are displayed
+
+### Order Information Displayed
+
+- **Order ID**: Unique Shopify order identifier
+- **Created Date**: When the order was placed
+- **Total Price**: Order total with currency
+- **Fulfillment Status**: Shipping/delivery status
+- **Financial Status**: Payment status
+- **Admin Link**: Direct link to order in Shopify admin
+
+## API Integration
+
+### Authenticate Store
+
+```bash
+POST /api/v1/accounts/{account_id}/integrations/shopify/auth
+Content-Type: application/json
+
+{
+  "shop_domain": "your-store.myshopify.com"
+}
+```
+
+**Response:**
+```json
+{
+  "redirect_url": "https://your-store.myshopify.com/admin/oauth/authorize?..."
+}
+```
+
+Redirect the user to the `redirect_url` to complete OAuth.
+
+### Get Customer Orders
+
+```bash
+GET /api/v1/accounts/{account_id}/integrations/shopify/orders?contact_id={contact_id}
+```
+
+**Response:**
+```json
+{
+  "orders": [
+    {
+      "id": 1234567890,
+      "email": "customer@example.com",
+      "created_at": "2024-01-15T10:30:00Z",
+      "total_price": "149.99",
+      "currency": "USD",
+      "fulfillment_status": "fulfilled",
+      "financial_status": "paid",
+      "admin_url": "https://your-store.myshopify.com/admin/orders/1234567890"
+    }
+  ]
+}
+```
+
+### Delete Integration
+
+```bash
+DELETE /api/v1/accounts/{account_id}/integrations/shopify
+```
+
+## Implementation Details
+
+The Shopify integration uses:
+
+- **ShopifyAPI Gem**: Ruby library for Shopify REST API
+- **API Version**: `2025-01`
+- **Hook Type**: Account-level integration
+- **Storage**: Integration hook with encrypted access token
+
+### Hook Configuration
+
+```ruby
+{
+  app_id: 'shopify',
+  hook_type: 'account',
+  access_token: 'encrypted_shopify_token',
+  reference_id: 'store-domain.myshopify.com'
+}
+```
+
+### Customer Search Logic
+
+The integration searches for customers using:
+
+```ruby
+query = []
+query << "email:#{contact.email}" if contact.email.present?
+query << "phone:#{contact.phone_number}" if contact.phone_number.present?
+
+# Search with OR operator
+query.join(' OR ')
+```
+
+### ShopifyAPI Context
+
+The integration configures ShopifyAPI dynamically:
+
+```ruby
+ShopifyAPI::Context.setup(
+  api_key: ENV['SHOPIFY_CLIENT_ID'],
+  api_secret_key: ENV['SHOPIFY_CLIENT_SECRET'],
+  api_version: '2025-01',
+  scope: 'read_customers,read_orders,read_products',
+  is_embedded: true,
+  is_private: false
+)
+```
+
+## Troubleshooting
+
+### Integration Not Available
+
+**Issue**: Shopify integration doesn't appear in the integrations list.
+
+**Solution**:
+1. Verify `SHOPIFY_CLIENT_ID` environment variable is set
+2. Ensure the `shopify_integration` feature flag is enabled
+3. Check that you have admin permissions
+
+### No Orders Displayed
+
+**Issue**: Orders panel shows empty or no results.
+
+**Solution**:
+1. Verify the contact has an email or phone number
+2. Check that the email/phone matches the Shopify customer
+3. Ensure the Shopify customer has placed orders
+4. Verify the integration is properly authenticated
+
+### OAuth Redirect Error
+
+**Issue**: Error during OAuth callback.
+
+**Solution**:
+1. Verify redirect URI in Shopify app settings:
+   ```
+   https://your-chatwoot-domain/shopify/callback
+   ```
+2. Check that `FRONTEND_URL` environment variable is correctly set
+3. Ensure your Shopify app is not in development mode (if in production)
+
+### HTTP Response Error
+
+**Issue**: `ShopifyAPI::Errors::HttpResponseError` when fetching orders.
+
+**Solution**:
+1. Verify the access token is valid
+2. Check that the store domain is correct
+3. Ensure the app has required permissions
+4. Review Shopify API rate limits
+5. Check Shopify API status
+
+### Contact Information Missing
+
+**Issue**: "Contact information missing" error.
+
+**Solution**:
+1. Ensure the contact has either email or phone number
+2. Add missing contact information
+3. Sync contact data from your channel
+
+### Invalid Shop Domain
+
+**Issue**: "Shop domain is required" error.
+
+**Solution**:
+1. Provide a valid Shopify store domain
+2. Use format: `your-store.myshopify.com`
+3. Don't include protocol (https://)
+
+## Security Considerations
+
+- **Encrypted Tokens**: Shopify access tokens are encrypted at rest
+- **OAuth 2.0**: Secure authorization flow
+- **Scoped Access**: Minimum required permissions
+- **Admin Only**: Only administrators can configure the integration
+- **Secure Session**: ShopifyAPI sessions are created per-request
+
+## API Rate Limits
+
+Shopify enforces API rate limits:
+
+- **REST API**: Based on calculated query costs
+- **Burst Limit**: 40 requests per second
+- **Bucket Size**: Varies by plan
+
+The integration handles rate limits automatically. If you encounter rate limit errors frequently, consider:
+
+1. Reducing the frequency of order lookups
+2. Caching order data
+3. Upgrading your Shopify plan
+
+## Removing the Integration
+
+To remove the Shopify integration:
+
+1. Navigate to **Settings** > **Integrations**
+2. Find the Shopify integration
+3. Click **Delete**
+4. Confirm the removal
+
+This will:
+- Revoke the access token
+- Remove all configuration
+- Stop displaying order information
+
+## Data Privacy
+
+The Shopify integration:
+- Only accesses data when viewing conversations
+- Does not store order data in Chatwoot
+- Fetches data in real-time from Shopify
+- Requires explicit customer matching (email/phone)
+
+Refer to Shopify's privacy policy for information about data handling on their platform.
+
+## Limitations
+
+- **Single Store**: One Shopify store per Chatwoot account
+- **Read-Only**: Cannot create or modify orders from Chatwoot
+- **Contact Matching**: Requires email or phone to match customers
+- **Real-Time Only**: No historical data storage
+
+## Next Steps
+
+- Train your team on using order information in conversations
+- Configure contact fields to capture email and phone
+- Set up automation rules based on order status
+- Explore additional e-commerce integrations
+- Monitor integration usage and performance

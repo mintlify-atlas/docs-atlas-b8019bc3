@@ -1,0 +1,624 @@
+---
+title: 'Reports & Analytics'
+description: 'Analytics, CSAT, agent performance, and conversation metrics'
+icon: 'chart-line'
+---
+
+## Overview
+
+Chatwoot provides comprehensive analytics and reporting to help you understand your support operations, measure agent performance, and improve customer satisfaction.
+
+<Info>
+  Reports are available at multiple levels: **Account**, **Inbox**, **Team**, **Agent**, and **Label**.
+</Info>
+
+## Report Types
+
+<CardGroup cols={2}>
+  <Card title="Conversation Reports" icon="comments">
+    Metrics about conversations, volume, and resolution
+  </Card>
+  <Card title="Agent Reports" icon="user">
+    Individual agent performance and productivity
+  </Card>
+  <Card title="Inbox Reports" icon="inbox">
+    Channel-specific metrics and performance
+  </Card>
+  <Card title="Team Reports" icon="users">
+    Team-based analytics and collaboration
+  </Card>
+  <Card title="CSAT Reports" icon="star">
+    Customer satisfaction survey results
+  </Card>
+  <Card title="Label Reports" icon="tags">
+    Conversation categorization and trends
+  </Card>
+</CardGroup>
+
+## Conversation Metrics
+
+### Available Metrics
+
+```ruby
+builder = V2::Reports::Conversations::ReportBuilder.new(
+  account,
+  {
+    type: :account,
+    metric: :conversations_count,
+    since: 30.days.ago.to_i,
+    until: Time.now.to_i,
+    timezone_offset: 0
+  }
+)
+
+data = builder.timeseries
+```
+
+<Tabs>
+  <Tab title="Volume Metrics">
+    - `conversations_count` - Total conversations
+    - `incoming_messages_count` - Incoming messages
+    - `outgoing_messages_count` - Outgoing messages
+    - `resolutions_count` - Resolved conversations
+  </Tab>
+  <Tab title="Time Metrics">
+    - `avg_first_response_time` - Average time to first response
+    - `avg_resolution_time` - Average time to resolution
+    - `reply_time` - Average reply time
+  </Tab>
+  <Tab title="Bot Metrics">
+    - `bot_resolutions_count` - Bot-resolved conversations
+    - `bot_handoffs_count` - Bot to agent handoffs
+  </Tab>
+</Tabs>
+
+## Summary Reports
+
+### Current Period Summary
+
+```ruby
+builder = V2::Reports::Conversations::MetricBuilder.new(
+  account,
+  {
+    type: :account,
+    since: 7.days.ago.to_i,
+    until: Time.now.to_i
+  }
+)
+
+summary = builder.summary
+# => {
+#   conversations_count: 250,
+#   incoming_messages_count: 750,
+#   outgoing_messages_count: 680,
+#   avg_first_response_time: 125.5,
+#   avg_resolution_time: 3200.8,
+#   resolutions_count: 200,
+#   reply_time: 180.3
+# }
+```
+
+### Comparison with Previous Period
+
+```ruby
+# Get current and previous period for comparison
+current_summary = builder.summary
+previous_builder = V2::Reports::Conversations::MetricBuilder.new(
+  account,
+  {
+    type: :account,
+    since: 14.days.ago.to_i,
+    until: 7.days.ago.to_i
+  }
+)
+previous_summary = previous_builder.summary
+
+comparison = current_summary.merge(previous: previous_summary)
+```
+
+## Agent Reports
+
+### Agent Performance
+
+```ruby
+report_data = V2::Reports::AgentReportBuilder.new(
+  account,
+  {
+    since: 30.days.ago.to_i,
+    until: Time.now.to_i
+  }
+).build
+
+# => [
+#   {
+#     id: 1,
+#     name: "John Smith",
+#     email: "john@example.com",
+#     thumbnail: "https://...",
+#     availability: "online",
+#     conversations_count: 45,
+#     incoming_messages_count: 180,
+#     outgoing_messages_count: 165,
+#     avg_first_response_time: 95.5,
+#     avg_resolution_time: 2800.3,
+#     resolutions_count: 38
+#   },
+#   ...
+# ]
+```
+
+### Metrics by Agent
+
+<AccordionGroup>
+  <Accordion title="Conversations Count">
+    Total number of conversations handled by the agent
+    ```ruby
+    agent.conversations.where(created_at: range).count
+    ```
+  </Accordion>
+
+  <Accordion title="First Response Time">
+    Average time taken by agent to send first reply
+    ```ruby
+    # Measured from conversation creation to first agent message
+    # Lower is better
+    ```
+  </Accordion>
+
+  <Accordion title="Resolution Time">
+    Average time taken to resolve conversations
+    ```ruby
+    # Measured from conversation creation to resolution
+    # Excludes waiting time when status is pending/snoozed
+    ```
+  </Accordion>
+
+  <Accordion title="Resolutions Count">
+    Number of conversations resolved by agent
+    ```ruby
+    agent.conversations.resolved.where(updated_at: range).count
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Inbox Reports
+
+### Inbox Metrics
+
+```ruby
+report_data = V2::Reports::InboxReportBuilder.new(
+  account,
+  {
+    since: 30.days.ago.to_i,
+    until: Time.now.to_i
+  }
+).build
+
+# => [
+#   {
+#     id: 1,
+#     name: "Website Chat",
+#     channel_type: "Channel::WebWidget",
+#     conversations_count: 320,
+#     incoming_messages_count: 980,
+#     outgoing_messages_count: 850,
+#     avg_first_response_time: 120.5,
+#     avg_resolution_time: 3100.2,
+#     resolutions_count: 280
+#   },
+#   ...
+# ]
+```
+
+### Compare Inbox Performance
+
+Identify which channels need attention:
+
+```ruby
+# Find inboxes with high response times
+slow_inboxes = report_data.select do |inbox|
+  inbox[:avg_first_response_time] > 300 # > 5 minutes
+end
+
+# Find high-volume inboxes
+busy_inboxes = report_data.sort_by do |inbox|
+  -inbox[:conversations_count]
+ end.take(5)
+```
+
+## Team Reports
+
+```ruby
+report_data = V2::Reports::TeamReportBuilder.new(
+  account,
+  {
+    since: 30.days.ago.to_i,
+    until: Time.now.to_i
+  }
+).build
+
+# => [
+#   {
+#     id: 1,
+#     name: "technical-support",
+#     conversations_count: 180,
+#     incoming_messages_count: 540,
+#     outgoing_messages_count: 490,
+#     avg_first_response_time: 110.3,
+#     avg_resolution_time: 3500.5,
+#     resolutions_count: 150
+#   },
+#   ...
+# ]
+```
+
+## Label Reports
+
+### Metrics by Label
+
+```ruby
+report_data = V2::Reports::LabelReportBuilder.new(
+  account,
+  {
+    since: 30.days.ago.to_i,
+    until: Time.now.to_i
+  }
+).build
+
+# => [
+#   {
+#     id: 1,
+#     title: "bug",
+#     conversations_count: 85,
+#     incoming_messages_count: 255,
+#     outgoing_messages_count: 220,
+#     avg_first_response_time: 90.2,
+#     avg_resolution_time: 4200.8,
+#     resolutions_count: 70
+#   },
+#   ...
+# ]
+```
+
+### Inbox-Label Matrix
+
+See which labels are used in which inboxes:
+
+```ruby
+builder = V2::Reports::InboxLabelMatrixBuilder.new(
+  account: account,
+  params: {
+    since: 30.days.ago.to_i,
+    until: Time.now.to_i,
+    inbox_ids: [1, 2, 3],
+    label_ids: [10, 11, 12]
+  }
+)
+
+matrix = builder.build
+# => [
+#   {
+#     inbox_id: 1,
+#     inbox_name: "Website",
+#     labels: [
+#       { label_id: 10, label_name: "bug", count: 25 },
+#       { label_id: 11, label_name: "feature", count: 15 },
+#       { label_id: 12, label_name: "urgent", count: 8 }
+#     ]
+#   },
+#   ...
+# ]
+```
+
+## CSAT (Customer Satisfaction)
+
+### CSAT Configuration
+
+Enable CSAT surveys on inboxes:
+
+```ruby
+inbox.update!(
+  csat_survey_enabled: true,
+  csat_config: {
+    enabled: true,
+    survey_message: "How would you rate your support experience?"
+  }
+)
+```
+
+### CSAT Responses
+
+```ruby
+# Get all CSAT responses
+responses = account.csat_survey_responses
+                   .filter_by_created_at(30.days.ago..Time.now)
+                   .includes(:conversation, :contact, :assigned_agent)
+
+# Filter by agent
+agent_responses = responses.filter_by_assigned_agent_id([agent.id])
+
+# Filter by inbox
+inbox_responses = responses.filter_by_inbox_id(inbox.id)
+
+# Filter by team
+team_responses = responses.filter_by_team_id(team.id)
+
+# Filter by rating
+positive_responses = responses.filter_by_rating([4, 5])
+negative_responses = responses.filter_by_rating([1, 2])
+```
+
+### CSAT Metrics
+
+```ruby
+# Calculate CSAT score (% of positive ratings)
+total_responses = responses.count
+positive_responses = responses.filter_by_rating([4, 5]).count
+csat_score = (positive_responses.to_f / total_responses * 100).round(2)
+
+# Average rating
+average_rating = responses.average(:rating).to_f.round(2)
+
+# Response rate
+total_surveys_sent = 1000 # Track separately
+response_rate = (total_responses.to_f / total_surveys_sent * 100).round(2)
+```
+
+### CSAT by Agent
+
+```ruby
+# Agent CSAT performance
+agents = account.users.where(role: :agent)
+
+agent_csat = agents.map do |agent|
+  agent_responses = responses.filter_by_assigned_agent_id([agent.id])
+  {
+    agent_name: agent.name,
+    total_responses: agent_responses.count,
+    average_rating: agent_responses.average(:rating).to_f.round(2),
+    positive_count: agent_responses.filter_by_rating([4, 5]).count,
+    negative_count: agent_responses.filter_by_rating([1, 2]).count
+  }
+end
+```
+
+## Bot Metrics
+
+### Bot Performance
+
+```ruby
+bot_metrics = V2::Reports::BotMetricsBuilder.new(
+  account,
+  {
+    since: 30.days.ago.to_i,
+    until: Time.now.to_i,
+    inbox_id: inbox.id # optional
+  }
+).metrics
+
+# => {
+#   total_conversations: 500,
+#   bot_handled: 320,
+#   bot_handoffs: 180,
+#   bot_resolution_rate: 64.0,
+#   avg_bot_resolution_time: 1200.5
+# }
+```
+
+## Response Time Distribution
+
+### First Response Time Buckets
+
+```ruby
+builder = V2::Reports::FirstResponseTimeDistributionBuilder.new(
+  account: account,
+  params: {
+    since: 30.days.ago.to_i,
+    until: Time.now.to_i
+  }
+)
+
+distribution = builder.build
+# => [
+#   { bucket: "0-5min", count: 120 },
+#   { bucket: "5-15min", count: 85 },
+#   { bucket: "15-30min", count: 45 },
+#   { bucket: "30-60min", count: 28 },
+#   { bucket: "1hr+", count: 15 }
+# ]
+```
+
+## Conversation Traffic Heatmap
+
+Visualize conversation patterns by day and hour:
+
+```ruby
+builder = V2::Reports::HeatmapBuilder.new(
+  account,
+  {
+    since: 30.days.ago.to_i,
+    until: Time.now.to_i,
+    timezone_offset: -5 # EST
+  }
+)
+
+heatmap_data = builder.build
+# => [
+#   { day: "Monday", hour: 9, count: 45 },
+#   { day: "Monday", hour: 10, count: 62 },
+#   { day: "Monday", hour: 11, count: 58 },
+#   ...
+# ]
+```
+
+## Outgoing Messages Count
+
+Track outgoing message volume by agent, team, inbox, or label:
+
+```ruby
+builder = V2::Reports::OutgoingMessagesCountBuilder.new(
+  account,
+  {
+    group_by: "agent", # or "team", "inbox", "label"
+    since: 30.days.ago.to_i,
+    until: Time.now.to_i
+  }
+)
+
+data = builder.build
+# => [
+#   { id: 1, name: "John Smith", count: 450 },
+#   { id: 2, name: "Jane Doe", count: 380 },
+#   ...
+# ]
+```
+
+## CSV Export
+
+Export reports as CSV:
+
+```ruby
+# Generate CSV for agents report
+report_data = generate_agents_report
+csv_content = render_to_string(
+  template: "api/v2/accounts/reports/agents",
+  formats: [:csv],
+  locals: { report_data: report_data }
+)
+
+# Download CSV
+send_data csv_content,
+          filename: "agents_report_#{Date.today}.csv",
+          type: "text/csv"
+```
+
+## Business Hours Filter
+
+Calculate metrics only during business hours:
+
+```ruby
+builder = V2::Reports::Conversations::ReportBuilder.new(
+  account,
+  {
+    type: :account,
+    metric: :avg_first_response_time,
+    business_hours: true,
+    since: 30.days.ago.to_i,
+    until: Time.now.to_i
+  }
+)
+
+data = builder.timeseries
+# Only includes conversations during configured business hours
+```
+
+## Live Reports
+
+Real-time statistics:
+
+```ruby
+live_stats = {
+  open_conversations: account.conversations.open.count,
+  unassigned_conversations: account.conversations.unassigned.count,
+  pending_conversations: account.conversations.pending.count,
+  agents_online: account.users.online.count,
+  agents_busy: account.users.busy.count
+}
+```
+
+## Best Practices
+
+<Tip>
+  **Track Trends**: Compare current period with previous period to identify improving or declining metrics.
+</Tip>
+
+<Tip>
+  **Set Benchmarks**: Establish target metrics (e.g., < 2 min first response time) and monitor performance against them.
+</Tip>
+
+<Tip>
+  **Use Business Hours**: Filter reports by business hours for more accurate performance measurement.
+</Tip>
+
+<Warning>
+  **Timezone Awareness**: Always specify timezone offset to ensure reports reflect the correct time period.
+</Warning>
+
+<Note>
+  Reports are generated from `reporting_events` table for performance. Real-time data may have a slight delay.
+</Note>
+
+## Report Grouping
+
+Available grouping options:
+
+- `account` - Account-wide metrics
+- `agent` - Per-agent breakdown
+- `inbox` - Per-inbox/channel breakdown
+- `team` - Per-team breakdown
+- `label` - Per-label breakdown
+
+```ruby
+# Group by type
+report = V2::Reports::Conversations::ReportBuilder.new(
+  account,
+  {
+    type: :team,  # Change grouping
+    id: team.id,  # Optional: specific team ID
+    metric: :conversations_count,
+    since: 7.days.ago.to_i,
+    until: Time.now.to_i
+  }
+)
+```
+
+## API Examples
+
+### Get Account Summary
+
+```ruby
+GET /api/v2/accounts/:account_id/reports/summary
+Params:
+  since: 1640995200 (timestamp)
+  until: 1643673600 (timestamp)
+  type: account
+```
+
+### Get Agent Reports
+
+```ruby
+GET /api/v2/accounts/:account_id/reports/agents
+Params:
+  since: 1640995200
+  until: 1643673600
+  format: csv (optional)
+```
+
+### Get CSAT Responses
+
+```ruby
+GET /api/v2/accounts/:account_id/reports/csat
+Params:
+  since: 1640995200
+  until: 1643673600
+  inbox_id: 1 (optional)
+  team_id: 2 (optional)
+  agent_id: 3 (optional)
+```
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Conversations" icon="comments" href="/features/conversations">
+    Understand conversation metrics
+  </Card>
+  <Card title="Teams" icon="users" href="/features/teams">
+    Team performance reports
+  </Card>
+  <Card title="Automation" icon="robot" href="/features/automation">
+    Track automation effectiveness
+  </Card>
+  <Card title="Custom Dashboards" icon="dashboard">
+    Build custom reports
+  </Card>
+</CardGroup>

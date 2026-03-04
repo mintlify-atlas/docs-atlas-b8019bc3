@@ -1,0 +1,303 @@
+---
+title: "Captain AI Agents"
+description: "Intelligent AI agents that can handle customer conversations, provide personalized support, and integrate with your knowledge base"
+---
+
+Captain is Chatwoot's AI agent system that enables intelligent, context-aware customer support automation. With Captain, you can create AI agents that understand your product, answer customer questions, and seamlessly hand off to human agents when needed.
+
+## Overview
+
+Captain AI agents are powered by advanced language models and can be customized to match your brand voice and support needs. They work alongside your team to provide 24/7 support, reduce response times, and improve customer satisfaction.
+
+<CardGroup cols={2}>
+  <Card title="AI Assistants" icon="robot" href="#creating-ai-assistants">
+    Create custom AI agents for your inboxes
+  </Card>
+  <Card title="Configuration" icon="sliders" href="#configuration">
+    Configure models and features
+  </Card>
+  <Card title="Features" icon="sparkles" href="#captain-features">
+    Editor, copilot, transcription, and more
+  </Card>
+  <Card title="Knowledge Base" icon="book" href="#knowledge-integration">
+    Connect documentation and FAQs
+  </Card>
+</CardGroup>
+
+## Captain Features
+
+Captain provides multiple AI-powered features to enhance your support workflow:
+
+### Available Features
+
+<AccordionGroup>
+  <Accordion title="Editor" icon="pen">
+    AI-powered message editor that helps agents improve, expand, or simplify their responses.
+    
+    **Default Model:** GPT-4.1 Mini
+    
+    **Available Models:**
+    - GPT-4.1 Mini, GPT-4.1 Nano
+    - GPT-5 Mini, GPT-4.1, GPT-5.1, GPT-5.2
+    - Claude Haiku 4.5
+    - Gemini 3 Flash, Gemini 3 Pro
+  </Accordion>
+
+  <Accordion title="Assistant" icon="comments">
+    Full AI assistant that can engage in customer conversations, search documentation, and answer questions.
+    
+    **Default Model:** GPT-5.1
+    
+    **Available Models:**
+    - GPT-5 Mini, GPT-4.1, GPT-5.1, GPT-5.2
+    - Claude Haiku 4.5, Claude Sonnet 4.5
+    - Gemini 3 Flash, Gemini 3 Pro
+  </Accordion>
+
+  <Accordion title="Copilot" icon="paper-plane">
+    AI copilot that assists agents during conversations with suggestions and context.
+    
+    **Default Model:** GPT-5.1
+    
+    **Available Models:**
+    - GPT-5 Mini, GPT-4.1, GPT-5.1, GPT-5.2
+    - Claude Haiku 4.5, Claude Sonnet 4.5
+    - Gemini 3 Flash, Gemini 3 Pro
+  </Accordion>
+
+  <Accordion title="Label Suggestion" icon="tags">
+    Automatically suggests conversation labels based on content.
+    
+    **Default Model:** GPT-4.1 Nano
+    
+    **Available Models:**
+    - GPT-4.1 Nano, GPT-4.1 Mini, GPT-5 Mini
+    - Gemini 3 Flash, Claude Haiku 4.5
+  </Accordion>
+
+  <Accordion title="Audio Transcription" icon="microphone">
+    Transcribes voice messages and audio attachments.
+    
+    **Model:** Whisper-1 (OpenAI)
+  </Accordion>
+
+  <Accordion title="Help Center Search" icon="search">
+    Semantic search across your help center articles.
+    
+    **Model:** Text Embedding 3 Small (OpenAI)
+  </Accordion>
+</AccordionGroup>
+
+## Creating AI Assistants
+
+AI Assistants are Captain agents that can be assigned to inboxes to handle customer conversations.
+
+### Assistant Configuration
+
+When creating an assistant, you can configure:
+
+<ResponseField name="name" type="string" required>
+  Display name for the assistant
+</ResponseField>
+
+<ResponseField name="description" type="string" required>
+  Description of the assistant's purpose and capabilities
+</ResponseField>
+
+<ResponseField name="product_name" type="string">
+  The product or service name the assistant supports
+</ResponseField>
+
+<ResponseField name="temperature" type="number">
+  Controls response creativity (0.0 to 1.0). Lower values are more focused and deterministic.
+</ResponseField>
+
+<ResponseField name="response_guidelines" type="array">
+  Guidelines for how the assistant should respond to customers
+</ResponseField>
+
+<ResponseField name="guardrails" type="array">
+  Rules to prevent certain behaviors or topics
+</ResponseField>
+
+### Assistant Features
+
+- **FAQ Integration**: Connect to your knowledge base for accurate answers
+- **Memory**: Remember context from previous messages in the conversation
+- **Document Search**: Search through uploaded documentation
+- **Handoff**: Seamlessly transfer to human agents when needed
+- **Custom Tools**: Extend functionality with custom integrations
+
+## Configuration
+
+### API Configuration
+
+Captain requires OpenAI API configuration. Set these in your installation config:
+
+```bash
+CAPTAIN_OPEN_AI_API_KEY=your_api_key_here
+CAPTAIN_OPEN_AI_ENDPOINT=https://api.openai.com/v1  # Optional, for custom endpoints
+```
+
+### Account Preferences
+
+Configure Captain features and models per account:
+
+<CodeGroup>
+```bash GET Preferences
+curl -X GET \
+  https://app.chatwoot.com/api/v1/accounts/{account_id}/captain/preferences \
+  -H 'api_access_token: YOUR_ACCESS_TOKEN'
+```
+
+```bash UPDATE Preferences
+curl -X PUT \
+  https://app.chatwoot.com/api/v1/accounts/{account_id}/captain/preferences \
+  -H 'api_access_token: YOUR_ACCESS_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "captain_features": {
+      "editor": true,
+      "assistant": true,
+      "copilot": false
+    },
+    "captain_models": {
+      "editor": "gpt-4.1-mini",
+      "assistant": "gpt-5.1"
+    }
+  }'
+```
+</CodeGroup>
+
+### Enabling Features
+
+Each Captain feature can be enabled or disabled at the account level:
+
+```ruby
+# Check if a feature is enabled
+account.captain_editor_enabled?
+account.captain_assistant_enabled?
+account.captain_copilot_enabled?
+
+# Get the selected model for a feature
+account.captain_editor_model        # => "gpt-4.1-mini"
+account.captain_assistant_model     # => "gpt-5.1"
+```
+
+## Knowledge Integration
+
+Captain Assistants can access your knowledge base to provide accurate answers:
+
+### Document Management
+
+- Upload documents (PDF, text files)
+- Connect to help center articles
+- Enable FAQ generation from conversations
+- Semantic search with embeddings
+
+### FAQ Features
+
+Enable FAQ functionality in your assistant config:
+
+```json
+{
+  "feature_faq": true,
+  "feature_memory": true
+}
+```
+
+## AI Providers
+
+Captain supports multiple AI providers:
+
+<CardGroup cols={3}>
+  <Card title="OpenAI" icon="robot">
+    GPT-4.1, GPT-5, Whisper, Embeddings
+  </Card>
+  <Card title="Anthropic" icon="brain">
+    Claude Haiku, Claude Sonnet (coming soon)
+  </Card>
+  <Card title="Google" icon="google">
+    Gemini 3 Flash, Gemini 3 Pro (coming soon)
+  </Card>
+</CardGroup>
+
+### Model Selection
+
+Choose models based on your needs:
+
+- **Nano/Mini**: Fast, cost-effective for simple tasks
+- **Standard**: Balanced performance for most use cases
+- **Advanced**: Premium models for complex reasoning
+
+<Note>
+  Model availability and credit multipliers vary. Premium models consume more credits per request.
+</Note>
+
+## Assigning to Inboxes
+
+Connect Captain Assistants to your inboxes:
+
+1. Navigate to **Settings** > **Inboxes**
+2. Select an inbox
+3. Go to the **Collaborators** tab
+4. Choose a Captain Assistant from the dropdown
+5. Save changes
+
+The assistant will now handle incoming conversations in that inbox.
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Response Guidelines" icon="list-check">
+    - Be specific about tone and style
+    - Define boundaries clearly
+    - Include brand voice guidelines
+    - Specify when to hand off to humans
+  </Accordion>
+
+  <Accordion title="Guardrails" icon="shield">
+    - Set topic boundaries
+    - Define prohibited actions
+    - Establish escalation criteria
+    - Protect sensitive information
+  </Accordion>
+
+  <Accordion title="Knowledge Base" icon="book-open">
+    - Keep documentation up-to-date
+    - Organize content logically
+    - Use clear, concise language
+    - Test with common questions
+  </Accordion>
+
+  <Accordion title="Model Selection" icon="sliders">
+    - Use appropriate models for tasks
+    - Balance cost vs. quality
+    - Monitor performance metrics
+    - Adjust temperature for creativity
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+  Captain Assistants should complement, not replace, your human support team. Always provide clear handoff paths to human agents.
+</Warning>
+
+## Monitoring and Analytics
+
+Track Captain performance:
+
+- Response accuracy
+- Handoff rates
+- Customer satisfaction
+- Credit usage by feature and model
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Agent Bots" icon="robot" href="/ai/chatbots">
+    Webhook-based automation
+  </Card>
+  <Card title="Canned Responses" icon="message" href="/ai/canned-responses">
+    Pre-written response templates
+  </Card>
+</CardGroup>

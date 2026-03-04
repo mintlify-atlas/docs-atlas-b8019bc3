@@ -1,0 +1,323 @@
+---
+title: Dialogflow Integration
+description: Add intelligent chatbot capabilities to Chatwoot using Google Dialogflow
+---
+
+The Dialogflow integration enables you to add AI-powered chatbot capabilities to your Chatwoot inboxes. Using Google's natural language understanding platform, you can automatically handle common customer queries and seamlessly hand off to human agents when needed.
+
+## Features
+
+- **Natural Language Understanding**: Leverage Google's AI for intent detection
+- **Automated Responses**: Handle common queries without human intervention
+- **Multi-region Support**: Deploy in multiple Google Cloud regions
+- **Custom Actions**: Define custom actions for advanced workflows
+- **Seamless Handoff**: Transfer to human agents when needed
+- **Rich Responses**: Support for text and custom payload responses
+- **Inbox-Level Configuration**: Configure different bots for different inboxes
+
+## Prerequisites
+
+- Admin access to your Chatwoot account
+- Google Cloud Platform account
+- Dialogflow agent created and configured
+- Service account credentials with Dialogflow API access
+
+## Setup Instructions
+
+### Step 1: Create a Dialogflow Agent
+
+1. Go to the [Dialogflow Console](https://dialogflow.cloud.google.com/)
+2. Create a new agent or select an existing one
+3. Configure intents and responses for your use case
+4. Note your **Project ID** (found in agent settings)
+
+### Step 2: Generate Service Account Credentials
+
+1. Open [Google Cloud Console](https://console.cloud.google.com/)
+2. Navigate to **IAM & Admin** > **Service Accounts**
+3. Create a new service account or select an existing one
+4. Grant the **Dialogflow API Client** role
+5. Create a JSON key for the service account
+6. Download and save the credentials JSON file
+
+### Step 3: Configure in Chatwoot
+
+1. Navigate to **Settings** > **Integrations** in Chatwoot
+2. Find **Dialogflow** in the integrations list
+3. Click **Configure**
+4. Fill in the required fields:
+
+#### Required Fields
+
+**Dialogflow Project ID**
+```
+your-project-id
+```
+The Google Cloud project ID where your Dialogflow agent is hosted.
+
+**Dialogflow Project Key File**
+```json
+{
+  "type": "service_account",
+  "project_id": "your-project-id",
+  "private_key_id": "key-id",
+  "private_key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n",
+  "client_email": "service-account@your-project.iam.gserviceaccount.com",
+  "client_id": "123456789",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/..."
+}
+```
+Paste the entire contents of your service account JSON key file.
+
+**Dialogflow Region** (Optional)
+
+Select the region where your Dialogflow agent is deployed:
+
+- **Global - Default** (global)
+- **AS-NE1 - Tokyo, Japan** (asia-northeast1)
+- **AU-SE1 - Sydney, Australia** (australia-southeast1)
+- **EU-W1 - St. Ghislain, Belgium** (europe-west1)
+- **EU-W2 - London, England** (europe-west2)
+
+If not specified, defaults to "global".
+
+### Step 4: Select Inbox
+
+Choose which inbox should use the Dialogflow bot. You can create multiple Dialogflow integrations for different inboxes with different bot configurations.
+
+### Step 5: Test the Integration
+
+1. Send a test message to the configured inbox
+2. Verify that the Dialogflow bot responds
+3. Test various intents to ensure proper configuration
+
+## How It Works
+
+The Dialogflow integration processes messages through the following flow:
+
+1. **Message Received**: Customer sends a message to the inbox
+2. **Session Creation**: A unique session ID is created for the conversation
+3. **Intent Detection**: Message is sent to Dialogflow for intent detection
+4. **Response Processing**: Dialogflow returns fulfillment messages
+5. **Reply Creation**: Responses are posted back to the conversation
+6. **Action Handling**: Custom actions are processed if defined
+
+### Session Management
+
+The integration creates session paths based on the region:
+
+**Global Region:**
+```
+projects/{project_id}/agent/sessions/{session_id}
+```
+
+**Regional Deployment:**
+```
+projects/{project_id}/locations/{region}/agent/sessions/{session_id}
+```
+
+### Response Types
+
+Dialogflow can return two types of responses:
+
+**Text Responses:**
+Simple text messages sent directly to the conversation.
+
+**Payload Responses:**
+Custom JSON payloads for advanced use cases:
+
+```json
+{
+  "content": "Response message",
+  "action": "custom_action_name"
+}
+```
+
+## API Integration
+
+The Dialogflow integration is managed through the hooks API:
+
+### Create Integration
+
+```bash
+POST /api/v1/accounts/{account_id}/integrations/hooks
+Content-Type: application/json
+
+{
+  "app_id": "dialogflow",
+  "inbox_id": 123,
+  "settings": {
+    "project_id": "your-project-id",
+    "credentials": { /* service account JSON */ },
+    "region": "global"
+  }
+}
+```
+
+### Update Settings
+
+```bash
+PATCH /api/v1/accounts/{account_id}/integrations/hooks/{hook_id}
+Content-Type: application/json
+
+{
+  "settings": {
+    "project_id": "updated-project-id",
+    "region": "europe-west1"
+  }
+}
+```
+
+### Delete Integration
+
+```bash
+DELETE /api/v1/accounts/{account_id}/integrations/hooks/{hook_id}
+```
+
+## Implementation Details
+
+The Dialogflow integration uses:
+
+- **Processor Service**: `Integrations::Dialogflow::ProcessorService`
+- **Google Cloud Library**: `google-cloud-dialogflow` v2
+- **Hook Type**: Inbox-level integration
+- **Timeout**: 10 seconds for API calls
+
+### Configuration Schema
+
+```ruby
+settings_json_schema:
+  type: 'object'
+  properties:
+    project_id: { type: 'string' }
+    credentials: { type: 'object' }
+    region: { type: 'string' }
+  required: ['project_id', 'credentials']
+```
+
+### Endpoint Configuration
+
+The integration automatically configures the correct Dialogflow endpoint based on region:
+
+- **Global**: `dialogflow.googleapis.com`
+- **Regional**: `{region}-dialogflow.googleapis.com`
+
+## Advanced Configuration
+
+### Custom Actions
+
+You can define custom actions in your Dialogflow fulfillment responses:
+
+```json
+{
+  "action": "transfer_to_agent",
+  "content": "Transferring you to a human agent"
+}
+```
+
+Implement action handling in the `process_action` method:
+
+```ruby:workspace/source/lib/integrations/dialogflow/processor_service.rb
+def process_action(message, action)
+  # Custom action handling logic
+end
+```
+
+### Updated Messages
+
+The integration also processes `message.updated` events, which can be used for form submissions or interactive elements:
+
+```ruby
+message.content_attributes['submitted_values']&.first&.dig('value')
+```
+
+## Troubleshooting
+
+### Permission Denied Error
+
+**Issue**: `Google::Cloud::PermissionDeniedError` in logs.
+
+**Solution**:
+1. Verify service account has Dialogflow API Client role
+2. Enable Dialogflow API in Google Cloud Console
+3. Check credentials JSON is valid and complete
+4. Ensure project ID matches the service account project
+
+When this error occurs, the integration is automatically disabled and requires reauthorization.
+
+### Bot Not Responding
+
+**Issue**: Messages are sent but no bot response appears.
+
+**Solution**:
+1. Check that the integration status is "enabled"
+2. Verify credentials are correctly configured
+3. Ensure Dialogflow agent has intents configured
+4. Check Dialogflow Console for detected intents
+5. Review Chatwoot logs for error messages
+
+### Invalid Credentials
+
+**Issue**: Credentials validation fails during setup.
+
+**Solution**:
+1. Ensure you're pasting the complete JSON file
+2. Verify JSON is properly formatted (use a JSON validator)
+3. Check for extra whitespace or characters
+4. Re-download credentials from Google Cloud Console
+
+### Wrong Region Error
+
+**Issue**: API calls fail with region-related errors.
+
+**Solution**:
+1. Verify your Dialogflow agent's region in the Dialogflow Console
+2. Update the region setting to match your agent's location
+3. Use "global" if your agent is in the default location
+
+### Timeout Issues
+
+**Issue**: Dialogflow API calls timeout.
+
+**Solution**:
+1. Check network connectivity to Google Cloud
+2. Verify firewall rules allow HTTPS to Dialogflow endpoints
+3. Consider using a regional endpoint closer to your deployment
+4. Review Dialogflow agent complexity (may need optimization)
+
+## Security and Privacy
+
+- **Encrypted Credentials**: Service account credentials are encrypted at rest
+- **API Timeout**: 10-second timeout prevents hanging requests
+- **Error Handling**: Failed authentications automatically disable the integration
+- **Session Isolation**: Each conversation gets a unique session ID
+- **Data Privacy**: Messages are sent to Google Cloud per Dialogflow terms
+
+## Multiple Integrations
+
+You can configure multiple Dialogflow integrations:
+
+- Different inboxes can have different bots
+- Each integration has its own credentials and settings
+- Useful for multi-language support or different customer segments
+- Configure separate Dialogflow agents for each use case
+
+## Disabling the Integration
+
+The integration can be disabled:
+
+- **Automatically**: When authentication fails (permission denied)
+- **Manually**: Through the Chatwoot dashboard or API
+
+Disabled integrations stop processing messages but retain configuration.
+
+## Next Steps
+
+- Design and train your Dialogflow intents
+- Configure fallback intents for unhandled queries
+- Set up fulfillment webhooks for dynamic responses
+- Monitor bot performance and conversation handoffs
+- Explore other Chatwoot integrations to enhance functionality

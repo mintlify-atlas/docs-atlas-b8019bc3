@@ -1,0 +1,540 @@
+---
+title: Upgrade Procedures
+description: Safely upgrade your Chatwoot self-hosted installation to the latest version
+---
+
+## Overview
+
+Upgrading Chatwoot involves updating the application code, running database migrations, and restarting services. This guide covers various upgrade scenarios and best practices.
+
+## Before You Upgrade
+
+### Pre-Upgrade Checklist
+
+1. **Backup your data** - See [Backup and Restore](/self-hosting/backup-restore)
+2. **Review release notes** - Check [GitHub releases](https://github.com/chatwoot/chatwoot/releases) for breaking changes
+3. **Check system requirements** - Verify compatibility with your environment
+4. **Schedule downtime** - Plan for maintenance window if needed
+5. **Test in staging** - Upgrade staging environment first if available
+
+### Check Current Version
+
+```bash
+# Via Rails console
+bundle exec rails runner "puts Chatwoot.config[:version]"
+
+# Via git (if installed from source)
+git describe --tags
+
+# Via Docker
+docker exec chatwoot-rails bundle exec rails runner "puts Chatwoot.config[:version]"
+```
+
+## Docker Compose Upgrade
+
+For installations using Docker Compose:
+
+### Step-by-Step Upgrade
+
+```bash
+# 1. Navigate to installation directory
+cd /path/to/chatwoot
+
+# 2. Backup database before upgrade
+docker-compose exec -T postgres pg_dump -U postgres chatwoot > backup_$(date +%Y%m%d_%H%M%S).sql
+
+# 3. Pull latest image
+docker-compose pull
+
+# 4. Stop services
+docker-compose down
+
+# 5. Start services (migrations run automatically via entrypoint)
+docker-compose up -d
+
+# 6. Verify upgrade
+docker-compose logs -f rails
+
+# 7. Check version
+docker-compose exec rails bundle exec rails runner "puts Chatwoot.config[:version]"
+```
+
+### Upgrade to Specific Version
+
+```bash
+# Edit docker-compose.production.yaml
+# Change:
+#   image: chatwoot/chatwoot:latest
+# To:
+#   image: chatwoot/chatwoot:v3.7.0
+
+# Then follow standard upgrade steps
+docker-compose pull
+docker-compose down
+docker-compose up -d
+```
+
+### Monitor Upgrade Progress
+
+```bash
+# Follow Rails logs
+docker-compose logs -f rails
+
+# Check for migration status
+docker-compose exec rails bundle exec rails db:migrate:status
+
+# Verify services are healthy
+docker-compose ps
+curl http://localhost:3000/health
+```
+
+## Source Installation Upgrade
+
+For installations from source code:
+
+### Standard Upgrade Process
+
+```bash
+# 1. Backup database
+pg_dump -U postgres chatwoot_production > backup_$(date +%Y%m%d_%H%M%S).sql
+
+# 2. Navigate to installation directory
+cd /home/chatwoot/chatwoot
+
+# 3. Pull latest code
+git fetch --all --tags
+git checkout master  # or specific version tag like v3.7.0
+git pull origin master
+
+# 4. Stop services
+systemctl stop chatwoot-web chatwoot-worker
+
+# 5. Update Ruby dependencies
+bundle install
+
+# 6. Update Node packages
+pnpm install
+
+# 7. Build frontend assets
+RAILS_ENV=production bundle exec rails assets:precompile
+
+# 8. Run database migrations
+RAILS_ENV=production bundle exec rails db:migrate
+
+# 9. Restart services
+systemctl start chatwoot-web chatwoot-worker
+
+# 10. Verify upgrade
+systemctl status chatwoot-web chatwoot-worker
+curl http://localhost:3000/health
+```
+
+### Upgrade to Specific Version
+
+```bash
+# List available versions
+git tag -l | tail -20
+
+# Checkout specific version
+git checkout v3.7.0
+
+# Then follow standard upgrade steps from step 4 onwards
+```
+
+## Database Migrations
+
+Chatwoot uses Rails migrations to update the database schema.
+
+### Migration Tools
+
+Chatwoot provides a custom database preparation task:
+
+```bash
+# Chatwoot-specific prepare task
+# From lib/tasks/db_enhancements.rake
+RAILS_ENV=production bundle exec rails db:chatwoot_prepare
+```
+
+This task:
+- Creates database if it doesn't exist
+- Loads schema for fresh installations
+- Runs migrations for existing installations
+- Loads installation config after migrations
+
+### Manual Migration Steps
+
+```bash
+# Check migration status
+RAILS_ENV=production bundle exec rails db:migrate:status
+
+# Run pending migrations
+RAILS_ENV=production bundle exec rails db:migrate
+
+# Rollback last migration (if needed)
+RAILS_ENV=production bundle exec rails db:rollback
+
+# Rollback multiple migrations
+RAILS_ENV=production bundle exec rails db:rollback STEP=3
+```
+
+### Migration Verification
+
+```bash
+# Verify schema version
+RAILS_ENV=production bundle exec rails runner "puts ActiveRecord::Base.connection.migration_context.current_version"
+
+# Check for pending migrations
+RAILS_ENV=production bundle exec rails db:abort_if_pending_migrations
+
+# Verify installation config loaded
+RAILS_ENV=production bundle exec rails runner "puts InstallationConfig.count"
+```
+
+## Rollback Procedures
+
+### Docker Rollback
+
+```bash
+# 1. Stop services
+docker-compose down
+
+# 2. Revert to previous image
+# Edit docker-compose.production.yaml
+# Change image tag to previous version: chatwoot/chatwoot:v3.6.0
+
+# 3. Restore database backup
+docker-compose up -d postgres
+sleep 10
+docker exec -i chatwoot-postgres psql -U postgres -c "DROP DATABASE chatwoot;"
+docker exec -i chatwoot-postgres psql -U postgres -c "CREATE DATABASE chatwoot;"
+cat backup_20240115_020000.sql | docker exec -i chatwoot-postgres psql -U postgres chatwoot
+
+# 4. Start all services
+docker-compose up -d
+```
+
+### Source Installation Rollback
+
+```bash
+# 1. Stop services
+systemctl stop chatwoot-web chatwoot-worker
+
+# 2. Checkout previous version
+cd /home/chatwoot/chatwoot
+git checkout v3.6.0
+
+# 3. Restore database
+psql -U postgres -c "DROP DATABASE chatwoot_production;"
+psql -U postgres -c "CREATE DATABASE chatwoot_production;"
+psql -U postgres chatwoot_production < backup_20240115_020000.sql
+
+# 4. Reinstall dependencies
+bundle install
+pnpm install
+
+# 5. Rebuild assets
+RAILS_ENV=production bundle exec rails assets:precompile
+
+# 6. Restart services
+systemctl start chatwoot-web chatwoot-worker
+```
+
+## Zero-Downtime Upgrades
+
+For production systems requiring high availability:
+
+### Blue-Green Deployment
+
+1. **Set up parallel environment** (Blue)
+   - Deploy new version on separate servers
+   - Use same database (read-only mode during migration)
+
+2. **Run migrations** on separate database replica
+   - Test migrations don't break old version
+   - Switch database to read-only briefly
+   - Run migrations
+   - Switch back to read-write
+
+3. **Switch traffic** to new environment
+   - Update load balancer to route to new servers
+   - Monitor for issues
+
+4. **Rollback if needed** by switching load balancer back
+
+### Rolling Upgrade (Multiple Instances)
+
+```bash
+# For each instance:
+# 1. Remove from load balancer
+# 2. Upgrade instance
+# 3. Add back to load balancer
+# 4. Verify health
+# 5. Move to next instance
+
+# Example with systemd
+for instance in web-1 web-2 web-3; do
+  echo "Upgrading $instance"
+  ssh $instance 'systemctl stop chatwoot-web'
+  ssh $instance 'cd /home/chatwoot/chatwoot && git pull && bundle install && pnpm install'
+  ssh $instance 'cd /home/chatwoot/chatwoot && RAILS_ENV=production bundle exec rails assets:precompile'
+  ssh $instance 'systemctl start chatwoot-web'
+  
+  # Wait for health check
+  sleep 10
+  curl http://$instance:3000/health
+  
+  echo "$instance upgraded successfully"
+done
+
+# Run migrations once after all instances upgraded
+ssh web-1 'cd /home/chatwoot/chatwoot && RAILS_ENV=production bundle exec rails db:migrate'
+```
+
+## Version-Specific Upgrade Notes
+
+### Major Version Upgrades
+
+When upgrading across major versions (e.g., 2.x to 3.x):
+
+1. **Review breaking changes** in release notes
+2. **Update environment variables** if config changed
+3. **Test integrations** thoroughly
+4. **Allow extra time** for migrations
+
+### Ruby Version Updates
+
+If upgrade requires new Ruby version:
+
+```bash
+# Check required Ruby version
+cat .ruby-version
+
+# Install new Ruby (using rbenv)
+rbenv install 3.2.2
+rbenv local 3.2.2
+
+# Reinstall gems
+bundle install
+
+# Update systemd service if needed
+sudo systemctl daemon-reload
+```
+
+### PostgreSQL Extensions
+
+Chatwoot requires specific PostgreSQL extensions:
+
+```sql
+-- Verify extensions are installed
+SELECT * FROM pg_extension;
+
+-- Required extensions (from migration schema):
+-- - pg_stat_statements
+-- - pg_trgm
+-- - pgcrypto
+-- - plpgsql
+-- - vector (pgvector)
+
+-- Install if missing
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE EXTENSION IF NOT EXISTS vector;
+```
+
+## Post-Upgrade Tasks
+
+### Verification Steps
+
+```bash
+# 1. Check version
+curl http://localhost:3000/api/v1/accounts/1 -H "api_access_token: YOUR_TOKEN" | jq
+
+# 2. Verify services
+systemctl status chatwoot-web chatwoot-worker
+# or
+docker-compose ps
+
+# 3. Check Sidekiq
+# Login to /monitoring/sidekiq as super admin
+# Verify no stuck jobs
+
+# 4. Test key functionality
+# - Send test message
+# - Create test conversation
+# - Upload attachment
+# - Test integrations
+
+# 5. Monitor logs
+tail -f log/production.log
+# or
+docker-compose logs -f rails sidekiq
+
+# 6. Check for errors
+grep -i error log/production.log | tail -50
+```
+
+### Clear Caches
+
+```bash
+# Clear Rails cache
+RAILS_ENV=production bundle exec rails runner "Rails.cache.clear"
+
+# Clear Redis cache
+redis-cli FLUSHDB
+
+# Clear browser cache
+# Instruct users to hard refresh (Ctrl+Shift+R)
+```
+
+### Reindex Search (if applicable)
+
+```bash
+# If using Enterprise search features
+RAILS_ENV=production bundle exec rails search:reindex
+```
+
+## Automated Upgrade Script
+
+```bash
+#!/bin/bash
+# /usr/local/bin/chatwoot-upgrade.sh
+
+set -e
+
+INSTALL_DIR="/home/chatwoot/chatwoot"
+BACKUP_DIR="/var/backups/chatwoot"
+VERSION="$1"  # Optional: specify version
+
+echo "=== Chatwoot Upgrade Script ==="
+echo "Installation: $INSTALL_DIR"
+echo "Target version: ${VERSION:-latest}"
+echo ""
+
+# Confirm
+read -p "Continue with upgrade? (yes/no): " -r
+if [[ ! $REPLY =~ ^yes$ ]]; then
+  echo "Upgrade cancelled"
+  exit 1
+fi
+
+# Backup
+echo "Creating backup..."
+mkdir -p "$BACKUP_DIR"
+pg_dump -U postgres chatwoot_production > "$BACKUP_DIR/pre_upgrade_$(date +%Y%m%d_%H%M%S).sql"
+echo "Backup completed"
+
+# Stop services
+echo "Stopping services..."
+systemctl stop chatwoot-web chatwoot-worker
+
+# Update code
+echo "Updating code..."
+cd "$INSTALL_DIR"
+git fetch --all --tags
+
+if [ -n "$VERSION" ]; then
+  git checkout "$VERSION"
+else
+  git checkout master
+  git pull origin master
+fi
+
+# Update dependencies
+echo "Installing dependencies..."
+bundle install
+pnpm install
+
+# Build assets
+echo "Building assets..."
+RAILS_ENV=production bundle exec rails assets:precompile
+
+# Run migrations
+echo "Running migrations..."
+RAILS_ENV=production bundle exec rails db:migrate
+
+# Restart services
+echo "Starting services..."
+systemctl start chatwoot-web chatwoot-worker
+
+# Verify
+echo "Verifying upgrade..."
+sleep 5
+
+if curl -sf http://localhost:3000/health > /dev/null; then
+  echo "✓ Upgrade completed successfully"
+  bundle exec rails runner "puts 'New version: ' + Chatwoot.config[:version]"
+else
+  echo "✗ Upgrade failed - service not responding"
+  echo "Check logs: tail -f log/production.log"
+  exit 1
+fi
+```
+
+Make executable and use:
+
+```bash
+chmod +x /usr/local/bin/chatwoot-upgrade.sh
+
+# Upgrade to latest
+sudo /usr/local/bin/chatwoot-upgrade.sh
+
+# Upgrade to specific version
+sudo /usr/local/bin/chatwoot-upgrade.sh v3.7.0
+```
+
+## Troubleshooting Upgrades
+
+### Migration Fails
+
+```bash
+# Check migration error
+RAILS_ENV=production bundle exec rails db:migrate
+
+# Check pending migrations
+RAILS_ENV=production bundle exec rails db:migrate:status
+
+# Try single step
+RAILS_ENV=production bundle exec rails db:migrate:up VERSION=20230426130150
+```
+
+### Asset Compilation Fails
+
+```bash
+# Clean old assets
+RAILS_ENV=production bundle exec rails assets:clobber
+
+# Rebuild
+RAILS_ENV=production bundle exec rails assets:precompile
+
+# Check Node version
+node --version  # Should match .nvmrc
+```
+
+### Service Won't Start
+
+```bash
+# Check logs
+tail -100 log/production.log
+journalctl -u chatwoot-web -n 100
+
+# Verify dependencies
+bundle check
+pnpm list
+
+# Test manually
+RAILS_ENV=production bundle exec rails s
+```
+
+## Best Practices
+
+1. **Always backup** before upgrading
+2. **Test in staging** environment first
+3. **Read release notes** for breaking changes
+4. **Schedule upgrades** during low-traffic periods
+5. **Monitor closely** after upgrade
+6. **Keep upgrade window** reasonable (inform users)
+7. **Document your upgrade** process and any issues
+8. **Stay current** - don't skip too many versions
+9. **Automate where possible** but verify results
+10. **Have rollback plan** ready

@@ -1,0 +1,514 @@
+---
+title: Messages
+description: Send, retrieve, and manage messages within conversations
+---
+
+## Overview
+
+Messages are the individual communications within a conversation. They can be sent by agents, contacts, or agent bots.
+
+## List Messages
+
+Retrieve messages from a conversation.
+
+```http
+GET /api/v1/accounts/{account_id}/conversations/{conversation_id}/messages
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+<ParamField path="conversation_id" type="integer" required>
+  The display ID of the conversation
+</ParamField>
+
+### Query Parameters
+
+<ParamField query="page" type="integer" default="1">
+  Page number for pagination
+</ParamField>
+
+### Response
+
+<ResponseField name="id" type="integer">
+  Message ID
+</ResponseField>
+
+<ResponseField name="content" type="string">
+  Message content
+</ResponseField>
+
+<ResponseField name="message_type" type="integer">
+  Message type: 0 (incoming), 1 (outgoing), 2 (activity)
+</ResponseField>
+
+<ResponseField name="content_type" type="string">
+  Content type: `text`, `input_text`, `input_textarea`, `cards`, `form`, `article`
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Delivery status: `sent`, `delivered`, `read`, `failed`
+</ResponseField>
+
+<ResponseField name="created_at" type="integer">
+  Unix timestamp of creation
+</ResponseField>
+
+<ResponseField name="private" type="boolean">
+  Whether the message is a private note
+</ResponseField>
+
+<ResponseField name="sender" type="object">
+  Sender information
+</ResponseField>
+
+<ResponseField name="attachments" type="array">
+  Array of attachment objects
+</ResponseField>
+
+### Example Request
+
+```bash
+curl -X GET https://app.chatwoot.com/api/v1/accounts/1/conversations/1/messages \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+### Example Response
+
+```json
+{
+  "payload": [
+    {
+      "id": 1,
+      "content": "Hello, how can I help you?",
+      "message_type": 1,
+      "content_type": "text",
+      "status": "sent",
+      "created_at": 1704067200,
+      "private": false,
+      "sender": {
+        "id": 1,
+        "name": "John Doe",
+        "type": "User"
+      },
+      "attachments": []
+    },
+    {
+      "id": 2,
+      "content": "I need help with my order",
+      "message_type": 0,
+      "content_type": "text",
+      "status": "sent",
+      "created_at": 1704067260,
+      "private": false,
+      "sender": {
+        "id": 1,
+        "name": "Customer Name",
+        "type": "Contact"
+      },
+      "attachments": []
+    }
+  ],
+  "meta": {
+    "contact_last_seen_at": 1704067260
+  }
+}
+```
+
+## Create Message
+
+Send a new message in a conversation.
+
+```http
+POST /api/v1/accounts/{account_id}/conversations/{conversation_id}/messages
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+<ParamField path="conversation_id" type="integer" required>
+  The display ID of the conversation
+</ParamField>
+
+### Request Body
+
+<ParamField body="content" type="string" required>
+  Message content text
+</ParamField>
+
+<ParamField body="message_type" type="string" required>
+  Message type: `incoming` or `outgoing`
+</ParamField>
+
+<ParamField body="private" type="boolean" default="false">
+  Whether this is a private note (only visible to agents)
+</ParamField>
+
+<ParamField body="content_type" type="string" default="text">
+  Content type: `text`, `input_text`, `input_textarea`, `cards`, `form`, `article`
+</ParamField>
+
+<ParamField body="content_attributes" type="object">
+  Additional content attributes
+</ParamField>
+
+<ParamField body="attachments" type="array">
+  Array of attachment objects or file uploads
+</ParamField>
+
+### Example Request (Text Message)
+
+```bash
+curl -X POST https://app.chatwoot.com/api/v1/accounts/1/conversations/1/messages \
+  -H "api_access_token: YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "Thank you for contacting us. I will help you with your order.",
+    "message_type": "outgoing",
+    "private": false
+  }'
+```
+
+### Example Request (Private Note)
+
+```bash
+curl -X POST https://app.chatwoot.com/api/v1/accounts/1/conversations/1/messages \
+  -H "api_access_token: YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "Customer seems frustrated. Handle with care.",
+    "message_type": "outgoing",
+    "private": true
+  }'
+```
+
+### Example Request (With Attachment)
+
+```bash
+curl -X POST https://app.chatwoot.com/api/v1/accounts/1/conversations/1/messages \
+  -H "api_access_token: YOUR_ACCESS_TOKEN" \
+  -F "content=Please find the document attached" \
+  -F "message_type=outgoing" \
+  -F "attachments[]=@/path/to/file.pdf"
+```
+
+### Example Response
+
+```json
+{
+  "id": 3,
+  "content": "Thank you for contacting us. I will help you with your order.",
+  "message_type": 1,
+  "content_type": "text",
+  "status": "sent",
+  "created_at": 1704067320,
+  "private": false,
+  "sender": {
+    "id": 1,
+    "name": "John Doe",
+    "type": "User"
+  },
+  "conversation_id": 1
+}
+```
+
+## Update Message
+
+Update message status (API inbox only).
+
+```http
+PATCH /api/v1/accounts/{account_id}/conversations/{conversation_id}/messages/{id}
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+<ParamField path="conversation_id" type="integer" required>
+  The display ID of the conversation
+</ParamField>
+
+<ParamField path="id" type="integer" required>
+  The ID of the message
+</ParamField>
+
+### Request Body
+
+<ParamField body="status" type="string" required>
+  New status: `sent`, `delivered`, `read`, `failed`
+</ParamField>
+
+<ParamField body="external_error" type="string">
+  Error message if status is `failed`
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X PATCH https://app.chatwoot.com/api/v1/accounts/1/conversations/1/messages/3 \
+  -H "api_access_token: YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "delivered"
+  }'
+```
+
+<Note>
+Message status updates are only allowed for API inboxes. This is typically used for external messaging channels.
+</Note>
+
+## Delete Message
+
+Delete a message from a conversation.
+
+```http
+DELETE /api/v1/accounts/{account_id}/conversations/{conversation_id}/messages/{id}
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+<ParamField path="conversation_id" type="integer" required>
+  The display ID of the conversation
+</ParamField>
+
+<ParamField path="id" type="integer" required>
+  The ID of the message to delete
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X DELETE https://app.chatwoot.com/api/v1/accounts/1/conversations/1/messages/3 \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+<Warning>
+Deleting a message replaces its content with "This message was deleted" and removes all attachments. This action cannot be undone.
+</Warning>
+
+## Retry Message
+
+Retry sending a failed message.
+
+```http
+POST /api/v1/accounts/{account_id}/conversations/{conversation_id}/messages/{id}/retry
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+<ParamField path="conversation_id" type="integer" required>
+  The display ID of the conversation
+</ParamField>
+
+<ParamField path="id" type="integer" required>
+  The ID of the message to retry
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST https://app.chatwoot.com/api/v1/accounts/1/conversations/1/messages/3/retry \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+## Translate Message
+
+Translate a message to a different language.
+
+```http
+POST /api/v1/accounts/{account_id}/conversations/{conversation_id}/messages/{id}/translate
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+<ParamField path="conversation_id" type="integer" required>
+  The display ID of the conversation
+</ParamField>
+
+<ParamField path="id" type="integer" required>
+  The ID of the message to translate
+</ParamField>
+
+### Request Body
+
+<ParamField body="target_language" type="string" required>
+  Target language code (e.g., "en", "es", "fr", "de")
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST https://app.chatwoot.com/api/v1/accounts/1/conversations/1/messages/2/translate \
+  -H "api_access_token: YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "target_language": "es"
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "content": "Necesito ayuda con mi pedido"
+}
+```
+
+<Note>
+Translations are cached. Subsequent requests for the same language will return the cached translation.
+</Note>
+
+## Message Types
+
+### Incoming (0)
+Messages received from contacts.
+
+### Outgoing (1)
+Messages sent by agents or bots to contacts.
+
+### Activity (2)
+System-generated activity messages (e.g., status changes, assignments).
+
+## Content Types
+
+### text
+Plain text message.
+
+### input_text
+Single-line text input form.
+
+### input_textarea
+Multi-line text input form.
+
+### cards
+Rich card layout with images, titles, and buttons.
+
+### form
+Interactive form with multiple fields.
+
+### article
+Knowledge base article.
+
+## Message Status
+
+### sent
+Message has been sent.
+
+### delivered
+Message has been delivered to recipient.
+
+### read
+Message has been read by recipient.
+
+### failed
+Message delivery failed.
+
+## Private Notes
+
+Private notes are messages that are only visible to agents. They are useful for:
+- Internal communication about conversations
+- Recording important information
+- Leaving notes for other team members
+
+To create a private note, set `private: true` in the message payload.
+
+## Attachments
+
+Messages can include attachments such as:
+- Images (JPEG, PNG, GIF)
+- Documents (PDF, DOC, DOCX)
+- Audio files
+- Video files
+
+### Upload Attachments
+
+Use multipart/form-data to upload files:
+
+```bash
+curl -X POST https://app.chatwoot.com/api/v1/accounts/1/conversations/1/messages \
+  -H "api_access_token: YOUR_ACCESS_TOKEN" \
+  -F "content=Check out this document" \
+  -F "message_type=outgoing" \
+  -F "attachments[]=@document.pdf" \
+  -F "attachments[]=@image.jpg"
+```
+
+## Error Responses
+
+### Message Not Found
+
+```json
+{
+  "error": "Message not found"
+}
+```
+
+### Invalid Message Type
+
+```json
+{
+  "error": "Invalid message type"
+}
+```
+
+### API Inbox Required
+
+```json
+{
+  "error": "Message status update is only allowed for API inboxes"
+}
+```
+
+### Translation Failed
+
+```json
+{
+  "error": "Translation service unavailable"
+}
+```
+
+## Content Attributes
+
+The `content_attributes` field can contain additional metadata:
+
+```json
+{
+  "content": "Message content",
+  "content_attributes": {
+    "items": [
+      {
+        "title": "Card Title",
+        "description": "Card description",
+        "actions": [
+          {
+            "text": "Button Text",
+            "uri": "https://example.com"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+This is useful for creating rich messages with cards, forms, and interactive elements.

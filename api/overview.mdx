@@ -1,0 +1,128 @@
+---
+title: API Overview
+description: Introduction to the Chatwoot API, base URLs, versioning, and getting started guide
+---
+
+## Introduction
+
+The Chatwoot API is a RESTful JSON API that allows you to programmatically interact with your Chatwoot account. Use it to build integrations, automate workflows, and extend Chatwoot's functionality.
+
+## Base URL
+
+All API requests should be made to:
+
+```
+https://app.chatwoot.com/api/v1
+```
+
+For self-hosted installations, replace `app.chatwoot.com` with your installation URL:
+
+```
+https://your-domain.com/api/v1
+```
+
+## API Versioning
+
+The Chatwoot API uses versioning to ensure backward compatibility. The current stable version is **v1**.
+
+- **v1**: Current stable version (recommended)
+- **v2**: Available for specific endpoints (reports, accounts)
+
+Version is specified in the URL path:
+- v1 endpoints: `/api/v1/*`
+- v2 endpoints: `/api/v2/*`
+
+## Response Format
+
+All API responses are returned in JSON format with appropriate HTTP status codes.
+
+### Success Response
+
+```json
+{
+  "id": 1,
+  "name": "John Doe",
+  "email": "john@example.com"
+}
+```
+
+### Error Response
+
+```json
+{
+  "error": "Error message description",
+  "message": "Detailed error information"
+}
+```
+
+## HTTP Status Codes
+
+| Code | Description |
+|------|-------------|
+| 200 | Success - Request completed successfully |
+| 201 | Created - Resource created successfully |
+| 400 | Bad Request - Invalid parameters |
+| 401 | Unauthorized - Authentication required |
+| 403 | Forbidden - Insufficient permissions |
+| 404 | Not Found - Resource not found |
+| 422 | Unprocessable Entity - Validation failed |
+| 429 | Too Many Requests - Rate limit exceeded |
+| 500 | Internal Server Error - Server error |
+
+## Rate Limiting
+
+API requests are rate-limited to ensure system stability. If you exceed the rate limit, you'll receive a `429 Too Many Requests` response.
+
+<Note>
+Rate limits vary by endpoint and account type. Contact support for specific rate limit information.
+</Note>
+
+## Pagination
+
+List endpoints return paginated results. Use the `page` parameter to navigate through pages.
+
+<ParamField query="page" type="integer" default="1">
+  Page number for pagination
+</ParamField>
+
+Default page size is **15 items** for most endpoints.
+
+```bash
+GET /api/v1/accounts/{account_id}/contacts?page=2
+```
+
+## Date Format
+
+All timestamps are returned in Unix timestamp format (seconds since epoch) or ISO 8601 format.
+
+## Getting Started
+
+1. **Create an Account**: Sign up at [app.chatwoot.com](https://app.chatwoot.com)
+2. **Generate Access Token**: Navigate to Profile Settings → Access Token
+3. **Authenticate**: Include the token in your API requests
+4. **Make Your First Request**: Try the accounts endpoint
+
+```bash
+curl -X GET https://app.chatwoot.com/api/v1/accounts/{account_id} \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+## API Resources
+
+The Chatwoot API provides access to the following resources:
+
+- **[Accounts](/api/accounts)** - Manage your Chatwoot accounts
+- **[Agents](/api/agents)** - Manage team members and agents
+- **[Contacts](/api/contacts)** - Manage customer contacts
+- **[Conversations](/api/conversations)** - Manage customer conversations
+- **[Messages](/api/messages)** - Send and receive messages
+- **[Inboxes](/api/inboxes)** - Manage communication channels
+- **[Webhooks](/api/webhooks)** - Configure webhook integrations
+
+## Need Help?
+
+If you need assistance with the API:
+
+- Check the [API documentation](/api/overview) for detailed endpoint information
+- Join our [community forum](https://github.com/chatwoot/chatwoot/discussions)
+- Report issues on [GitHub](https://github.com/chatwoot/chatwoot/issues)

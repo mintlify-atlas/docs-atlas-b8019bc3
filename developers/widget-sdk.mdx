@@ -1,0 +1,556 @@
+---
+title: Widget SDK Methods
+description: JavaScript SDK methods for controlling the Chatwoot widget programmatically
+---
+
+The Chatwoot Widget SDK provides JavaScript methods to control the chat widget, manage user data, and listen to widget events. Use these methods to integrate Chatwoot deeply into your web application.
+
+## Installation
+
+Add the Chatwoot widget script to your HTML:
+
+```html
+<script>
+  (function(d,t) {
+    var BASE_URL="https://chatwoot.example.com";
+    var g=d.createElement(t),s=d.getElementsByTagName(t)[0];
+    g.src=BASE_URL+"/packs/js/sdk.js";
+    g.defer = true;
+    g.async = true;
+    s.parentNode.insertBefore(g,s);
+    g.onload=function(){
+      window.chatwootSDK.run({
+        websiteToken: 'YOUR_WEBSITE_TOKEN',
+        baseUrl: BASE_URL
+      })
+    }
+  })(document,"script");
+</script>
+```
+
+Source: `app/javascript/entrypoints/sdk.js:21-24`
+
+## Configuration Options
+
+Set configuration options via `window.chatwootSettings` before the SDK loads:
+
+```html
+<script>
+  window.chatwootSettings = {
+    hideMessageBubble: false,
+    position: 'right', // 'left' or 'right'
+    locale: 'en',
+    useBrowserLanguage: false,
+    type: 'standard', // 'standard' or 'expanded_bubble'
+    launcherTitle: 'Chat with us',
+    showPopoutButton: false,
+    showUnreadMessagesDialog: true,
+    widgetStyle: 'standard', // 'standard' or 'flat'
+    darkMode: 'auto', // 'light', 'dark', or 'auto'
+    welcomeTitle: 'Welcome to our chat',
+    welcomeDescription: 'We are here to help',
+    availableMessage: 'We are online',
+    unavailableMessage: 'We are away',
+    enableFileUpload: true,
+    enableEmojiPicker: true,
+    enableEndConversation: true,
+    baseDomain: '.example.com' // For cross-domain cookie sharing
+  };
+</script>
+```
+
+Source: `app/javascript/entrypoints/sdk.js:50-81`
+
+## Widget Control Methods
+
+### toggle()
+
+Open or close the chat widget.
+
+```javascript
+// Open the widget
+window.$chatwoot.toggle('open');
+
+// Close the widget
+window.$chatwoot.toggle('close');
+
+// Toggle between open and closed
+window.$chatwoot.toggle();
+```
+
+Source: `app/javascript/entrypoints/sdk.js:83-85`
+
+### toggleBubbleVisibility()
+
+Show or hide the chat bubble launcher.
+
+```javascript
+// Hide the chat bubble
+window.$chatwoot.toggleBubbleVisibility('hide');
+
+// Show the chat bubble
+window.$chatwoot.toggleBubbleVisibility('show');
+```
+
+Source: `app/javascript/entrypoints/sdk.js:87-102`
+
+**Use case**: Hide the bubble on certain pages or show/hide based on user behavior.
+
+```javascript
+// Hide bubble on checkout page
+if (window.location.pathname === '/checkout') {
+  window.$chatwoot.toggleBubbleVisibility('hide');
+}
+```
+
+### popoutChatWindow()
+
+Open the chat widget in a new popup window.
+
+```javascript
+window.$chatwoot.popoutChatWindow();
+```
+
+Source: `app/javascript/entrypoints/sdk.js:104-110`
+
+**Note**: Requires `showPopoutButton: true` in widget settings.
+
+### reset()
+
+Reset the widget session and clear all user data.
+
+```javascript
+window.$chatwoot.reset();
+```
+
+Source: `app/javascript/entrypoints/sdk.js:195-210`
+
+**Use case**: Call this when a user logs out of your application.
+
+```javascript
+// User logout handler
+function handleLogout() {
+  // Clear your app session
+  clearUserSession();
+  
+  // Reset Chatwoot widget
+  window.$chatwoot.reset();
+}
+```
+
+## User Management Methods
+
+### setUser()
+
+Identify a user and set user properties.
+
+```javascript
+window.$chatwoot.setUser(identifier, {
+  name: 'John Doe',
+  email: 'john@example.com',
+  avatar_url: 'https://example.com/avatar.jpg',
+  phone_number: '+1234567890'
+});
+```
+
+**Parameters**:
+- `identifier` (required): Unique user identifier (string or number)
+- `user` (required): Object with at least one of: `name`, `email`, or `avatar_url`
+
+Source: `app/javascript/entrypoints/sdk.js:112-137`
+
+**Example with all properties**:
+
+```javascript
+window.$chatwoot.setUser('user-12345', {
+  name: 'John Doe',
+  email: 'john@example.com',
+  avatar_url: 'https://example.com/avatar.jpg',
+  phone_number: '+1-555-123-4567'
+});
+```
+
+**Error handling**:
+
+```javascript
+try {
+  window.$chatwoot.setUser(userId, userData);
+} catch (error) {
+  console.error('Failed to set user:', error.message);
+  // Error: "Identifier should be a string or a number"
+  // Error: "User object should have one of the keys [avatar_url, email, name]"
+}
+```
+
+### setCustomAttributes()
+
+Set custom attributes for the current contact.
+
+```javascript
+window.$chatwoot.setCustomAttributes({
+  subscription_plan: 'premium',
+  account_value: 5000,
+  signup_date: '2026-01-15',
+  is_verified: true
+});
+```
+
+Source: `app/javascript/entrypoints/sdk.js:139-145`
+
+**Requirements**: Must have at least one key in the object.
+
+### deleteCustomAttribute()
+
+Delete a specific custom attribute for the current contact.
+
+```javascript
+window.$chatwoot.deleteCustomAttribute('subscription_plan');
+```
+
+Source: `app/javascript/entrypoints/sdk.js:147-154`
+
+## Conversation Management Methods
+
+### setConversationCustomAttributes()
+
+Set custom attributes for the current conversation.
+
+```javascript
+window.$chatwoot.setConversationCustomAttributes({
+  order_id: 'ORD-12345',
+  order_total: 299.99,
+  product_category: 'electronics'
+});
+```
+
+Source: `app/javascript/entrypoints/sdk.js:157-165`
+
+### deleteConversationCustomAttribute()
+
+Delete a specific custom attribute from the current conversation.
+
+```javascript
+window.$chatwoot.deleteConversationCustomAttribute('order_id');
+```
+
+Source: `app/javascript/entrypoints/sdk.js:167-174`
+
+### setLabel()
+
+Add a label to the current conversation.
+
+```javascript
+window.$chatwoot.setLabel('premium-support');
+```
+
+Source: `app/javascript/entrypoints/sdk.js:177-179`
+
+### removeLabel()
+
+Remove a label from the current conversation.
+
+```javascript
+window.$chatwoot.removeLabel('premium-support');
+```
+
+Source: `app/javascript/entrypoints/sdk.js:181-183`
+
+## Appearance Methods
+
+### setLocale()
+
+Change the widget language.
+
+```javascript
+window.$chatwoot.setLocale('es'); // Spanish
+window.$chatwoot.setLocale('fr'); // French
+window.$chatwoot.setLocale('de'); // German
+```
+
+Source: `app/javascript/entrypoints/sdk.js:185-187`
+
+**Supported locales**: `en`, `es`, `fr`, `de`, `pt`, `pt_BR`, `ru`, `zh_CN`, `zh_TW`, `ja`, `ko`, and many more.
+
+### setColorScheme()
+
+Change the widget color scheme.
+
+```javascript
+window.$chatwoot.setColorScheme('light');
+window.$chatwoot.setColorScheme('dark');
+window.$chatwoot.setColorScheme('auto'); // Follow system preference
+```
+
+Source: `app/javascript/entrypoints/sdk.js:189-193`
+
+## Widget Events
+
+Listen to widget events using standard DOM event listeners:
+
+```javascript
+window.addEventListener('chatwoot:ready', function() {
+  console.log('Widget is ready');
+  // Widget has loaded and is ready for interaction
+});
+
+window.addEventListener('chatwoot:opened', function() {
+  console.log('Widget opened');
+  // Track widget open in analytics
+  analytics.track('Chat Widget Opened');
+});
+
+window.addEventListener('chatwoot:closed', function() {
+  console.log('Widget closed');
+});
+
+window.addEventListener('chatwoot:on-message', function(event) {
+  console.log('New message:', event.detail);
+  // event.detail contains message data
+});
+
+window.addEventListener('chatwoot:on-start-conversation', function() {
+  console.log('Conversation started');
+});
+
+window.addEventListener('chatwoot:error', function(event) {
+  console.error('Widget error:', event.detail);
+});
+
+window.addEventListener('chatwoot:postback', function(event) {
+  console.log('Postback received:', event.detail);
+  // Handle postback actions from interactive messages
+});
+```
+
+Source: `app/javascript/widget/constants/sdkEvents.js`
+
+### Event Types
+
+- `chatwoot:ready` - Widget has finished loading
+- `chatwoot:opened` - Widget was opened
+- `chatwoot:closed` - Widget was closed
+- `chatwoot:on-message` - New message received
+- `chatwoot:on-start-conversation` - User started a new conversation
+- `chatwoot:error` - An error occurred
+- `chatwoot:postback` - Postback action from interactive message
+
+## Complete Integration Example
+
+```javascript
+// Initialize widget settings
+window.chatwootSettings = {
+  position: 'right',
+  locale: 'en',
+  darkMode: 'auto',
+  launcherTitle: 'Chat with Support'
+};
+
+// Wait for widget to be ready
+window.addEventListener('chatwoot:ready', function() {
+  console.log('Chatwoot widget is ready');
+  
+  // Set user if logged in
+  const currentUser = getCurrentUser(); // Your function
+  if (currentUser) {
+    window.$chatwoot.setUser(currentUser.id, {
+      name: currentUser.name,
+      email: currentUser.email,
+      avatar_url: currentUser.avatar
+    });
+    
+    // Set user custom attributes
+    window.$chatwoot.setCustomAttributes({
+      subscription_plan: currentUser.plan,
+      signup_date: currentUser.createdAt
+    });
+  }
+  
+  // Auto-open widget on specific pages
+  if (window.location.pathname === '/support') {
+    window.$chatwoot.toggle('open');
+  }
+});
+
+// Track widget interactions
+window.addEventListener('chatwoot:opened', function() {
+  // Send to analytics
+  gtag('event', 'chat_widget_opened');
+  
+  // Set conversation context
+  window.$chatwoot.setConversationCustomAttributes({
+    page_url: window.location.href,
+    page_title: document.title,
+    referrer: document.referrer
+  });
+});
+
+// Handle new messages
+window.addEventListener('chatwoot:on-message', function(event) {
+  const message = event.detail;
+  console.log('New message:', message);
+  
+  // You could show a browser notification, update a badge, etc.
+});
+
+// Clean up on logout
+function handleUserLogout() {
+  // Your logout logic
+  clearUserSession();
+  
+  // Reset Chatwoot
+  window.$chatwoot.reset();
+}
+```
+
+## Advanced Use Cases
+
+### Dynamic User Context
+
+Update user and conversation context as the user navigates:
+
+```javascript
+// Update context when user views a product
+function onProductView(product) {
+  window.$chatwoot.setConversationCustomAttributes({
+    current_product_id: product.id,
+    current_product_name: product.name,
+    current_product_price: product.price
+  });
+}
+
+// Update context when user adds to cart
+function onAddToCart(item) {
+  window.$chatwoot.setConversationCustomAttributes({
+    cart_total: getCartTotal(),
+    cart_items: getCartItemCount(),
+    last_added_item: item.name
+  });
+}
+```
+
+### Conditional Widget Display
+
+```javascript
+window.addEventListener('chatwoot:ready', function() {
+  // Hide widget on mobile
+  if (window.innerWidth < 768) {
+    window.$chatwoot.toggleBubbleVisibility('hide');
+  }
+  
+  // Show widget only for logged-in users
+  if (!isUserLoggedIn()) {
+    window.$chatwoot.toggleBubbleVisibility('hide');
+  }
+  
+  // Hide widget on specific pages
+  const hideOnPages = ['/checkout', '/payment'];
+  if (hideOnPages.includes(window.location.pathname)) {
+    window.$chatwoot.toggleBubbleVisibility('hide');
+  }
+});
+```
+
+### Label-based Routing
+
+```javascript
+// Auto-label conversations based on page context
+window.addEventListener('chatwoot:ready', function() {
+  const pageLabels = {
+    '/pricing': 'sales',
+    '/support': 'support',
+    '/billing': 'billing',
+    '/account': 'account-management'
+  };
+  
+  const path = window.location.pathname;
+  const label = pageLabels[path];
+  
+  if (label) {
+    window.addEventListener('chatwoot:on-start-conversation', function() {
+      window.$chatwoot.setLabel(label);
+    }, { once: true });
+  }
+});
+```
+
+### Multi-language Support
+
+```javascript
+// Set widget locale based on user's language preference
+const userLanguage = getUserLanguagePreference(); // Your function
+window.chatwootSettings = {
+  locale: userLanguage,
+  useBrowserLanguage: false
+};
+
+// Or change locale dynamically
+function changeLanguage(locale) {
+  window.$chatwoot.setLocale(locale);
+}
+```
+
+## Turbo/SPA Support
+
+The Chatwoot widget automatically persists across page navigations in Turbo, Turbolinks, and Astro applications.
+
+Source: `app/javascript/entrypoints/sdk.js:27-48`
+
+**Supported frameworks**:
+- Rails Turbo (with morphing and navigation)
+- Turbolinks
+- Astro
+
+The widget uses `data-turbo-permanent` to persist across page loads.
+
+## Browser Compatibility
+
+The Chatwoot widget supports:
+- Chrome/Edge (last 2 versions)
+- Firefox (last 2 versions)
+- Safari (last 2 versions)
+- Mobile browsers (iOS Safari, Chrome on Android)
+
+## Troubleshooting
+
+### Widget not loading
+
+```javascript
+// Check if SDK is loaded
+if (window.chatwootSDK) {
+  console.log('SDK loaded');
+} else {
+  console.error('SDK not loaded');
+}
+
+// Check if widget is initialized
+if (window.$chatwoot) {
+  console.log('Widget initialized');
+} else {
+  console.error('Widget not initialized');
+}
+```
+
+### setUser() not working
+
+Make sure to call `setUser()` after the `chatwoot:ready` event:
+
+```javascript
+window.addEventListener('chatwoot:ready', function() {
+  window.$chatwoot.setUser('user-123', {
+    email: 'user@example.com',
+    name: 'User Name'
+  });
+});
+```
+
+### Widget conflicts with z-index
+
+The widget uses `z-index: 2147483000`. Adjust your page elements if needed.
+
+Source: `app/javascript/sdk/sdk.js:15`
+
+## Related Resources
+
+- [Widget API Reference](/developers/widget-apis) - Detailed API documentation
+- [Custom Attributes](/developers/custom-attributes) - Custom attribute management
+- [Webhooks](/developers/webhooks) - Receive widget events on your server

@@ -1,0 +1,265 @@
+---
+title: 'Omnichannel Inbox'
+description: 'Unified inbox across all communication channels'
+icon: 'messages'
+---
+
+## Overview
+
+Chatwoot's omnichannel inbox provides a unified interface to manage customer conversations across all your communication channels. View and respond to messages from website chat, email, social media, and messaging apps - all in one place.
+
+<Info>
+  All channels feed into a single unified inbox, allowing agents to manage conversations seamlessly regardless of the source channel.
+</Info>
+
+## Supported Channels
+
+Chatwoot supports a wide range of communication channels:
+
+<CardGroup cols={2}>
+  <Card title="Website" icon="globe">
+    Web Widget for live chat on your website
+  </Card>
+  <Card title="Email" icon="envelope">
+    Connect your email inboxes via IMAP/SMTP
+  </Card>
+  <Card title="Facebook" icon="facebook">
+    Facebook Messenger and Instagram Direct
+  </Card>
+  <Card title="WhatsApp" icon="whatsapp">
+    WhatsApp Business API and Twilio integration
+  </Card>
+  <Card title="Twitter" icon="twitter">
+    Twitter direct messages and mentions
+  </Card>
+  <Card title="SMS" icon="message">
+    SMS via Twilio and other providers
+  </Card>
+  <Card title="Telegram" icon="telegram">
+    Telegram bot integration
+  </Card>
+  <Card title="TikTok" icon="tiktok">
+    TikTok business messaging
+  </Card>
+</CardGroup>
+
+## Channel Configuration
+
+### Creating an Inbox
+
+Each channel requires an inbox configuration:
+
+```ruby
+# Create an inbox with channel
+inbox = account.inboxes.create!(
+  name: "Customer Support",
+  channel: web_widget_channel,
+  enable_auto_assignment: true,
+  greeting_enabled: true,
+  greeting_message: "Hi! How can we help you today?"
+)
+```
+
+### Inbox Settings
+
+<AccordionGroup>
+  <Accordion title="Auto Assignment">
+    Automatically assign incoming conversations to available agents based on assignment rules.
+    
+    ```ruby
+    inbox.update!(
+      enable_auto_assignment: true,
+      auto_assignment_config: {
+        max_assignment_limit: 10
+      }
+    )
+    ```
+  </Accordion>
+
+  <Accordion title="Working Hours">
+    Configure business hours to show out-of-office messages when agents are unavailable.
+    
+    ```ruby
+    inbox.update!(
+      working_hours_enabled: true,
+      out_of_office_message: "We're currently closed. We'll respond when we're back.",
+      timezone: "America/New_York"
+    )
+    ```
+  </Accordion>
+
+  <Accordion title="CSAT Surveys">
+    Enable customer satisfaction surveys after conversation resolution.
+    
+    ```ruby
+    inbox.update!(
+      csat_survey_enabled: true
+    )
+    ```
+  </Accordion>
+
+  <Accordion title="Email Collection">
+    Collect visitor email addresses during conversations.
+    
+    ```ruby
+    inbox.update!(
+      enable_email_collect: true
+    )
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Channel-Specific Features
+
+### Web Widget
+
+Embed a chat widget on your website:
+
+```html
+<script>
+  (function(d,t) {
+    var BASE_URL="https://app.chatwoot.com";
+    var g=d.createElement(t),s=d.getElementsByTagName(t)[0];
+    g.src=BASE_URL+"/packs/js/sdk.js";
+    g.defer = true;
+    g.async = true;
+    s.parentNode.insertBefore(g,s);
+    g.onload=function(){
+      window.chatwootSDK.run({
+        websiteToken: 'your_website_token',
+        baseUrl: BASE_URL
+      })
+    }
+  })(document,"script");
+</script>
+```
+
+### Email Channel
+
+Connect email inboxes for support:
+
+```ruby
+email_channel = Channel::Email.create!(
+  account: account,
+  email: "support@company.com",
+  imap_enabled: true,
+  imap_address: "imap.gmail.com",
+  imap_port: 993,
+  imap_email: "support@company.com",
+  imap_password: "app_password",
+  smtp_enabled: true,
+  smtp_address: "smtp.gmail.com",
+  smtp_port: 587
+)
+```
+
+### WhatsApp
+
+Integrate WhatsApp Business API:
+
+```ruby
+whatsapp_channel = Channel::Whatsapp.create!(
+  account: account,
+  phone_number: "+1234567890",
+  provider: "whatsapp_cloud",
+  provider_config: {
+    api_key: "your_api_key",
+    phone_number_id: "your_phone_number_id"
+  }
+)
+```
+
+## Inbox Management
+
+### Adding Team Members
+
+Assign agents to specific inboxes:
+
+```ruby
+# Add multiple members to an inbox
+inbox.add_members([agent1.id, agent2.id, agent3.id])
+
+# Remove members
+inbox.remove_members([agent1.id])
+
+# Get assignable agents
+assignable_agents = inbox.assignable_agents
+```
+
+### Channel Callbacks
+
+Some channels require webhook URLs for callbacks:
+
+```ruby
+# Get callback webhook URL for the channel
+callback_url = inbox.callback_webhook_url
+# => "https://app.chatwoot.com/webhooks/whatsapp/+1234567890"
+```
+
+## Best Practices
+
+<Warning>
+  **Message Timing**: Some channels have messaging window restrictions (e.g., WhatsApp allows replies within 24 hours of customer message).
+</Warning>
+
+<Tip>
+  Use `allow_messages_after_resolved` to control whether agents can send messages after a conversation is resolved.
+</Tip>
+
+### Sender Name Configuration
+
+Control how agent names appear in messages:
+
+```ruby
+# Friendly: "John from Acme Corp"
+inbox.update!(sender_name_type: :friendly)
+
+# Professional: "Acme Corp Support"
+inbox.update!(sender_name_type: :professional)
+```
+
+### Lock to Single Conversation
+
+Prevent multiple conversations from the same contact:
+
+```ruby
+inbox.update!(lock_to_single_conversation: true)
+```
+
+## API Reference
+
+### Check Channel Type
+
+```ruby
+inbox.web_widget?   # => true/false
+inbox.email?        # => true/false
+inbox.whatsapp?     # => true/false
+inbox.facebook?     # => true/false
+inbox.twitter?      # => true/false
+inbox.telegram?     # => true/false
+inbox.sms?          # => true/false
+```
+
+### Inbox Type
+
+```ruby
+inbox.inbox_type    # => "Website", "Email", "WhatsApp", etc.
+inbox.channel_type  # => "Channel::WebWidget", "Channel::Email", etc.
+```
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Conversations" icon="comments" href="/features/conversations">
+    Learn about managing conversations
+  </Card>
+  <Card title="Teams" icon="users" href="/features/teams">
+    Organize agents into teams
+  </Card>
+  <Card title="Automation" icon="robot" href="/features/automation">
+    Automate inbox workflows
+  </Card>
+  <Card title="Reports" icon="chart-line" href="/features/reports">
+    Analyze channel performance
+  </Card>
+</CardGroup>

@@ -1,0 +1,290 @@
+---
+title: LINE Integration
+description: Connect LINE messaging app to manage customer conversations
+---
+
+Integrate your LINE Official Account with Chatwoot to manage LINE conversations from your unified inbox.
+
+## Prerequisites
+
+- LINE Official Account (previously LINE@ account)
+- LINE Developers account
+- LINE Messaging API access
+
+## Setup
+
+<Steps>
+  <Step title="Create LINE Official Account">
+    1. Go to [LINE Official Account Manager](https://manager.line.biz/)
+    2. Create a new Official Account
+    3. Verify your account
+  </Step>
+
+  <Step title="Enable Messaging API">
+    1. In LINE Official Account settings
+    2. Go to **Settings** → **Messaging API**
+    3. Click **Enable Messaging API**
+    4. Create a LINE Developers channel
+  </Step>
+
+  <Step title="Get API credentials">
+    From LINE Developers Console:
+    1. Go to your Messaging API channel
+    2. Copy **Channel ID**
+    3. Copy **Channel Secret**
+    4. Issue a **Channel Access Token (long-lived)**
+  </Step>
+
+  <Step title="Add LINE inbox in Chatwoot">
+    Go to **Settings** → **Inboxes** → **Add Inbox** → **LINE**
+  </Step>
+
+  <Step title="Enter credentials">
+    - Enter Channel ID
+    - Enter Channel Secret
+    - Enter Channel Access Token
+  </Step>
+
+  <Step title="Configure webhook">
+    1. Copy the webhook URL from Chatwoot
+    2. In LINE Developers Console, go to **Messaging API** tab
+    3. Set **Webhook URL** to the Chatwoot URL
+    4. Enable **Use webhook**
+    5. Verify the webhook
+  </Step>
+
+  <Step title="Disable auto-reply (important)">
+    In LINE Official Account Manager:
+    1. Go to **Settings** → **Response settings**
+    2. Disable **Auto-response messages**
+    3. Disable **Greeting messages** (or Chatwoot won't receive them)
+    4. Enable **Webhooks**
+  </Step>
+
+  <Step title="Test the integration">
+    1. Add your LINE Official Account as a friend
+    2. Send a test message
+    3. Verify it appears in Chatwoot
+  </Step>
+</Steps>
+
+## Features
+
+- **Real-time messaging** - Instant two-way communication
+- **Rich messages** - Text, images, videos, audio, stickers
+- **Template messages** - Buttons, carousels, confirmations
+- **Quick replies** - Suggested response buttons
+- **Rich menus** - Custom menu at bottom of chat
+- **Flex messages** - Custom layouts and designs
+- **Location sharing** - Send and receive locations
+- **File sharing** - Send and receive files
+
+## Message Types
+
+### Text Messages
+
+Standard text messages with emoji support.
+
+### Rich Messages
+
+Images with tappable areas that link to URLs:
+
+```json
+{
+  "type": "imagemap",
+  "baseUrl": "https://example.com/images/rich",
+  "altText": "Menu",
+  "baseSize": {
+    "width": 1040,
+    "height": 1040
+  },
+  "actions": [
+    {
+      "type": "uri",
+      "linkUri": "https://example.com/products",
+      "area": {
+        "x": 0,
+        "y": 0,
+        "width": 520,
+        "height": 520
+      }
+    }
+  ]
+}
+```
+
+### Template Messages
+
+#### Buttons Template
+
+```json
+{
+  "type": "template",
+  "altText": "Buttons",
+  "template": {
+    "type": "buttons",
+    "text": "How can we help?",
+    "actions": [
+      {
+        "type": "message",
+        "label": "Sales",
+        "text": "I need sales help"
+      },
+      {
+        "type": "uri",
+        "label": "Website",
+        "uri": "https://example.com"
+      }
+    ]
+  }
+}
+```
+
+#### Carousel Template
+
+```json
+{
+  "type": "template",
+  "altText": "Products",
+  "template": {
+    "type": "carousel",
+    "columns": [
+      {
+        "thumbnailImageUrl": "https://example.com/product1.jpg",
+        "title": "Product 1",
+        "text": "Description",
+        "actions": [
+          {
+            "type": "uri",
+            "label": "View",
+            "uri": "https://example.com/product1"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### Quick Replies
+
+Suggested response buttons:
+
+```json
+{
+  "type": "text",
+  "text": "Choose a topic:",
+  "quickReply": {
+    "items": [
+      {
+        "type": "action",
+        "action": {
+          "type": "message",
+          "label": "Sales",
+          "text": "Sales inquiry"
+        }
+      },
+      {
+        "type": "action",
+        "action": {
+          "type": "message",
+          "label": "Support",
+          "text": "Technical support"
+        }
+      }
+    ]
+  }
+}
+```
+
+## Configuration Options
+
+<ParamField path="line_channel_id" type="string" required>
+  Channel ID from LINE Developers Console
+</ParamField>
+
+<ParamField path="line_channel_secret" type="string" required>
+  Channel Secret for webhook verification
+</ParamField>
+
+<ParamField path="line_channel_token" type="string" required>
+  Long-lived Channel Access Token
+</ParamField>
+
+## Rich Menu
+
+Create custom menu at bottom of LINE chat:
+
+1. Design menu image (2500x1686px or 2500x843px)
+2. Upload to LINE Developers Console
+3. Configure tap areas and actions
+4. Link menu to your Official Account
+
+## Best Practices
+
+<Check>Disable LINE auto-replies to avoid conflicts</Check>
+<Check>Use template messages for better engagement</Check>
+<Check>Add quick replies to guide conversations</Check>
+<Check>Set up rich menu for easy navigation</Check>
+<Check>Use stickers sparingly (can be fun but unprofessional)</Check>
+<Check>Monitor message delivery status</Check>
+<Check>Keep messages concise (LINE users expect quick responses)</Check>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Messages not arriving in Chatwoot">
+    - Verify webhook URL is correct
+    - Check webhook is enabled in LINE Developers Console
+    - Disable auto-response in LINE Official Account Manager
+    - Verify webhook token matches
+    - Test webhook with LINE webhook test tool
+    - Check Chatwoot logs for errors
+  </Accordion>
+
+  <Accordion title="Cannot send messages">
+    - Verify Channel Access Token is valid
+    - Check token hasn't expired (use long-lived token)
+    - Ensure user has added your Official Account
+    - Check account isn't blocked or deleted
+    - Verify LINE API rate limits
+  </Accordion>
+
+  <Accordion title="Webhook verification fails">
+    - Check Channel Secret is correct
+    - Verify webhook URL is publicly accessible
+    - Ensure HTTPS is properly configured
+    - Check firewall allows LINE webhook IPs
+  </Accordion>
+
+  <Accordion title="Rich messages not displaying">
+    - Verify JSON structure is correct
+    - Check image URLs are publicly accessible
+    - Ensure image dimensions meet LINE requirements
+    - Test rich message in LINE Simulator
+  </Accordion>
+</AccordionGroup>
+
+## LINE API Limits
+
+### Free Plan
+- **Messages**: 500 free messages per month
+- **Additional messages**: Paid (varies by country)
+
+### Messaging Limits
+- **Push messages**: Rate limits based on account type
+- **Reply messages**: Must reply within 30 seconds of webhook
+- **Multicast**: Up to 500 recipients
+
+### File Size Limits
+- **Images**: 10MB (JPEG, PNG)
+- **Videos**: 200MB (MP4)
+- **Audio**: 200MB (M4A, MP3)
+- **Files**: 10MB
+
+## Related Documentation
+
+- [LINE Messaging API](https://developers.line.biz/en/docs/messaging-api/)
+- [LINE Simulator](https://developers.line.biz/console/)
+- [Automation Rules](/features/automation)
+- [Canned Responses](/ai/canned-responses)

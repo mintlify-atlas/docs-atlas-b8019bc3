@@ -1,0 +1,366 @@
+---
+title: Redis Configuration
+description: Configure Redis for caching, background jobs, and real-time features in Chatwoot
+---
+
+Redis is a critical component of Chatwoot, used for caching, background job processing (Sidekiq), real-time features, and rate limiting. This guide covers all Redis configuration options.
+
+## Basic Redis Configuration
+
+<ParamField path="REDIS_URL" type="string" required>
+  Redis connection URL in standard format.
+  
+  **Format:** `redis://[username][:password]@host:port[/db_number]`
+  
+  **Examples:**
+  - `redis://localhost:6379`
+  - `redis://redis:6379` (Docker)
+  - `redis://:password@localhost:6379`
+  - `redis://:password@host:6379/0`
+  
+  **Default:** `redis://127.0.0.1:6379`
+  
+  See [IANA Redis URI Scheme](https://www.iana.org/assignments/uri-schemes/prov/redis)
+</ParamField>
+
+<ParamField path="REDIS_PASSWORD" type="string">
+  Redis authentication password.
+  
+  **Note:** Can be included in `REDIS_URL` or specified separately.
+  
+  **Security:** Always set a password for production Redis instances.
+</ParamField>
+
+## Redis Sentinel Configuration
+
+Redis Sentinel provides high availability through automatic failover. Configure these variables to use Redis Sentinel.
+
+<ParamField path="REDIS_SENTINELS" type="string">
+  Comma-separated list of Redis Sentinel hosts and ports.
+  
+  **Format:** `host1:port1,host2:port2,host3:port3`
+  
+  **Example:** `sentinel1.example.com:26379,sentinel2.example.com:26379,sentinel3.example.com:26379`
+  
+  **Note:** When this is set, Chatwoot automatically switches to Sentinel mode.
+</ParamField>
+
+<ParamField path="REDIS_SENTINEL_MASTER_NAME" type="string">
+  Name of the Redis Sentinel master.
+  
+  **Default:** `mymaster`
+  
+  **Note:** Find available masters using the `SENTINEL masters` command on any Sentinel instance.
+</ParamField>
+
+<ParamField path="REDIS_SENTINEL_PASSWORD" type="string">
+  Password for Redis Sentinel authentication.
+  
+  **Default behavior:** If not set, Chatwoot uses `REDIS_PASSWORD` for Sentinel authentication.
+  
+  **Special value:** Use empty string `""` if Sentinels are configured without passwords.
+</ParamField>
+
+### Sentinel Configuration Example
+
+```bash
+REDIS_URL=redis://redis-master:6379
+REDIS_PASSWORD=your-redis-password
+REDIS_SENTINELS=sentinel1:26379,sentinel2:26379,sentinel3:26379
+REDIS_SENTINEL_MASTER_NAME=mymaster
+REDIS_SENTINEL_PASSWORD=your-sentinel-password
+```
+
+## SSL/TLS Configuration
+
+<ParamField path="REDIS_OPENSSL_VERIFY_MODE" type="string">
+  OpenSSL verification mode for Redis connections.
+  
+  **Options:**
+  - `peer` - Verify the server certificate (default, recommended)
+  - `none` - Skip certificate verification
+  
+  **Default:** `peer`
+  
+  **Use case:** Set to `none` if experiencing Redis connection issues with some cloud providers (e.g., Heroku Redis Premium). See [GitHub Issue #2420](https://github.com/chatwoot/chatwoot/issues/2420)
+</ParamField>
+
+### SSL Example
+
+```bash
+REDIS_URL=rediss://username:password@redis-host:6380
+REDIS_OPENSSL_VERIFY_MODE=peer
+```
+
+<Note>
+  Use `rediss://` (with double 's') for SSL/TLS connections.
+</Note>
+
+## Connection Pool Configuration
+
+Chatwoot uses connection pooling to efficiently manage Redis connections across multiple features.
+
+<ParamField path="REDIS_ALFRED_SIZE" type="number">
+  Connection pool size for Alfred (Round Robin, Conversation Emails, Online Presence).
+  
+  **Default:** `5`
+  
+  **Tuning:** Increase if you have many concurrent users or high message volume.
+</ParamField>
+
+<ParamField path="REDIS_VELMA_SIZE" type="number">
+  Connection pool size for Velma (Rack Attack rate limiting).
+  
+  **Default:** `10`
+  
+  **Tuning:** Increase if experiencing rate limiting bottlenecks under high traffic.
+</ParamField>
+
+### Connection Pool Configuration Example
+
+```bash
+REDIS_ALFRED_SIZE=10
+REDIS_VELMA_SIZE=20
+```
+
+## Redis Namespaces
+
+Chatwoot uses Redis namespaces to organize data:
+
+- **alfred** - Round robin, conversation emails, online presence
+- **velma** - Rack Attack rate limiting
+- **sidekiq** - Background job queue
+- **cache** - Application caching
+
+These namespaces allow multiple Chatwoot instances to share a single Redis server without conflicts.
+
+## Redis Database Selection
+
+Redis supports multiple databases (numbered 0-15 by default). You can specify the database in the connection URL:
+
+```bash
+# Use database 0 (default)
+REDIS_URL=redis://localhost:6379/0
+
+# Use database 1
+REDIS_URL=redis://localhost:6379/1
+
+# Use database 2
+REDIS_URL=redis://localhost:6379/2
+```
+
+<Note>
+  Using different database numbers is useful for running multiple Chatwoot instances on the same Redis server.
+</Note>
+
+## Redis Version Requirements
+
+Chatwoot requires Redis 6.0 or higher.
+
+**Recommended version:** Redis 7.0+
+
+## Deployment Scenarios
+
+### Single Server Deployment
+
+Simplest configuration for small to medium deployments:
+
+```bash
+REDIS_URL=redis://localhost:6379
+REDIS_PASSWORD=your-secure-password
+```
+
+### Docker Compose
+
+```bash
+REDIS_URL=redis://redis:6379
+REDIS_PASSWORD=your-secure-password
+```
+
+<Note>
+  The hostname `redis` matches the service name in docker-compose.yml.
+</Note>
+
+### Kubernetes with Redis Sentinel
+
+High availability configuration:
+
+```bash
+REDIS_URL=redis://redis-master:6379
+REDIS_PASSWORD=your-redis-password
+REDIS_SENTINELS=sentinel-0:26379,sentinel-1:26379,sentinel-2:26379
+REDIS_SENTINEL_MASTER_NAME=mymaster
+```
+
+### Managed Redis Services
+
+#### AWS ElastiCache
+
+```bash
+# Cluster mode disabled
+REDIS_URL=redis://master.xxxxx.ng.0001.use1.cache.amazonaws.com:6379
+REDIS_PASSWORD=your-auth-token
+
+# Cluster mode enabled is not supported
+```
+
+#### Azure Cache for Redis
+
+```bash
+REDIS_URL=rediss://your-cache-name.redis.cache.windows.net:6380
+REDIS_PASSWORD=your-access-key
+REDIS_OPENSSL_VERIFY_MODE=peer
+```
+
+#### Google Cloud Memorystore
+
+```bash
+# Standard tier (no auth)
+REDIS_URL=redis://10.0.0.3:6379
+
+# With AUTH enabled
+REDIS_URL=redis://10.0.0.3:6379
+REDIS_PASSWORD=your-auth-string
+```
+
+#### Heroku Redis
+
+```bash
+# Heroku automatically sets REDIS_URL
+# For Redis Premium, you may need:
+REDIS_OPENSSL_VERIFY_MODE=none
+```
+
+#### DigitalOcean Managed Redis
+
+```bash
+REDIS_URL=rediss://default:your-password@your-redis-cluster.db.ondigitalocean.com:25061
+REDIS_OPENSSL_VERIFY_MODE=peer
+```
+
+## Performance Tuning
+
+### Connection Pool Sizing
+
+Calculate appropriate pool sizes based on your deployment:
+
+**Alfred pool size:**
+```
+ALFRED_SIZE = (number_of_web_workers × 2) + buffer
+```
+
+**Velma pool size:**
+```
+VELMA_SIZE = number_of_web_workers × 2
+```
+
+**Example for 10 web workers:**
+```bash
+REDIS_ALFRED_SIZE=25  # (10 × 2) + 5
+REDIS_VELMA_SIZE=20   # 10 × 2
+```
+
+### Redis Server Configuration
+
+Recommended Redis server settings for production:
+
+```conf
+# redis.conf
+maxmemory 2gb
+maxmemory-policy allkeys-lru
+timeout 300
+tcp-keepalive 60
+tcp-backlog 511
+```
+
+### Monitoring Redis
+
+Key metrics to monitor:
+
+- **Connected clients:** Should not exceed `maxclients`
+- **Memory usage:** Should stay below `maxmemory`
+- **Keyspace hits/misses:** High miss rate indicates cache issues
+- **Command latency:** Should be < 1ms for most commands
+
+Use Redis CLI to check stats:
+```bash
+redis-cli INFO stats
+redis-cli INFO memory
+redis-cli CLIENT LIST
+```
+
+## Troubleshooting
+
+### Connection refused errors
+
+**Symptoms:** `Error connecting to Redis on localhost:6379 (Errno::ECONNREFUSED)`
+
+**Solutions:**
+- Verify Redis is running: `redis-cli ping`
+- Check Redis is listening on the correct port
+- Verify firewall rules allow connections
+- Check `REDIS_URL` is correct
+
+### Authentication errors
+
+**Symptoms:** `NOAUTH Authentication required`
+
+**Solutions:**
+- Verify `REDIS_PASSWORD` is set correctly
+- Check password in `REDIS_URL` matches Redis configuration
+- For Sentinel, ensure `REDIS_SENTINEL_PASSWORD` is configured
+
+### SSL/TLS errors
+
+**Symptoms:** `OpenSSL::SSL::SSLError`
+
+**Solutions:**
+- Try setting `REDIS_OPENSSL_VERIFY_MODE=none` (temporary)
+- Verify using `rediss://` in URL for SSL connections
+- Check Redis server SSL certificate is valid
+- Update OpenSSL libraries
+
+### Timeout errors
+
+**Symptoms:** `Redis::TimeoutError`
+
+**Solutions:**
+- Increase connection pool sizes
+- Check Redis server performance and memory
+- Verify network latency between app and Redis
+- Consider using Redis Sentinel for high availability
+
+### Memory issues
+
+**Symptoms:** `OOM command not allowed when used memory > 'maxmemory'`
+
+**Solutions:**
+- Increase Redis `maxmemory` setting
+- Configure eviction policy: `maxmemory-policy allkeys-lru`
+- Clear unused keys
+- Monitor memory usage: `redis-cli INFO memory`
+
+### Sentinel connection issues
+
+**Symptoms:** Cannot connect to Redis master via Sentinel
+
+**Solutions:**
+- Verify all Sentinel nodes are accessible
+- Check `REDIS_SENTINEL_MASTER_NAME` matches actual master name
+- Run `SENTINEL masters` to see available masters
+- Verify Sentinel passwords if authentication is enabled
+
+## Security Best Practices
+
+1. **Always set a password:** Use `REDIS_PASSWORD` in production
+2. **Use SSL/TLS:** Connect via `rediss://` for encrypted connections
+3. **Network isolation:** Run Redis in a private network, not exposed to internet
+4. **Firewall rules:** Only allow connections from Chatwoot servers
+5. **Regular updates:** Keep Redis updated to latest stable version
+6. **Disable dangerous commands:** Use `rename-command` in redis.conf for FLUSHDB, FLUSHALL, etc.
+
+## Related Configuration
+
+- [Environment Variables](/self-hosting/environment-variables) - Complete environment variable reference
+- [PostgreSQL Configuration](/self-hosting/postgres) - Database configuration
+- [Email Setup](/self-hosting/email-setup) - Email configuration

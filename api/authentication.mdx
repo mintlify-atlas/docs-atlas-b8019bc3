@@ -1,0 +1,260 @@
+---
+title: Authentication
+description: Learn how to authenticate with the Chatwoot API using access tokens
+---
+
+## Overview
+
+The Chatwoot API uses access tokens for authentication. All API requests must include a valid access token to authenticate the request.
+
+## Authentication Methods
+
+### User Access Token
+
+User access tokens are tied to a specific user account and inherit the permissions of that user.
+
+#### Generating a User Access Token
+
+1. Log in to your Chatwoot account
+2. Navigate to **Profile Settings**
+3. Go to the **Access Token** section
+4. Click **Generate new token** or copy existing token
+5. Store the token securely
+
+<Warning>
+Access tokens are sensitive credentials. Never expose them in client-side code or commit them to version control.
+</Warning>
+
+### Platform API Token
+
+Platform API tokens are used for server-to-server authentication and allow managing multiple accounts.
+
+<Note>
+Platform API tokens are only available in self-hosted installations with platform mode enabled.
+</Note>
+
+## Making Authenticated Requests
+
+### Using Header Authentication (Recommended)
+
+Include the access token in the request header:
+
+```bash
+curl -X GET https://app.chatwoot.com/api/v1/accounts/{account_id} \
+  -H "api_access_token: YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json"
+```
+
+### Authentication Header Format
+
+<ParamField header="api_access_token" type="string" required>
+  Your API access token
+</ParamField>
+
+<ParamField header="Content-Type" type="string" default="application/json">
+  Request content type
+</ParamField>
+
+## Token Management
+
+### Resetting Your Access Token
+
+You can reset your access token from your profile settings:
+
+```http
+POST /api/v1/profile/reset_access_token
+```
+
+**Response:**
+
+```json
+{
+  "access_token": "new_generated_token_here"
+}
+```
+
+<Warning>
+Resetting your access token will invalidate the old token immediately. Update all integrations using the old token.
+</Warning>
+
+## Authentication for Different APIs
+
+### Application API (User API)
+
+Used for managing resources within an account.
+
+**Base URL:** `/api/v1/accounts/{account_id}/*`
+
+**Authentication:** User Access Token
+
+```bash
+curl -X GET https://app.chatwoot.com/api/v1/accounts/1/contacts \
+  -H "api_access_token: YOUR_USER_TOKEN"
+```
+
+### Platform API
+
+Used for managing users and accounts (self-hosted only).
+
+**Base URL:** `/platform/api/v1/*`
+
+**Authentication:** Platform API Token
+
+```bash
+curl -X GET https://app.chatwoot.com/platform/api/v1/users \
+  -H "api_access_token: YOUR_PLATFORM_TOKEN"
+```
+
+### Public API
+
+Used by contacts to interact with conversations (no authentication required for public endpoints).
+
+**Base URL:** `/public/api/v1/*`
+
+**Authentication:** Contact token or identifier
+
+## Agent Bot Authentication
+
+Agent bots use a special access token for authentication:
+
+```http
+POST /api/v1/accounts/{account_id}/agent_bots/{id}/reset_access_token
+```
+
+**Response:**
+
+```json
+{
+  "access_token": "bot_access_token"
+}
+```
+
+Use this token to authenticate bot requests:
+
+```bash
+curl -X POST https://app.chatwoot.com/api/v1/accounts/1/conversations/1/messages \
+  -H "api_access_token: BOT_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"content": "Bot message", "message_type": "outgoing"}'
+```
+
+## OAuth Authentication
+
+Chatwoot uses OAuth for third-party integrations:
+
+### Supported OAuth Providers
+
+- Twitter (X)
+- Microsoft
+- Google
+- Instagram
+- TikTok
+- Notion
+- WhatsApp
+
+### OAuth Flow
+
+1. Redirect user to authorization endpoint
+2. User grants permissions
+3. Receive authorization code
+4. Exchange code for access token
+
+```http
+POST /api/v1/accounts/{account_id}/twitter/authorization
+```
+
+## SAML Authentication
+
+Enterprise accounts can use SAML single sign-on:
+
+```http
+POST /api/v1/auth/saml_login
+```
+
+<ParamField body="email" type="string" required>
+  User email address
+</ParamField>
+
+## Security Best Practices
+
+### Store Tokens Securely
+
+- Use environment variables for tokens
+- Never commit tokens to version control
+- Use secret management tools (HashiCorp Vault, AWS Secrets Manager)
+
+### Rotate Tokens Regularly
+
+- Reset access tokens periodically
+- Rotate tokens when team members leave
+- Monitor token usage for suspicious activity
+
+### Use HTTPS Only
+
+- Always use HTTPS for API requests
+- Never send tokens over unencrypted connections
+
+### Limit Token Scope
+
+- Use role-based access control
+- Create separate tokens for different integrations
+- Use agent bots for automated tasks
+
+## Common Authentication Errors
+
+### 401 Unauthorized
+
+**Cause:** Invalid or missing access token
+
+**Solution:** Verify your token is correct and included in the request header
+
+```json
+{
+  "error": "Unauthorized"
+}
+```
+
+### 403 Forbidden
+
+**Cause:** Valid token but insufficient permissions
+
+**Solution:** Check user role and permissions
+
+```json
+{
+  "error": "Access denied"
+}
+```
+
+### 422 Invalid Captcha
+
+**Cause:** Captcha validation failed (account creation)
+
+**Solution:** Include valid captcha response
+
+```json
+{
+  "error": "Invalid Captcha"
+}
+```
+
+## Testing Authentication
+
+Test your authentication with the profile endpoint:
+
+```bash
+curl -X GET https://app.chatwoot.com/api/v1/profile \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+**Success Response:**
+
+```json
+{
+  "id": 1,
+  "name": "John Doe",
+  "email": "john@example.com",
+  "account_id": 1,
+  "role": "administrator"
+}
+```

@@ -1,0 +1,553 @@
+---
+title: Webhooks
+description: Configure webhooks to receive real-time notifications about events in your Chatwoot account
+---
+
+## Overview
+
+Webhooks allow you to receive real-time HTTP notifications when events occur in your Chatwoot account. Use webhooks to integrate Chatwoot with external systems and automate workflows.
+
+## List All Webhooks
+
+Retrieve all webhooks configured in your account.
+
+```http
+GET /api/v1/accounts/{account_id}/webhooks
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+### Response
+
+<ResponseField name="id" type="integer">
+  Webhook ID
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  URL where webhook events will be sent
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Webhook name
+</ResponseField>
+
+<ResponseField name="subscriptions" type="array">
+  Array of event types this webhook is subscribed to
+</ResponseField>
+
+<ResponseField name="account_id" type="integer">
+  Account ID
+</ResponseField>
+
+<ResponseField name="inbox_id" type="integer">
+  Inbox ID (if webhook is inbox-specific)
+</ResponseField>
+
+### Example Request
+
+```bash
+curl -X GET https://app.chatwoot.com/api/v1/accounts/1/webhooks \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+### Example Response
+
+```json
+[
+  {
+    "id": 1,
+    "url": "https://example.com/webhooks/chatwoot",
+    "name": "Main Webhook",
+    "subscriptions": [
+      "conversation_created",
+      "conversation_status_changed",
+      "message_created"
+    ],
+    "account_id": 1,
+    "inbox_id": null
+  },
+  {
+    "id": 2,
+    "url": "https://example.com/webhooks/support",
+    "name": "Support Inbox Webhook",
+    "subscriptions": [
+      "message_created",
+      "message_updated"
+    ],
+    "account_id": 1,
+    "inbox_id": 1
+  }
+]
+```
+
+## Create Webhook
+
+Create a new webhook to receive event notifications.
+
+```http
+POST /api/v1/accounts/{account_id}/webhooks
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+### Request Body
+
+<ParamField body="webhook[url]" type="string" required>
+  URL endpoint to receive webhook events (must be HTTPS)
+</ParamField>
+
+<ParamField body="webhook[name]" type="string" required>
+  Descriptive name for the webhook
+</ParamField>
+
+<ParamField body="webhook[subscriptions]" type="array" required>
+  Array of event types to subscribe to
+</ParamField>
+
+<ParamField body="webhook[inbox_id]" type="integer">
+  Inbox ID (optional, for inbox-specific webhooks)
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST https://app.chatwoot.com/api/v1/accounts/1/webhooks \
+  -H "api_access_token: YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "webhook": {
+      "url": "https://example.com/webhooks/chatwoot",
+      "name": "Production Webhook",
+      "subscriptions": [
+        "conversation_created",
+        "conversation_status_changed",
+        "conversation_updated",
+        "message_created",
+        "message_updated",
+        "contact_created",
+        "contact_updated"
+      ]
+    }
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "id": 3,
+  "url": "https://example.com/webhooks/chatwoot",
+  "name": "Production Webhook",
+  "subscriptions": [
+    "conversation_created",
+    "conversation_status_changed",
+    "conversation_updated",
+    "message_created",
+    "message_updated",
+    "contact_created",
+    "contact_updated"
+  ],
+  "account_id": 1,
+  "inbox_id": null
+}
+```
+
+## Update Webhook
+
+Update an existing webhook configuration.
+
+```http
+PATCH /api/v1/accounts/{account_id}/webhooks/{id}
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+<ParamField path="id" type="integer" required>
+  The ID of the webhook to update
+</ParamField>
+
+### Request Body
+
+Accepts the same parameters as Create Webhook.
+
+### Example Request
+
+```bash
+curl -X PATCH https://app.chatwoot.com/api/v1/accounts/1/webhooks/3 \
+  -H "api_access_token: YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "webhook": {
+      "name": "Updated Webhook Name",
+      "subscriptions": [
+        "conversation_created",
+        "message_created"
+      ]
+    }
+  }'
+```
+
+## Delete Webhook
+
+Delete a webhook from your account.
+
+```http
+DELETE /api/v1/accounts/{account_id}/webhooks/{id}
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+<ParamField path="id" type="integer" required>
+  The ID of the webhook to delete
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X DELETE https://app.chatwoot.com/api/v1/accounts/1/webhooks/3 \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+### Response
+
+Returns `200 OK` with no body.
+
+## Webhook Events
+
+Available webhook event types:
+
+### Conversation Events
+
+<ParamField name="conversation_created" type="event">
+  Triggered when a new conversation is created
+</ParamField>
+
+<ParamField name="conversation_status_changed" type="event">
+  Triggered when conversation status changes (open, pending, resolved, snoozed)
+</ParamField>
+
+<ParamField name="conversation_updated" type="event">
+  Triggered when conversation is updated (assignee, labels, custom attributes)
+</ParamField>
+
+### Message Events
+
+<ParamField name="message_created" type="event">
+  Triggered when a new message is created
+</ParamField>
+
+<ParamField name="message_updated" type="event">
+  Triggered when a message is updated or deleted
+</ParamField>
+
+### Contact Events
+
+<ParamField name="contact_created" type="event">
+  Triggered when a new contact is created
+</ParamField>
+
+<ParamField name="contact_updated" type="event">
+  Triggered when a contact's information is updated
+</ParamField>
+
+### Widget Events
+
+<ParamField name="webwidget_triggered" type="event">
+  Triggered when the web widget is opened by a visitor
+</ParamField>
+
+## Webhook Payload
+
+Webhook events are sent as HTTP POST requests to your configured URL.
+
+### Headers
+
+```http
+Content-Type: application/json
+User-Agent: Chatwoot
+```
+
+### Payload Structure
+
+```json
+{
+  "event": "message_created",
+  "id": 12345,
+  "account": {
+    "id": 1,
+    "name": "Acme Corporation"
+  },
+  "inbox": {
+    "id": 1,
+    "name": "Website Widget"
+  },
+  "conversation": {
+    "id": 1,
+    "display_id": 1,
+    "status": "open",
+    "priority": "high",
+    "assignee": {
+      "id": 1,
+      "name": "John Doe",
+      "email": "john@acme.com"
+    },
+    "contact": {
+      "id": 1,
+      "name": "Customer Name",
+      "email": "customer@example.com"
+    }
+  },
+  "message": {
+    "id": 100,
+    "content": "Hello, I need help with my order",
+    "message_type": "incoming",
+    "content_type": "text",
+    "created_at": 1704067200,
+    "sender": {
+      "id": 1,
+      "name": "Customer Name",
+      "type": "Contact"
+    }
+  }
+}
+```
+
+### Event-Specific Payloads
+
+#### conversation_created
+
+```json
+{
+  "event": "conversation_created",
+  "id": 1,
+  "account": { ... },
+  "inbox": { ... },
+  "conversation": { ... }
+}
+```
+
+#### conversation_status_changed
+
+```json
+{
+  "event": "conversation_status_changed",
+  "id": 1,
+  "account": { ... },
+  "conversation": {
+    "id": 1,
+    "status": "resolved",
+    "previous_status": "open"
+  }
+}
+```
+
+#### message_created
+
+```json
+{
+  "event": "message_created",
+  "id": 100,
+  "account": { ... },
+  "conversation": { ... },
+  "message": { ... }
+}
+```
+
+#### contact_created
+
+```json
+{
+  "event": "contact_created",
+  "id": 1,
+  "account": { ... },
+  "contact": {
+    "id": 1,
+    "name": "New Contact",
+    "email": "newcontact@example.com",
+    "phone_number": "+1234567890"
+  }
+}
+```
+
+## Webhook Security
+
+### HTTPS Required
+
+Webhook URLs must use HTTPS for security. HTTP URLs will be rejected.
+
+### Verify Webhook Signatures
+
+Chatwoot includes a signature in webhook requests that you can verify:
+
+1. Extract the signature from the request header
+2. Compute HMAC-SHA256 of the payload using your webhook secret
+3. Compare the computed signature with the received signature
+
+```python
+import hmac
+import hashlib
+
+def verify_webhook(payload, signature, secret):
+    computed_signature = hmac.new(
+        secret.encode(),
+        payload.encode(),
+        hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(signature, computed_signature)
+```
+
+### IP Allowlisting
+
+Consider allowlisting Chatwoot's IP addresses in your firewall for additional security.
+
+## Handling Webhook Events
+
+### Best Practices
+
+1. **Respond Quickly**: Return a `200 OK` response immediately
+2. **Process Asynchronously**: Queue events for background processing
+3. **Handle Duplicates**: Use event IDs to detect and skip duplicate events
+4. **Implement Retries**: Handle temporary failures gracefully
+5. **Monitor Failures**: Track webhook delivery failures
+
+### Example Handler (Node.js)
+
+```javascript
+const express = require('express');
+const app = express();
+
+app.post('/webhooks/chatwoot', express.json(), (req, res) => {
+  const event = req.body;
+  
+  // Respond immediately
+  res.status(200).send('OK');
+  
+  // Process event asynchronously
+  processWebhookEvent(event).catch(err => {
+    console.error('Webhook processing error:', err);
+  });
+});
+
+async function processWebhookEvent(event) {
+  switch (event.event) {
+    case 'message_created':
+      await handleNewMessage(event.message);
+      break;
+    case 'conversation_created':
+      await handleNewConversation(event.conversation);
+      break;
+    // Handle other events...
+  }
+}
+```
+
+## Webhook Delivery
+
+### Retry Policy
+
+Chatwoot will retry failed webhook deliveries:
+- Initial retry after 1 minute
+- Subsequent retries with exponential backoff
+- Maximum of 3 retry attempts
+
+### Timeouts
+
+Webhook requests timeout after 10 seconds. Ensure your endpoint responds quickly.
+
+### Failed Deliveries
+
+Webhooks that consistently fail may be automatically disabled. Monitor your webhook endpoint for errors.
+
+## Testing Webhooks
+
+### Local Development
+
+Use tools like [ngrok](https://ngrok.com) to expose your local server:
+
+```bash
+ngrok http 3000
+```
+
+Use the ngrok URL as your webhook URL:
+
+```
+https://abc123.ngrok.io/webhooks/chatwoot
+```
+
+### Webhook Testing Tools
+
+- [webhook.site](https://webhook.site) - Inspect webhook payloads
+- [RequestBin](https://requestbin.com) - Debug webhook requests
+- [Postman](https://www.postman.com) - Simulate webhook events
+
+## Common Issues
+
+### Webhook Not Receiving Events
+
+**Troubleshooting:**
+1. Verify URL is correct and accessible
+2. Check webhook subscriptions include the event type
+3. Ensure endpoint returns `200 OK` quickly
+4. Check firewall and security settings
+
+### Duplicate Events
+
+**Solution:** Use event IDs to detect and skip duplicates:
+
+```javascript
+const processedEvents = new Set();
+
+function handleWebhook(event) {
+  if (processedEvents.has(event.id)) {
+    return; // Skip duplicate
+  }
+  processedEvents.add(event.id);
+  // Process event...
+}
+```
+
+### Timeout Errors
+
+**Solution:** Return `200 OK` immediately and process events asynchronously.
+
+## Error Responses
+
+### Webhook Not Found
+
+```json
+{
+  "error": "Webhook not found"
+}
+```
+
+### Invalid URL
+
+```json
+{
+  "error": "Webhook URL must use HTTPS"
+}
+```
+
+### Invalid Subscriptions
+
+```json
+{
+  "error": "Invalid subscription event type"
+}
+```

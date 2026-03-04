@@ -1,0 +1,149 @@
+---
+title: Integrations Overview
+description: Connect Chatwoot with your favorite tools and services
+---
+
+Chatwoot offers a comprehensive suite of integrations to extend your customer support capabilities. Connect with communication platforms, CRM systems, bot services, and custom applications to create a powerful support ecosystem.
+
+## Available Integrations
+
+### Communication Platforms
+
+#### Slack
+Integrate Chatwoot with Slack to receive conversation notifications and respond to customers directly from Slack channels. Supports bidirectional messaging and team collaboration.
+
+**Key Features:**
+- Real-time conversation notifications in Slack channels
+- Reply to customers from Slack
+- Channel management and configuration
+- Team collaboration and mentions
+
+[Learn more about Slack integration](/integrations/slack)
+
+### Bot Services
+
+#### Dialogflow
+Connect Google Dialogflow to power intelligent chatbot conversations. Automatically handle common queries and seamlessly hand off to human agents when needed.
+
+**Key Features:**
+- Natural language understanding
+- Intent-based responses
+- Regional endpoint support
+- Automated conversation handling
+- Custom actions and payloads
+
+[Learn more about Dialogflow integration](/integrations/dialogflow)
+
+### E-commerce Platforms
+
+#### Shopify
+Integrate with Shopify stores to access customer order history and provide context-aware support for e-commerce inquiries.
+
+**Key Features:**
+- Customer order lookup by email or phone
+- Order status and fulfillment information
+- Direct links to Shopify admin
+- OAuth-based authentication
+
+[Learn more about Shopify integration](/integrations/shopify)
+
+### Project Management
+
+#### Linear
+Create and manage Linear issues directly from Chatwoot conversations. Link customer conversations to development tasks for streamlined issue tracking.
+
+**Key Features:**
+- Create issues from conversations
+- Link existing issues
+- Search and manage issues
+- Team and project synchronization
+- Automated activity logging
+
+[Learn more about Linear integration](/integrations/linear)
+
+### Custom Integrations
+
+#### Dashboard Apps
+Build custom dashboard applications using iframes to extend Chatwoot's functionality with your own tools and services.
+
+**Key Features:**
+- Embed external applications
+- Custom iframe-based integrations
+- Per-account configuration
+- Flexible content structure
+
+[Learn more about Dashboard Apps](/integrations/dashboard-apps)
+
+#### Webhooks
+Configure webhooks to receive real-time event notifications and build custom integrations with external systems.
+
+**Key Features:**
+- Real-time event notifications
+- Custom payload delivery
+- Multiple webhook support
+- Account-level configuration
+
+### Additional Integrations
+
+Chatwoot also supports integrations with:
+
+- **OpenAI**: AI-powered label suggestions and conversation assistance
+- **Google Translate**: Automatic message translation
+- **Dyte**: Video conferencing capabilities
+- **Notion**: Documentation and knowledge base integration
+- **LeadSquared**: CRM integration for lead management
+
+## Integration Types
+
+Integrations in Chatwoot are categorized by scope:
+
+### Account-Level Integrations
+These integrations apply to the entire account and can be used across all inboxes:
+- Slack
+- Linear
+- Shopify
+- OpenAI
+- Google Translate
+- Dashboard Apps
+- Webhooks
+
+### Inbox-Level Integrations
+These integrations are configured per inbox:
+- Dialogflow
+
+This allows you to use different bot configurations for different channels or customer segments.
+
+## Getting Started
+
+1. Navigate to **Settings** > **Integrations** in your Chatwoot dashboard
+2. Select the integration you want to configure
+3. Follow the setup instructions specific to each integration
+4. Configure integration settings and permissions
+5. Test the integration to ensure proper functionality
+
+## Security and Authentication
+
+All integrations use secure authentication methods:
+- **OAuth 2.0** for platforms like Slack, Linear, and Shopify
+- **API Keys** for services like OpenAI and Dialogflow
+- **Encrypted Storage** for access tokens and credentials
+
+Chatwoot encrypts sensitive integration data using deterministic encryption when encryption keys are configured in your deployment.
+
+## Integration Management
+
+You can manage integrations through:
+- **Dashboard UI**: Navigate to Settings > Integrations
+- **API Endpoints**: `/api/v1/accounts/{account_id}/integrations`
+
+Each integration can be:
+- Enabled or disabled
+- Updated with new settings
+- Removed when no longer needed
+
+## Need Help?
+
+For detailed setup instructions and troubleshooting:
+- Check the specific integration documentation pages
+- Contact Chatwoot support
+- Visit the Chatwoot community forums

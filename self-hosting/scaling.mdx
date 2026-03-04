@@ -1,0 +1,702 @@
+---
+title: Scaling Strategies
+description: Horizontal and vertical scaling strategies for Chatwoot self-hosted installations
+---
+
+## Overview
+
+As your Chatwoot usage grows, you'll need to scale your infrastructure. This guide covers vertical scaling (more powerful servers) and horizontal scaling (more servers).
+
+## Performance Indicators
+
+Monitor these metrics to determine when scaling is needed:
+
+### Key Metrics
+
+- **Response Time**: API requests taking >500ms consistently
+- **Queue Latency**: Sidekiq queues with >10 second latency
+- **Database Connections**: Pool exhaustion (waiting connections)
+- **CPU Usage**: Sustained >70% CPU usage
+- **Memory Usage**: >80% memory consumption
+- **Disk I/O**: I/O wait time >10%
+- **Concurrent Users**: Growing user base
+
+### Monitoring Commands
+
+```bash
+# Check database connection pool
+RAILS_ENV=production bundle exec rails runner "puts ActiveRecord::Base.connection_pool.stat"
+
+# Sidekiq queue stats
+RAILS_ENV=production bundle exec rails runner "puts Sidekiq::Stats.new.inspect"
+
+# System resources
+top -bn1 | head -20
+free -h
+df -h
+iostat -x 1 5
+```
+
+## Vertical Scaling
+
+Vertical scaling means increasing resources on existing servers.
+
+### Database Scaling
+
+#### Increase Connection Pool
+
+From `config/database.yml`:
+
+```yaml
+production:
+  pool: <%= Sidekiq.server? ? ENV.fetch('SIDEKIQ_CONCURRENCY', 10) : ENV.fetch('RAILS_MAX_THREADS', 5) %>
+```
+
+Increase pool size:
+
+```bash
+# For Rails web server
+export RAILS_MAX_THREADS=10
+
+# For Sidekiq workers
+export SIDEKIQ_CONCURRENCY=20
+
+# Restart services
+systemctl restart chatwoot-web chatwoot-worker
+```
+
+#### Optimize PostgreSQL
+
+Update `postgresql.conf`:
+
+```conf
+# Memory Configuration
+shared_buffers = 4GB                    # 25% of RAM
+effective_cache_size = 12GB             # 75% of RAM
+maintenance_work_mem = 1GB              # For maintenance operations
+work_mem = 50MB                         # Per query operation
+
+# Connection Settings
+max_connections = 200                   # Increase if needed
+max_prepared_transactions = 200         # Match max_connections
+
+# Write Performance
+wal_buffers = 16MB
+checkpoint_completion_target = 0.9
+random_page_cost = 1.1                  # For SSD storage
+
+# Query Planner
+effective_io_concurrency = 200          # For SSD
+default_statistics_target = 100         # More detailed stats
+
+# Logging (for monitoring)
+log_min_duration_statement = 1000       # Log queries >1s
+log_line_prefix = '%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h '
+log_checkpoints = on
+log_connections = on
+log_disconnections = on
+log_lock_waits = on
+```
+
+Apply changes:
+
+```bash
+sudo systemctl restart postgresql
+```
+
+#### Database Maintenance
+
+```bash
+# Vacuum to reclaim space and update statistics
+VACUUM ANALYZE;
+
+# Reindex for performance
+REINDEX DATABASE chatwoot_production;
+
+# Automated via cron
+0 2 * * 0 psql -U postgres -d chatwoot_production -c "VACUUM ANALYZE;"
+```
+
+### Redis Scaling
+
+#### Increase Memory
+
+Edit `redis.conf`:
+
+```conf
+maxmemory 4gb
+maxmemory-policy allkeys-lru
+
+# Persistence settings
+save 900 1
+save 300 10
+save 60 10000
+
+# Performance
+tcp-backlog 511
+timeout 0
+tcp-keepalive 300
+```
+
+#### Redis Optimization
+
+```bash
+# System settings
+sudo sysctl vm.overcommit_memory=1
+sudo sysctl net.core.somaxconn=65535
+
+# Disable Transparent Huge Pages
+echo never | sudo tee /sys/kernel/mm/transparent_hugepage/enabled
+
+# Make permanent in /etc/sysctl.conf
+vm.overcommit_memory = 1
+net.core.somaxconn = 65535
+```
+
+### Application Scaling
+
+#### Increase Sidekiq Concurrency
+
+From `config/sidekiq.yml`:
+
+```yaml
+concurrency: <%= ENV.fetch("SIDEKIQ_CONCURRENCY", 10) %>
+```
+
+Increase workers:
+
+```bash
+export SIDEKIQ_CONCURRENCY=25
+systemctl restart chatwoot-worker
+```
+
+#### Multiple Sidekiq Processes
+
+Run specialized workers:
+
+```bash
+# High priority worker
+bundle exec sidekiq -C config/sidekiq.yml -q critical -q high -c 10
+
+# Default worker
+bundle exec sidekiq -C config/sidekiq.yml -q default -q medium -c 10
+
+# Low priority worker
+bundle exec sidekiq -C config/sidekiq.yml -q low -q scheduled_jobs -c 5
+```
+
+Systemd service for multiple workers:
+
+```ini
+# /etc/systemd/system/chatwoot-worker-high@.service
+[Unit]
+Description=Chatwoot Sidekiq Worker (High Priority) %i
+After=network.target
+
+[Service]
+Type=simple
+User=chatwoot
+WorkingDirectory=/home/chatwoot/chatwoot
+Environment="RAILS_ENV=production"
+Environment="SIDEKIQ_CONCURRENCY=10"
+ExecStart=/usr/local/bin/bundle exec sidekiq -C config/sidekiq.yml -q critical -q high
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable multiple instances:
+
+```bash
+systemctl enable chatwoot-worker-high@1
+systemctl enable chatwoot-worker-high@2
+systemctl start chatwoot-worker-high@{1..2}
+```
+
+#### Increase Rails Threads
+
+```bash
+# For Puma web server
+export RAILS_MAX_THREADS=5
+export WEB_CONCURRENCY=4  # Number of worker processes
+
+# Start with increased concurrency
+bundle exec puma -C config/puma.rb
+```
+
+## Horizontal Scaling
+
+Horizontal scaling distributes load across multiple servers.
+
+### Architecture Overview
+
+```
+                    ┌─────────────────┐
+                    │  Load Balancer  │
+                    └────────┬────────┘
+                             │
+         ┌───────────────────┼───────────────────┐
+         │                   │                   │
+    ┌────▼────┐         ┌────▼────┐         ┌────▼────┐
+    │ Rails 1 │         │ Rails 2 │         │ Rails 3 │
+    └─────────┘         └─────────┘         └─────────┘
+         │                   │                   │
+         └───────────────────┼───────────────────┘
+                             │
+         ┌───────────────────┼───────────────────┐
+         │                   │                   │
+    ┌────▼──────┐       ┌────▼────┐        ┌────▼──────┐
+    │ Sidekiq 1 │       │ Redis   │        │ Sidekiq 2 │
+    └───────────┘       └─────────┘        └───────────┘
+         │                                       │
+         └───────────────────┬───────────────────┘
+                             │
+                        ┌────▼────────┐
+                        │ PostgreSQL  │
+                        └─────────────┘
+```
+
+### Multiple Rails Instances
+
+#### Load Balancer Configuration
+
+Nginx load balancer example:
+
+```nginx
+# /etc/nginx/conf.d/chatwoot-lb.conf
+upstream chatwoot_backend {
+    least_conn;  # Use least connections algorithm
+    
+    server 10.0.1.10:3000 weight=3 max_fails=3 fail_timeout=30s;
+    server 10.0.1.11:3000 weight=3 max_fails=3 fail_timeout=30s;
+    server 10.0.1.12:3000 weight=2 max_fails=3 fail_timeout=30s;
+    
+    keepalive 32;
+}
+
+server {
+    listen 80;
+    server_name chat.example.com;
+    
+    location / {
+        proxy_pass http://chatwoot_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # Timeouts
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+    
+    # Health check endpoint
+    location /health {
+        proxy_pass http://chatwoot_backend/health;
+        access_log off;
+    }
+}
+```
+
+#### Session Affinity
+
+For WebSocket connections, use sticky sessions:
+
+```nginx
+upstream chatwoot_backend {
+    ip_hash;  # Sticky sessions based on client IP
+    
+    server 10.0.1.10:3000;
+    server 10.0.1.11:3000;
+    server 10.0.1.12:3000;
+}
+```
+
+Or use consistent hashing:
+
+```nginx
+upstream chatwoot_backend {
+    hash $cookie_chatwoot_session consistent;
+    
+    server 10.0.1.10:3000;
+    server 10.0.1.11:3000;
+    server 10.0.1.12:3000;
+}
+```
+
+### Shared Storage
+
+Rails instances need shared file storage for Active Storage.
+
+#### S3-Compatible Storage
+
+Recommended for horizontal scaling:
+
+```bash
+# Environment configuration
+ACTIVE_STORAGE_SERVICE=amazon
+S3_BUCKET_NAME=chatwoot-storage
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+AWS_REGION=us-east-1
+```
+
+#### NFS Shared Storage
+
+Alternatively, use NFS:
+
+```bash
+# On NFS server
+sudo apt-get install nfs-kernel-server
+sudo mkdir -p /export/chatwoot/storage
+sudo chown -R chatwoot:chatwoot /export/chatwoot/storage
+
+# /etc/exports
+/export/chatwoot/storage 10.0.1.0/24(rw,sync,no_subtree_check,no_root_squash)
+
+sudo exportfs -a
+sudo systemctl restart nfs-kernel-server
+
+# On Rails instances
+sudo apt-get install nfs-common
+sudo mount -t nfs nfs-server:/export/chatwoot/storage /app/storage
+
+# /etc/fstab for persistence
+nfs-server:/export/chatwoot/storage /app/storage nfs defaults 0 0
+```
+
+### Multiple Sidekiq Workers
+
+Distribute background jobs across multiple servers:
+
+```bash
+# Worker 1 - High priority
+SIDEKIQ_QUEUES=critical,high,medium
+SIDEKIQ_CONCURRENCY=20
+
+# Worker 2 - Default
+SIDEKIQ_QUEUES=default,mailers,low
+SIDEKIQ_CONCURRENCY=15
+
+# Worker 3 - Scheduled jobs
+SIDEKIQ_QUEUES=scheduled_jobs,housekeeping,purgable
+SIDEKIQ_CONCURRENCY=10
+```
+
+### Database Scaling
+
+#### Read Replicas
+
+For read-heavy workloads:
+
+```ruby
+# config/database.yml
+production:
+  primary:
+    <<: *default
+    database: chatwoot_production
+    host: <%= ENV['POSTGRES_PRIMARY_HOST'] %>
+  
+  replica:
+    <<: *default
+    database: chatwoot_production
+    host: <%= ENV['POSTGRES_REPLICA_HOST'] %>
+    replica: true
+```
+
+Route reads to replica:
+
+```ruby
+# In application code
+ActiveRecord::Base.connected_to(role: :reading) do
+  @conversations = Conversation.recent.limit(100)
+end
+```
+
+#### Connection Pooling
+
+Use PgBouncer for connection pooling:
+
+```ini
+# /etc/pgbouncer/pgbouncer.ini
+[databases]
+chatwoot_production = host=postgres-server port=5432 dbname=chatwoot_production
+
+[pgbouncer]
+listen_addr = *
+listen_port = 6432
+auth_type = md5
+auth_file = /etc/pgbouncer/userlist.txt
+pool_mode = transaction
+max_client_conn = 1000
+default_pool_size = 25
+server_idle_timeout = 600
+```
+
+Connect via PgBouncer:
+
+```bash
+POSTGRES_HOST=pgbouncer-server
+POSTGRES_PORT=6432
+```
+
+#### Database Partitioning
+
+For very large tables, consider partitioning:
+
+```sql
+-- Partition messages by created_at (monthly)
+CREATE TABLE messages_2024_01 PARTITION OF messages
+    FOR VALUES FROM ('2024-01-01') TO ('2024-02-01');
+
+CREATE TABLE messages_2024_02 PARTITION OF messages
+    FOR VALUES FROM ('2024-02-01') TO ('2024-03-01');
+```
+
+### Redis Scaling
+
+#### Redis Sentinel (High Availability)
+
+```yaml
+# redis-sentinel.conf
+sentinel monitor chatwoot-master redis-master 6379 2
+sentinel down-after-milliseconds chatwoot-master 5000
+sentinel parallel-syncs chatwoot-master 1
+sentinel failover-timeout chatwoot-master 10000
+```
+
+Connect via Sentinel:
+
+```bash
+REDIS_URL=redis://redis-sentinel-1:26379,redis-sentinel-2:26379,redis-sentinel-3:26379/mymaster
+```
+
+#### Redis Cluster
+
+For very high throughput:
+
+```bash
+# Create 6-node cluster (3 masters, 3 replicas)
+redis-cli --cluster create \
+  10.0.1.20:6379 10.0.1.21:6379 10.0.1.22:6379 \
+  10.0.1.23:6379 10.0.1.24:6379 10.0.1.25:6379 \
+  --cluster-replicas 1
+```
+
+## Docker Swarm / Kubernetes
+
+### Docker Swarm
+
+```yaml
+# docker-compose.swarm.yml
+version: '3.8'
+
+services:
+  rails:
+    image: chatwoot/chatwoot:latest
+    deploy:
+      replicas: 3
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+    environment:
+      - POSTGRES_HOST=postgres
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - storage_data:/app/storage
+  
+  sidekiq:
+    image: chatwoot/chatwoot:latest
+    deploy:
+      replicas: 2
+    command: bundle exec sidekiq -C config/sidekiq.yml
+    environment:
+      - POSTGRES_HOST=postgres
+      - REDIS_URL=redis://redis:6379
+
+volumes:
+  storage_data:
+    driver: local
+```
+
+Deploy:
+
+```bash
+docker stack deploy -c docker-compose.swarm.yml chatwoot
+```
+
+### Kubernetes
+
+```yaml
+# rails-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chatwoot-rails
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: chatwoot-rails
+  template:
+    metadata:
+      labels:
+        app: chatwoot-rails
+    spec:
+      containers:
+      - name: rails
+        image: chatwoot/chatwoot:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: POSTGRES_HOST
+          value: postgres-service
+        - name: REDIS_URL
+          value: redis://redis-service:6379
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chatwoot-service
+spec:
+  selector:
+    app: chatwoot-rails
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 3000
+  type: LoadBalancer
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: chatwoot-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: chatwoot-rails
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+```
+
+## Caching Strategies
+
+### Application-Level Caching
+
+```ruby
+# Enable fragment caching
+# config/environments/production.rb
+config.action_controller.perform_caching = true
+config.cache_store = :redis_cache_store, { url: ENV['REDIS_URL'] }
+```
+
+### HTTP Caching with Nginx
+
+```nginx
+proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=chatwoot_cache:10m max_size=1g inactive=60m;
+
+server {
+    location /api/ {
+        proxy_cache chatwoot_cache;
+        proxy_cache_valid 200 5m;
+        proxy_cache_key "$scheme$request_method$host$request_uri";
+        proxy_cache_bypass $http_cache_control;
+        add_header X-Cache-Status $upstream_cache_status;
+        
+        proxy_pass http://chatwoot_backend;
+    }
+}
+```
+
+## Performance Optimization
+
+### Database Indexing
+
+```sql
+-- Add indexes for common queries
+CREATE INDEX CONCURRENTLY idx_conversations_account_status 
+  ON conversations(account_id, status) 
+  WHERE status IN (0, 1);  -- open and pending
+
+CREATE INDEX CONCURRENTLY idx_messages_conversation_created 
+  ON messages(conversation_id, created_at DESC);
+
+CREATE INDEX CONCURRENTLY idx_contacts_account_email 
+  ON contacts(account_id, email) 
+  WHERE email IS NOT NULL;
+```
+
+### Background Job Optimization
+
+```ruby
+# Batch similar jobs
+class BatchEmailJob
+  include Sidekiq::Job
+  
+  def perform(user_ids)
+    User.where(id: user_ids).find_each do |user|
+      UserMailer.notification(user).deliver_later
+    end
+  end
+end
+
+# Instead of:
+users.each { |user| SendEmailJob.perform_later(user.id) }
+
+# Do:
+BatchEmailJob.perform_later(users.pluck(:id))
+```
+
+## Scaling Checklist
+
+- [ ] Monitor performance metrics
+- [ ] Identify bottlenecks (database, Redis, application)
+- [ ] Start with vertical scaling if feasible
+- [ ] Optimize database queries and add indexes
+- [ ] Configure database connection pooling
+- [ ] Increase Sidekiq concurrency
+- [ ] Set up multiple Sidekiq workers for different queues
+- [ ] Implement horizontal scaling for Rails instances
+- [ ] Configure load balancer with health checks
+- [ ] Use shared storage (S3 or NFS)
+- [ ] Set up database read replicas
+- [ ] Configure Redis Sentinel or Cluster
+- [ ] Implement caching strategies
+- [ ] Monitor after scaling changes
+- [ ] Load test to verify capacity
+- [ ] Document your scaling configuration

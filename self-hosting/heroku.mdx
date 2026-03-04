@@ -1,0 +1,549 @@
+---
+title: Heroku Deployment
+description: Deploy Chatwoot to Heroku with one-click deployment for quick setup and managed infrastructure
+---
+
+# Heroku Deployment
+
+Deploy Chatwoot to Heroku's platform for a fully managed deployment experience. Heroku handles infrastructure, scaling, and maintenance, letting you focus on using Chatwoot.
+
+## Prerequisites
+
+- Heroku account (free tier available)
+- Credit card on file (required even for free tier)
+- Heroku CLI (optional, for command-line deployment)
+
+## One-Click Deployment
+
+The fastest way to deploy Chatwoot on Heroku:
+
+### 1. Click Deploy Button
+
+Visit the Chatwoot repository and click the "Deploy to Heroku" button, or use this link:
+
+[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/chatwoot/chatwoot)
+
+### 2. Configure Your App
+
+Fill in the required information:
+
+- **App name**: Choose a unique name (e.g., `my-company-chatwoot`)
+- **Region**: Choose a region close to your users (US or Europe)
+- **SECRET_KEY_BASE**: Generate using `openssl rand -hex 64` or leave blank for auto-generation
+
+### 3. Choose Add-ons
+
+The deployment automatically provisions:
+
+- **Heroku Postgres**: Database (Hobby Dev - Free)
+- **Heroku Redis**: Cache and job queue (Hobby Dev - Free)
+
+### 4. Deploy
+
+Click "Deploy app" and wait for the deployment to complete (5-10 minutes).
+
+### 5. Access Your Instance
+
+Once deployed, click "View app" to access your Chatwoot instance at:
+
+```
+https://your-app-name.herokuapp.com
+```
+
+Create your admin account to get started.
+
+## Manual Deployment via Heroku CLI
+
+For more control over the deployment process:
+
+### 1. Install Heroku CLI
+
+```bash
+# macOS
+brew tap heroku/brew && brew install heroku
+
+# Ubuntu/Debian
+curl https://cli-assets.heroku.com/install.sh | sh
+
+# Windows
+# Download installer from https://devcenter.heroku.com/articles/heroku-cli
+```
+
+### 2. Login to Heroku
+
+```bash
+heroku login
+```
+
+### 3. Clone Chatwoot Repository
+
+```bash
+git clone https://github.com/chatwoot/chatwoot.git
+cd chatwoot
+```
+
+### 4. Create Heroku App
+
+```bash
+# Create app
+heroku create my-chatwoot-app
+
+# Or specify region
+heroku create my-chatwoot-app --region eu
+```
+
+### 5. Provision Add-ons
+
+```bash
+# Postgres with pgvector support (Essential plan minimum for pgvector)
+heroku addons:create heroku-postgresql:essential-0
+
+# Redis
+heroku addons:create heroku-redis:hobby-dev
+```
+
+### 6. Configure Environment Variables
+
+```bash
+# Generate secret key
+SECRET_KEY_BASE=$(openssl rand -hex 64)
+
+# Set required variables
+heroku config:set SECRET_KEY_BASE=$SECRET_KEY_BASE
+heroku config:set RAILS_ENV=production
+heroku config:set RAILS_LOG_TO_STDOUT=enabled
+heroku config:set RAILS_SERVE_STATIC_FILES=true
+```
+
+### 7. Deploy to Heroku
+
+```bash
+git push heroku master
+```
+
+### 8. Run Database Migrations
+
+```bash
+heroku run bundle exec rails db:chatwoot_prepare
+```
+
+### 9. Open Your App
+
+```bash
+heroku open
+```
+
+## Procfile Configuration
+
+Chatwoot's `Procfile` defines the process types:
+
+```procfile
+release: POSTGRES_STATEMENT_TIMEOUT=600s bundle exec rails db:chatwoot_prepare && echo $SOURCE_VERSION > .git_sha
+web: bundle exec rails ip_lookup:setup && bin/rails server -p $PORT -e $RAILS_ENV
+worker: bundle exec rails ip_lookup:setup && bundle exec sidekiq -C config/sidekiq.yml
+```
+
+### Process Types
+
+- **release**: Runs automatically before deployment (migrations)
+- **web**: Rails web server
+- **worker**: Sidekiq background worker
+
+## Scaling Your Heroku App
+
+### View Current Dynos
+
+```bash
+heroku ps
+```
+
+### Scale Dynos
+
+```bash
+# Scale web dynos
+heroku ps:scale web=2
+
+# Scale worker dynos
+heroku ps:scale worker=1
+
+# Scale both
+heroku ps:scale web=2 worker=2
+```
+
+### Recommended Dyno Configuration
+
+**Free/Hobby** (Testing/Small Teams):
+```bash
+heroku ps:scale web=1 worker=1
+```
+
+**Production** (50-100 users):
+```bash
+heroku ps:scale web=2 worker=2
+# Upgrade to Standard-1X or Standard-2X dynos
+heroku ps:type web=standard-1x
+heroku ps:type worker=standard-1x
+```
+
+**High Traffic** (200+ users):
+```bash
+heroku ps:scale web=4 worker=3
+heroku ps:type web=performance-m
+heroku ps:type worker=performance-m
+```
+
+## Environment Configuration
+
+### Set Environment Variables
+
+```bash
+# Application URL
+heroku config:set FRONTEND_URL=https://your-app.herokuapp.com
+
+# Email Configuration
+heroku config:set MAILER_SENDER_EMAIL="Chatwoot <support@yourdomain.com>"
+heroku config:set SMTP_ADDRESS=smtp.sendgrid.net
+heroku config:set SMTP_PORT=587
+heroku config:set SMTP_USERNAME=apikey
+heroku config:set SMTP_PASSWORD=your-sendgrid-api-key
+heroku config:set SMTP_AUTHENTICATION=plain
+heroku config:set SMTP_ENABLE_STARTTLS_AUTO=true
+
+# Disable sign-ups (optional)
+heroku config:set ENABLE_ACCOUNT_SIGNUP=false
+
+# Force SSL
+heroku config:set FORCE_SSL=true
+```
+
+### View Configuration
+
+```bash
+# View all config
+heroku config
+
+# View specific variable
+heroku config:get SECRET_KEY_BASE
+```
+
+## Custom Domain Setup
+
+### 1. Add Domain to Heroku
+
+```bash
+heroku domains:add chat.yourdomain.com
+```
+
+### 2. Configure DNS
+
+Add a CNAME record in your DNS provider:
+
+```
+Type:  CNAME
+Name:  chat
+Value: your-app-name.herokuapp.com
+TTL:   300
+```
+
+### 3. Enable SSL
+
+Heroku automatically provides SSL certificates:
+
+```bash
+heroku certs:auto:enable
+```
+
+### 4. Update Frontend URL
+
+```bash
+heroku config:set FRONTEND_URL=https://chat.yourdomain.com
+```
+
+## Database Management
+
+### Access Database
+
+```bash
+# Using Heroku CLI
+heroku pg:psql
+
+# Get database credentials
+heroku pg:credentials:url
+```
+
+### Create Backup
+
+```bash
+# Manual backup
+heroku pg:backups:capture
+
+# Schedule daily backups
+heroku pg:backups:schedule --at '02:00 America/Los_Angeles'
+```
+
+### Download Backup
+
+```bash
+# Get backup URL
+heroku pg:backups:url
+
+# Download backup
+curl -o backup.dump "$(heroku pg:backups:url)"
+```
+
+### Restore Database
+
+```bash
+# From Heroku backup
+heroku pg:backups:restore b001 DATABASE_URL
+
+# From external backup
+heroku pg:backups:restore 'https://example.com/backup.dump' DATABASE_URL
+```
+
+## Redis Management
+
+### View Redis Info
+
+```bash
+heroku redis:info
+```
+
+### Access Redis CLI
+
+```bash
+heroku redis:cli
+```
+
+### Monitor Redis
+
+```bash
+heroku redis:timeout --seconds 60
+```
+
+## File Storage Configuration
+
+Heroku has an ephemeral filesystem. Use S3 for file uploads:
+
+### 1. Create S3 Bucket
+
+Create a bucket in AWS S3 or use a compatible service (DigitalOcean Spaces, Wasabi, etc.).
+
+### 2. Configure Storage
+
+```bash
+heroku config:set ACTIVE_STORAGE_SERVICE=amazon
+heroku config:set S3_BUCKET_NAME=my-chatwoot-uploads
+heroku config:set AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+heroku config:set AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+heroku config:set AWS_REGION=us-east-1
+```
+
+## Monitoring & Logging
+
+### View Logs
+
+```bash
+# Tail logs
+heroku logs --tail
+
+# View last 200 lines
+heroku logs -n 200
+
+# Filter by dyno
+heroku logs --dyno web.1
+heroku logs --dyno worker.1
+
+# Filter by source
+heroku logs --source app
+```
+
+### Add Logging Add-on
+
+```bash
+# Papertrail (free tier available)
+heroku addons:create papertrail:chokladfabrik
+
+# View in browser
+heroku addons:open papertrail
+```
+
+### Performance Monitoring
+
+```bash
+# Add New Relic
+heroku addons:create newrelic:wayne
+
+# Configure
+heroku config:set NEW_RELIC_LICENSE_KEY=your-license-key
+heroku config:set NEW_RELIC_APP_NAME="Chatwoot Production"
+```
+
+## Maintenance Commands
+
+### Access Rails Console
+
+```bash
+heroku run bundle exec rails console
+```
+
+### Run Rake Tasks
+
+```bash
+# Run migrations
+heroku run bundle exec rails db:migrate
+
+# Seed database
+heroku run bundle exec rails db:seed
+
+# Clear cache
+heroku run bundle exec rails cache:clear
+```
+
+### Restart Application
+
+```bash
+# Restart all dynos
+heroku restart
+
+# Restart specific dyno
+heroku restart web.1
+```
+
+## Upgrading Chatwoot
+
+### 1. Pull Latest Changes
+
+```bash
+cd chatwoot
+git pull origin master
+```
+
+### 2. Deploy Update
+
+```bash
+git push heroku master
+```
+
+Migrations run automatically via the `release` process.
+
+### 3. Verify Deployment
+
+```bash
+# Check release status
+heroku releases
+
+# View recent logs
+heroku logs --tail
+```
+
+## Cost Optimization
+
+### Free Tier Setup
+
+```bash
+# Minimal free setup
+heroku ps:scale web=1 worker=1
+heroku addons:create heroku-postgresql:essential-0
+heroku addons:create heroku-redis:hobby-dev
+```
+
+Note: Heroku discontinued free tier in November 2022. Minimum cost is ~$12/month.
+
+### Production Setup Cost Estimate
+
+- **Standard-1X Dynos**: 2 web + 2 worker = $100/month
+- **Postgres Essential-0**: $5/month
+- **Redis Premium-0**: $15/month
+- **Total**: ~$120/month
+
+## Troubleshooting
+
+### Application Error (H10)
+
+Check if web dyno is running:
+
+```bash
+heroku ps
+heroku logs --tail
+```
+
+Scale up if needed:
+
+```bash
+heroku ps:scale web=1
+```
+
+### Database Connection Issues
+
+Verify database is provisioned:
+
+```bash
+heroku pg:info
+```
+
+### Redis Connection Issues
+
+For Redis Premium, enable SSL:
+
+```bash
+heroku config:set REDIS_OPENSSL_VERIFY_MODE=none
+```
+
+### Slow Performance
+
+Upgrade dyno types:
+
+```bash
+heroku ps:type web=standard-2x
+heroku ps:type worker=standard-2x
+```
+
+### Timeout Errors (H12)
+
+Increase timeout for long-running requests:
+
+```bash
+heroku config:set POSTGRES_STATEMENT_TIMEOUT=60s
+```
+
+## Limitations
+
+- **Ephemeral Filesystem**: Use S3 for file storage
+- **30-second Request Timeout**: Long-polling may be affected
+- **Dyno Sleep**: Free/hobby dynos sleep after 30 minutes of inactivity
+- **Daily Restart**: Dynos restart every 24 hours
+- **Build Time**: Limited to 15 minutes
+
+## Migration from Heroku
+
+To migrate away from Heroku:
+
+### 1. Backup Data
+
+```bash
+# Database backup
+heroku pg:backups:capture
+curl -o backup.dump "$(heroku pg:backups:url)"
+
+# Get environment variables
+heroku config -s > .env.heroku
+```
+
+### 2. Deploy Elsewhere
+
+Use [Docker](/self-hosting/docker) or [Linux VM](/self-hosting/linux-vm) deployment.
+
+### 3. Restore Data
+
+```bash
+# Restore to new PostgreSQL instance
+pg_restore -d chatwoot_production backup.dump
+```
+
+## Next Steps
+
+- [Configure Email](/self-hosted/configuration/email)
+- [Set Up Integrations](/channels/live-chat)
+- [Configure S3 Storage](/self-hosted/configuration/storage)
+- [Production Checklist](/self-hosting/overview#security-best-practices)

@@ -1,0 +1,207 @@
+---
+title: Introduction to Chatwoot
+description: Learn about Chatwoot, the modern open-source customer support platform that helps businesses deliver exceptional customer experiences
+---
+
+# Introduction to Chatwoot
+
+Chatwoot is the modern, open-source, and self-hosted customer support platform designed to help businesses deliver exceptional customer support experiences. Built for scale and flexibility, Chatwoot gives you full control over your customer data while providing powerful tools to manage conversations across channels.
+
+<Note>
+Chatwoot is an open-source alternative to Intercom, Zendesk, Salesforce Service Cloud, and other commercial customer support platforms.
+</Note>
+
+## What is Chatwoot?
+
+Chatwoot centralizes all your customer conversations into one powerful platform, enabling support teams to:
+
+- Manage customer conversations across multiple channels from a unified inbox
+- Collaborate with team members using internal notes and mentions
+- Automate repetitive tasks with rules and AI-powered assistance
+- Track performance with detailed reports and analytics
+- Build self-service help centers to reduce support load
+
+## Key Capabilities
+
+### Omnichannel Support Desk
+
+Chatwoot centralizes all customer conversations into one powerful inbox, no matter where your customers reach out from. It supports:
+
+- **Website Live Chat** - Embed a customizable chat widget on your website
+- **Email** - Connect your support email and handle messages seamlessly
+- **Social Media** - Facebook, Instagram, Twitter integration
+- **Messaging Apps** - WhatsApp, Telegram, Line support
+- **SMS** - Twilio SMS integration for text message support
+- **API Channel** - Build custom integrations with the API channel
+
+<CardGroup cols={2}>
+  <Card title="Web Widget" icon="comments">
+    Add live chat to your website with a customizable widget
+  </Card>
+  <Card title="Email Integration" icon="envelope">
+    Connect your support email address for seamless inbox management
+  </Card>
+  <Card title="Social Channels" icon="hashtag">
+    Engage customers on Facebook, Instagram, and Twitter
+  </Card>
+  <Card title="WhatsApp & SMS" icon="message">
+    Support customers via WhatsApp and text messages
+  </Card>
+</CardGroup>
+
+### AI-Powered Support with Captain
+
+Supercharge your support with **Captain**, Chatwoot's AI agent. Captain helps:
+
+- Automate responses to common queries
+- Suggest labels and categorization
+- Transcribe audio messages
+- Provide intelligent suggestions to support agents
+- Reduce agent workload by handling routine questions automatically
+
+<Card title="Learn More About Captain" icon="robot" href="https://chwt.app/captain-docs">
+  Discover how Captain can transform your support operations
+</Card>
+
+### Collaboration & Productivity
+
+Empower your team with tools designed for efficient collaboration:
+
+- **Private Notes** - Add internal notes with @mentions for team discussions
+- **Labels** - Organize and categorize conversations for better tracking
+- **Canned Responses** - Save time with pre-written responses for common questions
+- **Auto-Assignment** - Automatically route conversations based on agent availability
+- **Teams** - Organize agents into teams for better workflow management
+- **Keyboard Shortcuts** - Navigate faster with command bar and shortcuts
+- **Custom Views & Filters** - Create personalized views for inbox organization
+- **Business Hours** - Set working hours and auto-responders
+
+### Customer Data Management
+
+Build comprehensive customer profiles:
+
+- **Contact Management** - Store customer profiles with interaction history
+- **Custom Attributes** - Add custom fields to store additional data
+- **Contact Segments** - Create targeted segments for personalized communication
+- **Pre-Chat Forms** - Collect information before conversations start
+- **Campaigns** - Proactively engage customers with targeted messages
+
+### Help Center Portal
+
+Enable customer self-service:
+
+- Publish help articles, FAQs, and guides
+- Organize content with categories and sections
+- Multi-language support for global audiences
+- SEO-friendly article URLs
+- Reduce repetitive queries by empowering customers to find answers
+
+### Reports & Analytics
+
+Measure performance and gain insights:
+
+- **Live View** - Monitor ongoing conversations in real-time
+- **Conversation Reports** - Track conversation volume and trends
+- **Agent Reports** - Measure individual agent performance
+- **CSAT Reports** - Monitor customer satisfaction scores
+- **Inbox, Label, and Team Reports** - Get operational visibility
+- **Downloadable Reports** - Export data for offline analysis
+
+### Integrations
+
+Extend Chatwoot with powerful integrations:
+
+- **Slack** - Manage conversations directly from Slack
+- **Dialogflow** - Add chatbot automation capabilities
+- **Shopify** - View and manage customer orders within Chatwoot
+- **Google Translate** - Translate customer messages in real-time
+- **Linear** - Create and manage tickets seamlessly
+- **Dashboard Apps** - Embed internal tools within Chatwoot
+- **Webhooks** - Build custom integrations with webhook events
+
+## Who is Chatwoot For?
+
+<CardGroup cols={2}>
+  <Card title="Startups" icon="rocket">
+    Launch customer support without expensive enterprise tools. Scale as you grow.
+  </Card>
+  <Card title="SaaS Companies" icon="cloud">
+    Provide multi-channel support for your software products with self-hosted control.
+  </Card>
+  <Card title="E-commerce" icon="cart-shopping">
+    Support online shoppers across website chat, social media, and messaging apps.
+  </Card>
+  <Card title="Enterprises" icon="building">
+    Self-host for complete data control and customize for your specific needs.
+  </Card>
+</CardGroup>
+
+## Why Choose Chatwoot?
+
+<CardGroup cols={3}>
+  <Card title="Open Source" icon="code-branch">
+    Full access to source code with MIT license. Transparent and community-driven.
+  </Card>
+  <Card title="Self-Hosted" icon="server">
+    Complete control over your data. Deploy on your infrastructure.
+  </Card>
+  <Card title="Cost-Effective" icon="dollar-sign">
+    No per-agent pricing. Scale your team without increasing costs.
+  </Card>
+  <Card title="Customizable" icon="wrench">
+    Modify and extend the platform to match your workflows.
+  </Card>
+  <Card title="Privacy-Focused" icon="shield">
+    Keep customer data secure on your own servers.
+  </Card>
+  <Card title="Active Community" icon="users">
+    Join thousands of users and contributors worldwide.
+  </Card>
+</CardGroup>
+
+## Architecture Overview
+
+Chatwoot is built with modern technologies:
+
+- **Backend**: Ruby on Rails with PostgreSQL database
+- **Frontend**: Vue.js 3 with Composition API and Tailwind CSS
+- **Real-time**: WebSocket support via Action Cable
+- **Cache**: Redis for caching and background jobs
+- **Storage**: Active Storage for file attachments
+
+<Note>
+Chatwoot follows a modular architecture that separates channels (integrations), inboxes (conversation containers), and conversations (customer interactions).
+</Note>
+
+## Getting Started
+
+Ready to start using Chatwoot? Here are your options:
+
+<CardGroup cols={2}>
+  <Card title="Quick Start Guide" icon="play" href="/quickstart">
+    Follow our step-by-step guide to set up your first inbox
+  </Card>
+  <Card title="Explore Features" icon="compass" href="/features">
+    Learn about all the powerful features available
+  </Card>
+  <Card title="Self-Hosted Deployment" icon="server" href="https://chatwoot.com/deploy">
+    Deploy Chatwoot on your own infrastructure
+  </Card>
+  <Card title="Join Community" icon="discord" href="https://discord.gg/cJXdrwS">
+    Get help and connect with other users on Discord
+  </Card>
+</CardGroup>
+
+## Open Source & Community
+
+Chatwoot is released under the MIT License and maintained by a vibrant community of contributors worldwide. The project is actively developed with regular updates and improvements.
+
+<Card title="View on GitHub" icon="github" href="https://github.com/chatwoot/chatwoot">
+  Star the project, contribute code, or report issues
+</Card>
+
+---
+
+<Note>
+**Version**: Chatwoot v4.11.1 | **License**: MIT | **Platform**: Ruby on Rails + Vue.js
+</Note>

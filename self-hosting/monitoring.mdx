@@ -1,0 +1,548 @@
+---
+title: Monitoring and Health Checks
+description: Monitor your Chatwoot installation with health checks, metrics, and observability tools
+---
+
+## Overview
+
+Proper monitoring ensures your Chatwoot installation runs smoothly and helps identify issues before they impact users.
+
+## Health Check Endpoint
+
+Chatwoot provides a built-in health check endpoint.
+
+### Basic Health Check
+
+The health endpoint is available at `/health`:
+
+```bash
+curl http://localhost:3000/health
+# Response: {"status":"woot"}
+```
+
+This endpoint:
+- Skips authentication and middleware (routes.rb:38)
+- Returns quickly for load balancer health checks
+- Indicates the Rails application is running
+
+### Comprehensive Health Checks
+
+Create a more detailed health check script:
+
+```bash
+#!/bin/bash
+# /usr/local/bin/chatwoot-health-check.sh
+
+set -e
+
+HOST="http://localhost:3000"
+FAILED=0
+
+# Check web server
+echo "Checking web server..."
+if curl -sf "$HOST/health" > /dev/null; then
+  echo "✓ Web server is healthy"
+else
+  echo "✗ Web server is down"
+  FAILED=1
+fi
+
+# Check database connectivity
+echo "Checking database..."
+if RAILS_ENV=production bundle exec rails runner "ActiveRecord::Base.connection.execute('SELECT 1')" > /dev/null 2>&1; then
+  echo "✓ Database is accessible"
+else
+  echo "✗ Database connection failed"
+  FAILED=1
+fi
+
+# Check Redis connectivity
+echo "Checking Redis..."
+if redis-cli -u "$REDIS_URL" PING | grep -q PONG; then
+  echo "✓ Redis is responding"
+else
+  echo "✗ Redis is down"
+  FAILED=1
+fi
+
+# Check Sidekiq
+echo "Checking Sidekiq..."
+if ps aux | grep -v grep | grep -q sidekiq; then
+  echo "✓ Sidekiq is running"
+else
+  echo "✗ Sidekiq is not running"
+  FAILED=1
+fi
+
+# Check disk space
+echo "Checking disk space..."
+DISK_USAGE=$(df -h / | awk 'NR==2 {print $5}' | sed 's/%//')
+if [ "$DISK_USAGE" -lt 90 ]; then
+  echo "✓ Disk usage is ${DISK_USAGE}%"
+else
+  echo "✗ Disk usage is critical: ${DISK_USAGE}%"
+  FAILED=1
+fi
+
+exit $FAILED
+```
+
+## Sidekiq Monitoring
+
+Chatwoot includes Sidekiq Web UI for monitoring background jobs.
+
+### Access Sidekiq Dashboard
+
+Sidekiq Web is mounted at `/monitoring/sidekiq` (routes.rb:644) and requires super admin authentication.
+
+1. Sign in as super admin at `/super_admin`
+2. Navigate to `/monitoring/sidekiq`
+
+The dashboard shows:
+- Queue sizes and latency
+- Job processing stats
+- Failed jobs
+- Retry queue
+- Scheduled jobs
+
+### Sidekiq Configuration
+
+Key settings from `config/sidekiq.yml`:
+
+```yaml
+concurrency: 10  # Number of threads (default)
+timeout: 25      # Job timeout in seconds
+max_retries: 3   # Maximum retry attempts
+
+queues:
+  - critical          # Highest priority
+  - high
+  - medium
+  - default
+  - mailers
+  - low
+  - scheduled_jobs
+  - deferred
+  - purgable
+  - housekeeping
+  - async_database_migration
+```
+
+### Monitor Sidekiq via CLI
+
+```bash
+# Check Sidekiq stats
+bundle exec rails runner "puts Sidekiq::Stats.new.inspect"
+
+# List busy workers
+bundle exec rails runner "puts Sidekiq::Workers.new.map(&:inspect)"
+
+# Check queue sizes
+redis-cli LLEN queue:default
+redis-cli LLEN queue:critical
+
+# Failed jobs count
+redis-cli ZCARD retry
+redis-cli ZCARD dead
+```
+
+### Sidekiq Alerts
+
+Monitor for stuck jobs:
+
+```bash
+#!/bin/bash
+# Alert if queue size exceeds threshold
+
+QUEUE="default"
+THRESHOLD=1000
+SIZE=$(redis-cli LLEN "queue:$QUEUE")
+
+if [ "$SIZE" -gt "$THRESHOLD" ]; then
+  echo "ALERT: Queue $QUEUE has $SIZE jobs (threshold: $THRESHOLD)"
+  # Send notification
+fi
+```
+
+## Database Monitoring
+
+### PostgreSQL Performance
+
+Chatwoot enables `pg_stat_statements` extension for query monitoring.
+
+#### Key Metrics
+
+```sql
+-- Active connections
+SELECT count(*) FROM pg_stat_activity WHERE state = 'active';
+
+-- Long-running queries
+SELECT pid, now() - query_start AS duration, query
+FROM pg_stat_activity
+WHERE state = 'active'
+  AND now() - query_start > interval '5 minutes'
+ORDER BY duration DESC;
+
+-- Database size
+SELECT pg_size_pretty(pg_database_size('chatwoot_production'));
+
+-- Table sizes
+SELECT schemaname, tablename,
+  pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size
+FROM pg_tables
+WHERE schemaname = 'public'
+ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC
+LIMIT 10;
+
+-- Slow queries (requires pg_stat_statements)
+SELECT
+  mean_exec_time,
+  calls,
+  query
+FROM pg_stat_statements
+ORDER BY mean_exec_time DESC
+LIMIT 10;
+```
+
+#### Connection Pool Monitoring
+
+From `config/database.yml`:
+
+```yaml
+pool: <%= Sidekiq.server? ? ENV.fetch('SIDEKIQ_CONCURRENCY', 10) : ENV.fetch('RAILS_MAX_THREADS', 5) %>
+reaping_frequency: <%= ENV.fetch('DB_POOL_REAPING_FREQUENCY', 30) %>
+```
+
+Monitor pool exhaustion:
+
+```ruby
+# In Rails console
+ActiveRecord::Base.connection_pool.stat
+# => {:size=>5, :connections=>3, :busy=>1, :dead=>0, :idle=>2, :waiting=>0, :checkout_timeout=>5.0}
+```
+
+### Statement Timeout
+
+Chatwoot sets statement timeout to prevent runaway queries:
+
+```yaml
+variables:
+  statement_timeout: <%= ENV["POSTGRES_STATEMENT_TIMEOUT"] || "14s" %>
+```
+
+Monitor timeouts:
+
+```sql
+SELECT * FROM pg_stat_database WHERE datname = 'chatwoot_production';
+```
+
+## Redis Monitoring
+
+### Redis Metrics
+
+```bash
+# Server info
+redis-cli INFO server
+
+# Memory usage
+redis-cli INFO memory
+
+# Stats
+redis-cli INFO stats
+
+# Key statistics
+redis-cli INFO keyspace
+
+# Slow log
+redis-cli SLOWLOG GET 10
+```
+
+### Redis Memory Monitoring
+
+```bash
+#!/bin/bash
+# Monitor Redis memory usage
+
+MEMORY_USED=$(redis-cli INFO memory | grep used_memory_human | cut -d: -f2 | tr -d '\r')
+MEMORY_PEAK=$(redis-cli INFO memory | grep used_memory_peak_human | cut -d: -f2 | tr -d '\r')
+
+echo "Redis Memory Usage: $MEMORY_USED (Peak: $MEMORY_PEAK)"
+
+# Check for memory pressure
+MEM_FRAG=$(redis-cli INFO memory | grep mem_fragmentation_ratio | cut -d: -f2 | tr -d '\r')
+echo "Fragmentation Ratio: $MEM_FRAG"
+```
+
+## Application Metrics
+
+### NewRelic Integration
+
+Chatwoot includes NewRelic Sidekiq metrics (`config/application.rb`).
+
+Configure NewRelic:
+
+```yaml
+# config/newrelic.yml
+common: &default_settings
+  license_key: <%= ENV['NEW_RELIC_LICENSE_KEY'] %>
+  app_name: <%= ENV['NEW_RELIC_APP_NAME'] || 'Chatwoot' %>
+  monitor_mode: true
+  log_level: info
+
+production:
+  <<: *default_settings
+```
+
+Environment variables:
+
+```bash
+NEW_RELIC_LICENSE_KEY=your_license_key
+NEW_RELIC_APP_NAME=Chatwoot Production
+```
+
+### Custom Metrics Collection
+
+Create a metrics endpoint:
+
+```ruby
+# lib/metrics_collector.rb
+class MetricsCollector
+  def self.collect
+    {
+      timestamp: Time.current,
+      database: database_metrics,
+      redis: redis_metrics,
+      sidekiq: sidekiq_metrics,
+      application: application_metrics
+    }
+  end
+
+  def self.database_metrics
+    {
+      connections: ActiveRecord::Base.connection_pool.stat[:connections],
+      size: ActiveRecord::Base.connection_pool.stat[:size],
+      waiting: ActiveRecord::Base.connection_pool.stat[:waiting]
+    }
+  end
+
+  def self.redis_metrics
+    info = Redis.new(url: ENV['REDIS_URL']).info
+    {
+      connected_clients: info['connected_clients'].to_i,
+      used_memory: info['used_memory'].to_i,
+      ops_per_sec: info['instantaneous_ops_per_sec'].to_i
+    }
+  end
+
+  def self.sidekiq_metrics
+    stats = Sidekiq::Stats.new
+    {
+      processed: stats.processed,
+      failed: stats.failed,
+      enqueued: stats.enqueued,
+      retry_size: stats.retry_size,
+      dead_size: stats.dead_size
+    }
+  end
+
+  def self.application_metrics
+    {
+      accounts_count: Account.count,
+      conversations_today: Conversation.where('created_at > ?', 24.hours.ago).count,
+      messages_today: Message.where('created_at > ?', 24.hours.ago).count
+    }
+  end
+end
+```
+
+## Log Monitoring
+
+### Application Logs
+
+```bash
+# Production logs
+tail -f log/production.log
+
+# Sidekiq logs
+tail -f log/sidekiq.log
+
+# Filter for errors
+grep -i error log/production.log
+
+# Monitor in real-time with highlighting
+tail -f log/production.log | grep --color=always -E 'ERROR|WARN|$'
+```
+
+### Structured Log Analysis
+
+```bash
+# Count errors by type
+grep ERROR log/production.log | awk '{print $5}' | sort | uniq -c | sort -rn
+
+# Slow requests (>1s)
+grep "Completed" log/production.log | awk '$NF>1000 {print}' | tail -20
+
+# Most frequent endpoints
+grep "Processing by" log/production.log | awk '{print $3}' | sort | uniq -c | sort -rn | head -20
+```
+
+### Log Aggregation
+
+For production systems, use centralized logging:
+
+#### Logrotate Configuration
+
+```bash
+# /etc/logrotate.d/chatwoot
+/app/log/*.log {
+  daily
+  missingok
+  rotate 30
+  compress
+  delaycompress
+  notifempty
+  copytruncate
+  dateext
+  dateformat -%Y%m%d
+}
+```
+
+## System Resource Monitoring
+
+### CPU and Memory
+
+```bash
+# Process monitoring
+top -b -n 1 | grep -E 'ruby|sidekiq|postgres|redis'
+
+# Memory usage by process
+ps aux --sort=-%mem | head -10
+
+# CPU usage by process
+ps aux --sort=-%cpu | head -10
+```
+
+### Disk I/O
+
+```bash
+# I/O stats
+iostat -x 1 5
+
+# Disk usage trends
+df -h | grep -E 'Filesystem|/app|/var/lib/postgresql'
+
+# Identify large files
+find /app -type f -size +100M -exec ls -lh {} \;
+```
+
+## Alerting
+
+### Health Check Monitoring Script
+
+```bash
+#!/bin/bash
+# /usr/local/bin/chatwoot-monitor.sh
+
+SLACK_WEBHOOK="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+
+send_alert() {
+  local message="$1"
+  curl -X POST -H 'Content-type: application/json' \
+    --data "{\"text\":\"🚨 Chatwoot Alert: $message\"}" \
+    "$SLACK_WEBHOOK"
+}
+
+# Check if web is responding
+if ! curl -sf http://localhost:3000/health > /dev/null; then
+  send_alert "Web server is down!"
+fi
+
+# Check Sidekiq queue size
+QUEUE_SIZE=$(redis-cli LLEN queue:default)
+if [ "$QUEUE_SIZE" -gt 5000 ]; then
+  send_alert "Sidekiq queue size is $QUEUE_SIZE"
+fi
+
+# Check failed jobs
+FAILED_COUNT=$(redis-cli ZCARD dead)
+if [ "$FAILED_COUNT" -gt 100 ]; then
+  send_alert "$FAILED_COUNT failed jobs in dead queue"
+fi
+
+# Check disk space
+DISK_USAGE=$(df -h / | awk 'NR==2 {print $5}' | sed 's/%//')
+if [ "$DISK_USAGE" -gt 85 ]; then
+  send_alert "Disk usage at ${DISK_USAGE}%"
+fi
+```
+
+Run via cron:
+
+```bash
+# Run every 5 minutes
+*/5 * * * * /usr/local/bin/chatwoot-monitor.sh
+```
+
+## Docker Monitoring
+
+### Container Health
+
+```bash
+# Container stats
+docker stats chatwoot-rails chatwoot-sidekiq chatwoot-postgres chatwoot-redis
+
+# Container logs
+docker logs -f chatwoot-rails
+docker logs -f chatwoot-sidekiq
+
+# Inspect container
+docker inspect chatwoot-rails | jq '.[0].State'
+```
+
+### Docker Compose Monitoring
+
+```bash
+# Service status
+docker-compose ps
+
+# Resource usage
+docker-compose top
+
+# Follow all logs
+docker-compose logs -f
+
+# Specific service logs
+docker-compose logs -f rails
+```
+
+## Monitoring Best Practices
+
+1. **Set up alerts** for critical metrics (disk space, queue size, error rate)
+2. **Monitor trends** over time, not just current values
+3. **Establish baselines** for normal operation
+4. **Regular reviews** of metrics and alerts
+5. **Document thresholds** for alerts and escalation procedures
+6. **Test monitoring** regularly to ensure it works
+7. **Centralize logs** for easier analysis
+8. **Track deployments** in monitoring tools for correlation
+
+## Related Configuration
+
+```bash
+# Enable detailed logging
+RAILS_LOG_LEVEL=info  # or debug for troubleshooting
+
+# Sidekiq concurrency
+SIDEKIQ_CONCURRENCY=10
+
+# Database pool size
+RAILS_MAX_THREADS=5
+DB_POOL_REAPING_FREQUENCY=30
+
+# Statement timeout
+POSTGRES_STATEMENT_TIMEOUT=14s
+
+# NewRelic
+NEW_RELIC_LICENSE_KEY=your_key
+NEW_RELIC_APP_NAME=Chatwoot Production
+```

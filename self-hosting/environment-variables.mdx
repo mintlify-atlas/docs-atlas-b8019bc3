@@ -1,0 +1,454 @@
+---
+title: Environment Variables
+description: Complete reference for all Chatwoot environment variables
+---
+
+This page documents all environment variables available in Chatwoot. These variables are used to configure various aspects of your self-hosted installation.
+
+## Core Configuration
+
+<ParamField path="SECRET_KEY_BASE" type="string" required>
+  Used to verify the integrity of signed cookies. Must be alphanumeric without special characters or symbols.
+  
+  Generate using: `rake secret`
+  
+  **Security:** Ensure this is a lengthy, secure, random value unique to your installation.
+</ParamField>
+
+<ParamField path="FRONTEND_URL" type="string" required>
+  The URL where your Chatwoot application will be accessible.
+  
+  **Example:** `https://chatwoot.example.com`
+  
+  **Default:** `http://0.0.0.0:3000`
+</ParamField>
+
+<ParamField path="HELPCENTER_URL" type="string">
+  Dedicated URL for help center pages if you want to host them on a separate domain.
+  
+  **Example:** `https://help.example.com`
+</ParamField>
+
+<ParamField path="RAILS_ENV" type="string">
+  Rails environment mode.
+  
+  **Options:** `development`, `production`, `staging`
+  
+  **Default:** `development`
+</ParamField>
+
+<ParamField path="RAILS_MAX_THREADS" type="number">
+  Maximum number of threads for the Rails application server.
+  
+  **Default:** `5`
+</ParamField>
+
+## Security & Encryption
+
+<ParamField path="FORCE_SSL" type="boolean">
+  Force all access to the app over SSL and use secure cookies.
+  
+  **Default:** `false`
+  
+  **Recommendation:** Set to `true` in production environments.
+</ParamField>
+
+<ParamField path="ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY" type="string">
+  Primary encryption key for Active Record Encryption. Required for MFA/2FA functionality.
+  
+  Generate using: `rails db:encryption:init`
+  
+  **Important:** Use different keys for each environment (development, staging, production).
+</ParamField>
+
+<ParamField path="ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY" type="string">
+  Deterministic encryption key for Active Record Encryption. Required for MFA/2FA functionality.
+  
+  Generate using: `rails db:encryption:init`
+</ParamField>
+
+<ParamField path="ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT" type="string">
+  Key derivation salt for Active Record Encryption. Required for MFA/2FA functionality.
+  
+  Generate using: `rails db:encryption:init`
+</ParamField>
+
+## Account & Signup Management
+
+<ParamField path="ENABLE_ACCOUNT_SIGNUP" type="string">
+  Controls new sign ups on your Chatwoot installation.
+  
+  **Options:**
+  - `true` - Default option, allows sign ups
+  - `false` - Disables all endpoints related to sign ups
+  - `api_only` - Disables UI for signup, but allows sign ups via account APIs
+  
+  **Default:** `false`
+</ParamField>
+
+<ParamField path="DEFAULT_LOCALE" type="string">
+  Default locale for the application.
+  
+  If set, all non-authenticated pages will fallback to this locale. When a new account is created, this will be the default language.
+  
+  **Default:** `en`
+</ParamField>
+
+## Asset & CDN Configuration
+
+<ParamField path="ASSET_CDN_HOST" type="string">
+  CDN host URL for serving static assets.
+  
+  **Example:** `https://cdn.example.com`
+</ParamField>
+
+<ParamField path="RAILS_SERVE_STATIC_FILES" type="boolean">
+  Enable serving static files from the `/public` folder.
+  
+  **Default:** `true`
+  
+  **Note:** In production, it's recommended to use NGINX or Apache to serve static files.
+</ParamField>
+
+## Logging Configuration
+
+<ParamField path="RAILS_LOG_TO_STDOUT" type="boolean">
+  Write logs to stdout instead of log files.
+  
+  **Default:** `true`
+  
+  **Note:** Useful for containerized deployments and cloud platforms.
+</ParamField>
+
+<ParamField path="LOG_LEVEL" type="string">
+  Application log level.
+  
+  **Options:** `debug`, `info`, `warn`, `error`, `fatal`
+  
+  **Default:** `info`
+</ParamField>
+
+<ParamField path="LOG_SIZE" type="number">
+  Maximum log file size in megabytes (when not logging to stdout).
+  
+  **Default:** `500`
+</ParamField>
+
+<ParamField path="LOGRAGE_ENABLED" type="boolean">
+  Use lograge for structured logging instead of default Rails logger.
+  
+  **Default:** `false`
+</ParamField>
+
+## Social Media Channels
+
+### Facebook
+
+<ParamField path="FB_VERIFY_TOKEN" type="string">
+  Facebook webhook verification token.
+  
+  See [Facebook Setup Documentation](https://www.chatwoot.com/docs/facebook-setup)
+</ParamField>
+
+<ParamField path="FB_APP_SECRET" type="string">
+  Facebook app secret key.
+</ParamField>
+
+<ParamField path="FB_APP_ID" type="string">
+  Facebook app ID.
+</ParamField>
+
+### Instagram
+
+<ParamField path="IG_VERIFY_TOKEN" type="string">
+  Instagram webhook verification token.
+  
+  See [Instagram Setup Documentation](https://developers.facebook.com/docs/messenger-platform/instagram/get-started)
+</ParamField>
+
+### Twitter
+
+<ParamField path="TWITTER_APP_ID" type="string">
+  Twitter app ID.
+  
+  See [Twitter Setup Documentation](https://www.chatwoot.com/docs/twitter-app-setup)
+</ParamField>
+
+<ParamField path="TWITTER_CONSUMER_KEY" type="string">
+  Twitter consumer key.
+</ParamField>
+
+<ParamField path="TWITTER_CONSUMER_SECRET" type="string">
+  Twitter consumer secret.
+</ParamField>
+
+<ParamField path="TWITTER_ENVIRONMENT" type="string">
+  Twitter environment name for Account Activity API.
+</ParamField>
+
+### Slack
+
+<ParamField path="SLACK_CLIENT_ID" type="string">
+  Slack OAuth client ID.
+</ParamField>
+
+<ParamField path="SLACK_CLIENT_SECRET" type="string">
+  Slack OAuth client secret.
+</ParamField>
+
+## OAuth Integration
+
+### Google OAuth
+
+<ParamField path="GOOGLE_OAUTH_CLIENT_ID" type="string">
+  Google OAuth client ID.
+</ParamField>
+
+<ParamField path="GOOGLE_OAUTH_CLIENT_SECRET" type="string">
+  Google OAuth client secret.
+</ParamField>
+
+<ParamField path="GOOGLE_OAUTH_CALLBACK_URL" type="string">
+  Google OAuth callback URL.
+</ParamField>
+
+### Microsoft Azure OAuth
+
+<ParamField path="AZURE_APP_ID" type="string">
+  Microsoft Azure application ID.
+</ParamField>
+
+<ParamField path="AZURE_APP_SECRET" type="string">
+  Microsoft Azure application secret.
+</ParamField>
+
+## Mobile App Configuration
+
+<ParamField path="IOS_APP_ID" type="string">
+  iOS app bundle identifier.
+  
+  **Default:** `L7YLMN4634.com.chatwoot.app`
+  
+  **Note:** Only change if using a custom build mobile app.
+</ParamField>
+
+<ParamField path="ANDROID_BUNDLE_ID" type="string">
+  Android app bundle identifier.
+  
+  **Default:** `com.chatwoot.app`
+</ParamField>
+
+<ParamField path="ANDROID_SHA256_CERT_FINGERPRINT" type="string">
+  Android SHA256 certificate fingerprint for app verification.
+  
+  See [Google Android Client Auth](https://developers.google.com/android/guides/client-auth)
+</ParamField>
+
+<ParamField path="IOS_APP_IDENTIFIER" type="string">
+  iOS App Store identifier for Smart App Banner.
+  
+  **Example:** `1495796682`
+  
+  See [Safari Smart App Banners](https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariWebContent/PromotingAppswithAppBanners/PromotingAppswithAppBanners.html)
+</ParamField>
+
+## Push Notifications
+
+<ParamField path="ENABLE_PUSH_RELAY_SERVER" type="boolean">
+  Enable push notification relay via Chatwoot server for official mobile app.
+  
+  **Default:** `true`
+</ParamField>
+
+<ParamField path="VAPID_PUBLIC_KEY" type="string">
+  VAPID public key for web push notifications.
+  
+  Generate at: [VAPID Key Generator](https://d3v.one/vapid-key-generator/)
+</ParamField>
+
+<ParamField path="VAPID_PRIVATE_KEY" type="string">
+  VAPID private key for web push notifications.
+</ParamField>
+
+<ParamField path="FCM_SERVER_KEY" type="string">
+  Firebase Cloud Messaging server key for mobile app push notifications.
+</ParamField>
+
+## APM & Monitoring
+
+### Elastic APM
+
+<ParamField path="ELASTIC_APM_SERVER_URL" type="string">
+  Elastic APM server URL.
+  
+  See [Elastic APM Ruby Agent](https://www.elastic.co/guide/en/apm/agent/ruby/current/getting-started-rails.html)
+</ParamField>
+
+<ParamField path="ELASTIC_APM_SECRET_TOKEN" type="string">
+  Elastic APM secret token for authentication.
+</ParamField>
+
+### Sentry
+
+<ParamField path="SENTRY_DSN" type="string">
+  Sentry DSN (Data Source Name) for error tracking.
+</ParamField>
+
+### Scout APM
+
+<ParamField path="SCOUT_KEY" type="string">
+  Scout APM key.
+  
+  See [Scout APM Configuration](https://scoutapm.com/docs/ruby/configuration)
+</ParamField>
+
+<ParamField path="SCOUT_NAME" type="string">
+  Scout APM application name.
+  
+  **Example:** `Chatwoot (Production)`
+</ParamField>
+
+<ParamField path="SCOUT_MONITOR" type="boolean">
+  Enable Scout APM monitoring.
+</ParamField>
+
+### New Relic
+
+<ParamField path="NEW_RELIC_LICENSE_KEY" type="string">
+  New Relic license key.
+  
+  See [New Relic Ruby Agent Configuration](https://docs.newrelic.com/docs/agents/ruby-agent/configuration/ruby-agent-configuration/)
+</ParamField>
+
+<ParamField path="NEW_RELIC_APPLICATION_LOGGING_ENABLED" type="boolean">
+  Enable New Relic application logging.
+  
+  **Default:** `false`
+</ParamField>
+
+### Datadog
+
+<ParamField path="DD_TRACE_AGENT_URL" type="string">
+  Datadog trace agent URL.
+  
+  See [Datadog APM Ruby](https://github.com/DataDog/dd-trace-rb/blob/master/docs/GettingStarted.md#environment-variables)
+</ParamField>
+
+## Additional Services
+
+### IP Lookup
+
+<ParamField path="IP_LOOKUP_API_KEY" type="string">
+  MaxMindDB API key to download GeoLite2 City database for IP geolocation.
+</ParamField>
+
+### Stripe
+
+<ParamField path="STRIPE_SECRET_KEY" type="string">
+  Stripe API secret key for payment processing.
+</ParamField>
+
+<ParamField path="STRIPE_WEBHOOK_SECRET" type="string">
+  Stripe webhook signing secret.
+</ParamField>
+
+### AI Features
+
+<ParamField path="OPENAI_API_KEY" type="string">
+  OpenAI API key for AI-powered features.
+</ParamField>
+
+## Performance & Rate Limiting
+
+### Rack Attack
+
+<ParamField path="ENABLE_RACK_ATTACK" type="boolean">
+  Enable Rack Attack for rate limiting and abuse prevention.
+  
+  **Default:** `false`
+</ParamField>
+
+<ParamField path="RACK_ATTACK_LIMIT" type="number">
+  Maximum number of requests per period.
+  
+  **Default:** `300`
+</ParamField>
+
+<ParamField path="ENABLE_RACK_ATTACK_WIDGET_API" type="boolean">
+  Enable rate limiting for widget API endpoints.
+  
+  **Default:** `false`
+</ParamField>
+
+<ParamField path="RACK_ATTACK_ALLOWED_IPS" type="string">
+  Comma-separated list of trusted IPs that bypass Rack Attack throttling rules.
+  
+  **Example:** `127.0.0.1,::1,192.168.0.10`
+</ParamField>
+
+### Sidekiq
+
+<ParamField path="SIDEKIQ_CONCURRENCY" type="number">
+  Number of concurrent Sidekiq worker threads.
+  
+  **Default:** `10`
+</ParamField>
+
+<ParamField path="ENABLE_SIDEKIQ_DEQUEUE_LOGGER" type="boolean">
+  Enable verbose logging each time a job is dequeued in Sidekiq.
+  
+  **Default:** `false`
+</ParamField>
+
+### Database Performance
+
+<ParamField path="DB_POOL_REAPING_FREQUENCY" type="number">
+  Frequency in seconds to periodically run the connection pool reaper.
+  
+  **Default:** `30`
+</ParamField>
+
+### Housekeeping
+
+<ParamField path="REMOVE_STALE_CONTACT_INBOX_JOB_STATUS" type="boolean">
+  Remove stale contact inboxes with no conversation older than 90 days.
+  
+  **Default:** `false`
+</ParamField>
+
+## Advanced Configuration
+
+<ParamField path="CW_API_ONLY_SERVER" type="boolean">
+  Run Chatwoot as an API-only server, disabling frontend dashboard endpoints.
+  
+  **Default:** `false`
+</ParamField>
+
+<ParamField path="DIRECT_UPLOADS_ENABLED" type="boolean">
+  Enable direct uploads to cloud storage using signed URLs.
+  
+  **Note:** Requires proper CORS configuration on your cloud storage. See [Active Storage CORS](https://edgeguides.rubyonrails.org/active_storage_overview.html#cross-origin-resource-sharing-cors-configuration)
+  
+  **Default:** `false`
+</ParamField>
+
+## Development Only
+
+<ParamField path="LETTER_OPENER" type="boolean">
+  Use letter_opener gem to preview emails in development.
+  
+  **Default:** `false`
+</ParamField>
+
+<ParamField path="WEBPACKER_DEV_SERVER_PUBLIC" type="string">
+  Webpacker dev server public URL (for GitHub Codespaces).
+</ParamField>
+
+## Related Configuration
+
+For detailed configuration of specific services, see:
+
+- [Email Setup](/self-hosting/email-setup)
+- [Storage Configuration](/self-hosting/storage)
+- [Redis Configuration](/self-hosting/redis)
+- [PostgreSQL Configuration](/self-hosting/postgres)

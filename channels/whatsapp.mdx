@@ -1,0 +1,302 @@
+---
+title: WhatsApp Business
+description: Integrate WhatsApp Business API to manage customer conversations
+---
+
+Connect your WhatsApp Business account to Chatwoot to manage WhatsApp conversations from your unified inbox.
+
+## Prerequisites
+
+- WhatsApp Business account
+- Facebook Business Manager account
+- Verified business phone number
+- WhatsApp Business API access
+
+## Setup Options
+
+### Option 1: WhatsApp Cloud API (Recommended)
+
+Free tier provided by Meta for WhatsApp Business API.
+
+<Steps>
+  <Step title="Set up WhatsApp Business API">
+    1. Go to [Meta for Developers](https://developers.facebook.com/)
+    2. Create a new Business App
+    3. Add WhatsApp product
+    4. Verify your business phone number
+  </Step>
+
+  <Step title="Get API credentials">
+    From WhatsApp settings, copy:
+    - Phone Number ID
+    - WhatsApp Business Account ID
+    - API Access Token
+  </Step>
+
+  <Step title="Add WhatsApp inbox in Chatwoot">
+    Go to **Settings** → **Inboxes** → **Add Inbox** → **WhatsApp**
+  </Step>
+
+  <Step title="Enter credentials">
+    - Select **Cloud API**
+    - Enter Phone Number ID
+    - Enter Access Token
+    - Configure webhook (Chatwoot provides webhook URL)
+  </Step>
+
+  <Step title="Verify webhook">
+    WhatsApp will send a verification request. Chatwoot handles this automatically.
+  </Step>
+
+  <Step title="Test connection">
+    Send a WhatsApp message to your business number. It should appear in Chatwoot.
+  </Step>
+</Steps>
+
+### Option 2: 360Dialog Provider
+
+Third-party WhatsApp Business Solution Provider (BSP).
+
+<Steps>
+  <Step title="Sign up with 360Dialog">
+    Create an account at [360Dialog](https://www.360dialog.com/)
+  </Step>
+
+  <Step title="Get API key">
+    From 360Dialog dashboard, copy your API key
+  </Step>
+
+  <Step title="Configure in Chatwoot">
+    In Chatwoot WhatsApp inbox:
+    - Select **360Dialog**
+    - Enter API key
+    - Enter phone number
+  </Step>
+</Steps>
+
+## Features
+
+- **Two-way messaging** - Send and receive WhatsApp messages
+- **Rich media** - Images, videos, audio, documents, locations
+- **Message templates** - Pre-approved templates for business messages
+- **Quick replies** - Interactive buttons
+- **List messages** - Menu-style selections
+- **Location sharing** - Send and receive locations
+- **Contact cards** - Share contact information
+- **Session management** - 24-hour conversation windows
+
+## Message Templates
+
+WhatsApp requires templates for initiating conversations:
+
+### Creating Templates
+
+1. Create template in Meta Business Manager
+2. Get approval from WhatsApp (typically 24-48 hours)
+3. Use approved templates in Chatwoot
+
+### Template Structure
+
+```json
+{
+  "name": "order_confirmation",
+  "language": "en",
+  "components": [
+    {
+      "type": "header",
+      "format": "text",
+      "text": "Order Confirmed"
+    },
+    {
+      "type": "body",
+      "text": "Your order {{1}} has been confirmed. Estimated delivery: {{2}}"
+    },
+    {
+      "type": "footer",
+      "text": "Thank you for your order!"
+    }
+  ]
+}
+```
+
+### Sending Templates via API
+
+```http
+POST /api/v1/accounts/{account_id}/conversations/{id}/messages
+Content-Type: application/json
+
+{
+  "content": "template content",
+  "message_type": "outgoing",
+  "template_params": {
+    "name": "order_confirmation",
+    "language": "en",
+    "body_params": ["12345", "March 10"]
+  }
+}
+```
+
+## Interactive Messages
+
+### Quick Reply Buttons
+
+```json
+{
+  "type": "button",
+  "body": {
+    "text": "How can we help you?"
+  },
+  "action": {
+    "buttons": [
+      {
+        "type": "reply",
+        "reply": {
+          "id": "support",
+          "title": "Contact Support"
+        }
+      },
+      {
+        "type": "reply",
+        "reply": {
+          "id": "track",
+          "title": "Track Order"
+        }
+      }
+    ]
+  }
+}
+```
+
+### List Messages
+
+```json
+{
+  "type": "list",
+  "body": {
+    "text": "Choose a department:"
+  },
+  "action": {
+    "button": "View Departments",
+    "sections": [
+      {
+        "title": "Departments",
+        "rows": [
+          {
+            "id": "sales",
+            "title": "Sales",
+            "description": "Product inquiries"
+          },
+          {
+            "id": "support",
+            "title": "Support",
+            "description": "Technical support"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+## Conversation Windows
+
+WhatsApp has different conversation windows:
+
+### 24-Hour Window
+- Free messaging after customer initiates or replies
+- Send any type of message
+- No template required
+
+### Beyond 24 Hours
+- Requires approved message templates
+- Charged per conversation
+- Limited to template messages
+
+## Configuration Options
+
+<ParamField path="phone_number" type="string" required>
+  WhatsApp Business phone number (with country code)
+</ParamField>
+
+<ParamField path="provider" type="string" required>
+  Provider type: `whatsapp_cloud`, `360dialog`, or `twilio`
+</ParamField>
+
+<ParamField path="provider_config.api_key" type="string">
+  API key from your WhatsApp provider
+</ParamField>
+
+<ParamField path="provider_config.phone_number_id" type="string">
+  Phone Number ID (for Cloud API)
+</ParamField>
+
+<ParamField path="provider_config.business_account_id" type="string">
+  WhatsApp Business Account ID
+</ParamField>
+
+## Best Practices
+
+<Check>Get template approval before going live</Check>
+<Check>Respond within 24-hour window to avoid template requirement</Check>
+<Check>Use templates with variables for personalization</Check>
+<Check>Keep messages concise and clear</Check>
+<Check>Use interactive buttons for common actions</Check>
+<Check>Monitor message costs and limits</Check>
+<Check>Set up auto-replies for after-hours</Check>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Cannot send messages">
+    - Check if 24-hour window has passed (requires template)
+    - Verify phone number is verified
+    - Ensure message template is approved
+    - Check API access token is valid
+    - Verify webhook is configured correctly
+  </Accordion>
+
+  <Accordion title="Messages not arriving in Chatwoot">
+    - Verify webhook URL is correct
+    - Check webhook token matches
+    - Ensure firewall allows WhatsApp webhook IPs
+    - Check Chatwoot logs for webhook errors
+    - Test webhook with WhatsApp test tool
+  </Accordion>
+
+  <Accordion title="Template messages failing">
+    - Verify template is approved by WhatsApp
+    - Check template name and language match exactly
+    - Ensure all required parameters are provided
+    - Verify template hasn't been rejected or paused
+  </Accordion>
+
+  <Accordion title="Media messages not sending">
+    - Check file size limits (images: 5MB, videos: 16MB, documents: 100MB)
+    - Ensure file format is supported
+    - Verify media URL is publicly accessible
+    - Check if phone number has media sending capability
+  </Accordion>
+</AccordionGroup>
+
+## Rate Limits & Costs
+
+### Cloud API (Meta)
+- **Free Tier**: 1,000 conversations per month
+- **Pricing**: Varies by country and conversation type
+- **Rate Limits**: 80 messages per second (tier 1), more for higher tiers
+
+### Business-Initiated Conversations
+- Charged per 24-hour conversation window
+- Rates vary by country
+- Check Meta's pricing page for current rates
+
+### User-Initiated Conversations
+- Free if responded within 24 hours
+- No charge for user-initiated messages
+
+## Related Documentation
+
+- [Message Templates Documentation](https://developers.facebook.com/docs/whatsapp/message-templates)
+- [WhatsApp Cloud API](https://developers.facebook.com/docs/whatsapp/cloud-api)
+- [Automation Rules](/features/automation)
+- [Canned Responses](/ai/canned-responses)

@@ -1,0 +1,591 @@
+---
+title: Contacts
+description: Manage customer contacts, their information, and relationships in Chatwoot
+---
+
+## Overview
+
+Contacts represent customers or users who interact with your business through Chatwoot. Each contact can have multiple conversations and be associated with different inboxes.
+
+## List All Contacts
+
+Retrieve a paginated list of contacts in your account.
+
+```http
+GET /api/v1/accounts/{account_id}/contacts
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+### Query Parameters
+
+<ParamField query="page" type="integer" default="1">
+  Page number for pagination
+</ParamField>
+
+<ParamField query="sort" type="string">
+  Sort field: `email`, `name`, `phone_number`, `last_activity_at`, `created_at`, `company`, `city`, `country`
+</ParamField>
+
+<ParamField query="labels" type="array">
+  Filter by label names
+</ParamField>
+
+<ParamField query="include_contact_inboxes" type="boolean" default="true">
+  Include contact inbox information
+</ParamField>
+
+### Response
+
+<ResponseField name="id" type="integer">
+  Contact ID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Contact full name
+</ResponseField>
+
+<ResponseField name="email" type="string">
+  Contact email address
+</ResponseField>
+
+<ResponseField name="phone_number" type="string">
+  Contact phone number
+</ResponseField>
+
+<ResponseField name="identifier" type="string">
+  Unique identifier for the contact
+</ResponseField>
+
+<ResponseField name="thumbnail" type="string">
+  Avatar thumbnail URL
+</ResponseField>
+
+<ResponseField name="blocked" type="boolean">
+  Whether the contact is blocked
+</ResponseField>
+
+<ResponseField name="custom_attributes" type="object">
+  Custom attributes for the contact
+</ResponseField>
+
+<ResponseField name="additional_attributes" type="object">
+  Additional contact information
+</ResponseField>
+
+<ResponseField name="last_activity_at" type="integer">
+  Unix timestamp of last activity
+</ResponseField>
+
+<ResponseField name="created_at" type="integer">
+  Unix timestamp of creation
+</ResponseField>
+
+### Example Request
+
+```bash
+curl -X GET https://app.chatwoot.com/api/v1/accounts/1/contacts?page=1 \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+### Example Response
+
+```json
+{
+  "payload": [
+    {
+      "id": 1,
+      "name": "John Doe",
+      "email": "john@example.com",
+      "phone_number": "+1234567890",
+      "identifier": "user_123",
+      "thumbnail": "https://example.com/avatar.jpg",
+      "blocked": false,
+      "custom_attributes": {
+        "plan": "premium",
+        "signup_date": "2024-01-15"
+      },
+      "additional_attributes": {
+        "city": "New York",
+        "country": "USA"
+      },
+      "last_activity_at": 1704067200,
+      "created_at": 1672531200,
+      "contact_inboxes": [
+        {
+          "id": 1,
+          "inbox_id": 1,
+          "source_id": "external_123"
+        }
+      ]
+    }
+  ]
+}
+```
+
+## Get Contact
+
+Retrieve details of a specific contact.
+
+```http
+GET /api/v1/accounts/{account_id}/contacts/{id}
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+<ParamField path="id" type="integer" required>
+  The ID of the contact
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X GET https://app.chatwoot.com/api/v1/accounts/1/contacts/1 \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+## Create Contact
+
+Create a new contact in your account.
+
+```http
+POST /api/v1/accounts/{account_id}/contacts
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+### Request Body
+
+<ParamField body="name" type="string">
+  Contact full name
+</ParamField>
+
+<ParamField body="email" type="string">
+  Contact email address
+</ParamField>
+
+<ParamField body="phone_number" type="string">
+  Contact phone number with country code
+</ParamField>
+
+<ParamField body="identifier" type="string">
+  Unique identifier from your system
+</ParamField>
+
+<ParamField body="inbox_id" type="integer">
+  Inbox ID to associate the contact with
+</ParamField>
+
+<ParamField body="source_id" type="string">
+  External source ID for the contact inbox
+</ParamField>
+
+<ParamField body="blocked" type="boolean" default="false">
+  Whether to block the contact
+</ParamField>
+
+<ParamField body="avatar" type="file">
+  Avatar image file
+</ParamField>
+
+<ParamField body="avatar_url" type="string">
+  URL to fetch avatar from
+</ParamField>
+
+<ParamField body="custom_attributes" type="object">
+  Custom attributes as key-value pairs
+</ParamField>
+
+<ParamField body="additional_attributes" type="object">
+  Additional attributes as key-value pairs
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST https://app.chatwoot.com/api/v1/accounts/1/contacts \
+  -H "api_access_token: YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Jane Smith",
+    "email": "jane@example.com",
+    "phone_number": "+1987654321",
+    "identifier": "user_456",
+    "inbox_id": 1,
+    "custom_attributes": {
+      "plan": "basic",
+      "signup_date": "2024-02-01"
+    },
+    "additional_attributes": {
+      "city": "San Francisco",
+      "country": "USA",
+      "company": "Tech Corp"
+    }
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "id": 2,
+  "name": "Jane Smith",
+  "email": "jane@example.com",
+  "phone_number": "+1987654321",
+  "identifier": "user_456",
+  "blocked": false,
+  "custom_attributes": {
+    "plan": "basic",
+    "signup_date": "2024-02-01"
+  },
+  "additional_attributes": {
+    "city": "San Francisco",
+    "country": "USA",
+    "company": "Tech Corp"
+  },
+  "created_at": 1706745600
+}
+```
+
+## Update Contact
+
+Update an existing contact's information.
+
+```http
+PATCH /api/v1/accounts/{account_id}/contacts/{id}
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+<ParamField path="id" type="integer" required>
+  The ID of the contact to update
+</ParamField>
+
+### Request Body
+
+Accepts the same parameters as Create Contact.
+
+### Example Request
+
+```bash
+curl -X PATCH https://app.chatwoot.com/api/v1/accounts/1/contacts/2 \
+  -H "api_access_token: YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Jane Smith Updated",
+    "custom_attributes": {
+      "plan": "premium"
+    }
+  }'
+```
+
+<Note>
+Custom attributes are merged with existing attributes. To remove an attribute, use the delete custom attributes endpoint.
+</Note>
+
+## Delete Contact
+
+Delete a contact from your account.
+
+```http
+DELETE /api/v1/accounts/{account_id}/contacts/{id}
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+<ParamField path="id" type="integer" required>
+  The ID of the contact to delete
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X DELETE https://app.chatwoot.com/api/v1/accounts/1/contacts/2 \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+<Warning>
+You cannot delete a contact who is currently online. Wait for them to go offline before deleting.
+</Warning>
+
+## Search Contacts
+
+Search for contacts by name, email, phone number, or identifier.
+
+```http
+GET /api/v1/accounts/{account_id}/contacts/search
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+### Query Parameters
+
+<ParamField query="q" type="string" required>
+  Search query string
+</ParamField>
+
+<ParamField query="page" type="integer" default="1">
+  Page number
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X GET "https://app.chatwoot.com/api/v1/accounts/1/contacts/search?q=john" \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+## Filter Contacts
+
+Filter contacts using advanced query filters.
+
+```http
+POST /api/v1/accounts/{account_id}/contacts/filter
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+### Request Body
+
+<ParamField body="payload" type="array" required>
+  Array of filter conditions
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST https://app.chatwoot.com/api/v1/accounts/1/contacts/filter \
+  -H "api_access_token: YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "payload": [
+      {
+        "attribute_key": "email",
+        "filter_operator": "contains",
+        "values": ["@example.com"]
+      }
+    ]
+  }'
+```
+
+## Get Active Contacts
+
+Retrieve contacts who are currently online.
+
+```http
+GET /api/v1/accounts/{account_id}/contacts/active
+```
+
+### Example Request
+
+```bash
+curl -X GET https://app.chatwoot.com/api/v1/accounts/1/contacts/active \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+## Get Contactable Inboxes
+
+Retrieve inboxes where you can contact this person.
+
+```http
+GET /api/v1/accounts/{account_id}/contacts/{id}/contactable_inboxes
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+<ParamField path="id" type="integer" required>
+  The ID of the contact
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X GET https://app.chatwoot.com/api/v1/accounts/1/contacts/1/contactable_inboxes \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+## Delete Custom Attributes
+
+Remove specific custom attributes from a contact.
+
+```http
+POST /api/v1/accounts/{account_id}/contacts/{id}/destroy_custom_attributes
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+<ParamField path="id" type="integer" required>
+  The ID of the contact
+</ParamField>
+
+### Request Body
+
+<ParamField body="custom_attributes" type="array" required>
+  Array of custom attribute keys to remove
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST https://app.chatwoot.com/api/v1/accounts/1/contacts/1/destroy_custom_attributes \
+  -H "api_access_token: YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "custom_attributes": ["old_attribute", "unused_field"]
+  }'
+```
+
+## Delete Avatar
+
+Remove the contact's avatar image.
+
+```http
+DELETE /api/v1/accounts/{account_id}/contacts/{id}/avatar
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+<ParamField path="id" type="integer" required>
+  The ID of the contact
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X DELETE https://app.chatwoot.com/api/v1/accounts/1/contacts/1/avatar \
+  -H "api_access_token: YOUR_ACCESS_TOKEN"
+```
+
+## Import Contacts
+
+Import contacts from a CSV file.
+
+```http
+POST /api/v1/accounts/{account_id}/contacts/import
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+### Request Body
+
+<ParamField body="import_file" type="file" required>
+  CSV file containing contact data
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST https://app.chatwoot.com/api/v1/accounts/1/contacts/import \
+  -H "api_access_token: YOUR_ACCESS_TOKEN" \
+  -F "import_file=@contacts.csv"
+```
+
+## Export Contacts
+
+Export contacts to a CSV file.
+
+```http
+POST /api/v1/accounts/{account_id}/contacts/export
+```
+
+### Path Parameters
+
+<ParamField path="account_id" type="integer" required>
+  The ID of the account
+</ParamField>
+
+### Request Body
+
+<ParamField body="column_names" type="array">
+  Array of column names to export
+</ParamField>
+
+<ParamField body="payload" type="object">
+  Filter conditions for export
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST https://app.chatwoot.com/api/v1/accounts/1/contacts/export \
+  -H "api_access_token: YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "column_names": ["name", "email", "phone_number"]
+  }'
+```
+
+<Note>
+The export is processed asynchronously. You'll receive the CSV file via email when ready.
+</Note>
+
+## Error Responses
+
+### Contact Not Found
+
+```json
+{
+  "error": "Contact not found"
+}
+```
+
+### Cannot Delete Online Contact
+
+```json
+{
+  "message": "Cannot delete John while they are online"
+}
+```
+
+### Validation Errors
+
+```json
+{
+  "error": "Validation failed",
+  "message": "Email is invalid"
+}
+```

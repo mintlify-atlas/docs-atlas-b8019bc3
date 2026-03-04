@@ -1,0 +1,159 @@
+---
+title: Contributing to Chatwoot
+description: Guidelines for contributing to the Chatwoot project
+---
+
+Thanks for taking the time to contribute to Chatwoot! We're excited to have you as part of our community.
+
+## How to Contribute
+
+There are many ways to contribute to Chatwoot:
+
+- **Report bugs**: Found a bug? [Open an issue](https://github.com/chatwoot/chatwoot/issues) on GitHub
+- **Suggest features**: Have an idea? Share it with the community
+- **Write code**: Fix bugs, add features, or improve existing code
+- **Improve documentation**: Help make our docs clearer and more comprehensive
+- **Translate**: Help translate Chatwoot to your language at [translate.chatwoot.com](https://translate.chatwoot.com)
+
+## Getting Started
+
+1. **Fork the repository** on GitHub
+2. **Clone your fork** locally
+3. **Set up your development environment** (see [Setup Guide](/contributing/setup))
+4. **Create a branch** for your changes
+5. **Make your changes** following our [Code Style Guide](/contributing/code-style)
+6. **Test your changes** using our [Testing Guide](/contributing/testing)
+7. **Submit a pull request**
+
+## Branching Model
+
+Chatwoot uses the [git-flow](https://nvie.com/posts/a-successful-git-branching-model/) branching model:
+
+- **`develop`**: The base branch for development
+- **`master`**: Stable releases only
+- **Feature branches**: Create from `develop`, name them descriptively (e.g., `feature/add-user-authentication`)
+- **Tags**: Stable versions are tagged as `v1.x.x`
+
+Always create your pull requests against the `develop` branch.
+
+## Commit Messages
+
+We prefer **Conventional Commits** format:
+
+```
+type(scope): subject
+```
+
+**Types:**
+- `feat`: A new feature
+- `fix`: A bug fix
+- `docs`: Documentation changes
+- `style`: Code style changes (formatting, no logic change)
+- `refactor`: Code refactoring
+- `test`: Adding or updating tests
+- `chore`: Maintenance tasks
+
+**Examples:**
+```
+feat(auth): add user authentication
+fix(inbox): resolve conversation loading issue
+docs(api): update webhook documentation
+```
+
+## Pull Request Process
+
+1. Ensure your code follows our [code style guidelines](/contributing/code-style)
+2. Update documentation if needed
+3. Add tests for new functionality
+4. Ensure all tests pass
+5. Keep your PR focused on a single feature or fix
+6. Provide a clear description of the changes
+7. Link any related issues
+
+## Translation Guidelines
+
+The translation process is managed at [translate.chatwoot.com](https://translate.chatwoot.com) using Crowdin.
+
+**Important:**
+- **Only update `en.yml` and `en.json`** in your code contributions
+- Backend translations → `en.yml`
+- Frontend translations → `en.json`
+- Community contributors handle other languages through Crowdin
+
+Read the full [translation guide](https://www.chatwoot.com/docs/contributing/translating-chatwoot-to-your-language) for more details.
+
+## Enterprise Edition Considerations
+
+Chatwoot has an Enterprise overlay under `enterprise/` that extends the open-source code.
+
+**When contributing:**
+- Check for corresponding files in `enterprise/` before modifying core functionality
+- Keep behavior compatible across OSS and Enterprise
+- Avoid hardcoding instance- or plan-specific behavior in OSS
+- Prefer configuration, feature flags, or extension points
+
+**Checklist for changes impacting core logic:**
+- Search for related files in both trees: `rg -n "FooService|ControllerName|ModelName" app enterprise`
+- Consider if Enterprise needs overrides or extension points
+- Keep request/response contracts stable
+- Mirror renames/moves in `enterprise/` to prevent drift
+- Add Enterprise-specific specs under `spec/enterprise`
+
+Read more: [Enterprise Development Guide](https://chatwoot.help/hc/handbook/articles/developing-enterprise-edition-features-38)
+
+## Code of Conduct
+
+### Our Pledge
+
+We pledge to make participation in our community a harassment-free experience for everyone, regardless of age, body size, visible or invisible disability, ethnicity, sex characteristics, gender identity and expression, level of experience, education, socio-economic status, nationality, personal appearance, race, religion, or sexual identity and orientation.
+
+We pledge to act and interact in ways that contribute to an open, welcoming, diverse, inclusive, and healthy community.
+
+### Our Standards
+
+**Positive behavior includes:**
+- Demonstrating empathy and kindness toward other people
+- Being respectful of differing opinions, viewpoints, and experiences
+- Giving and gracefully accepting constructive feedback
+- Accepting responsibility and apologizing to those affected by our mistakes
+- Focusing on what is best for the overall community
+
+**Unacceptable behavior includes:**
+- The use of sexualized language or imagery, and sexual attention or advances
+- Trolling, insulting or derogatory comments, and personal or political attacks
+- Public or private harassment
+- Publishing others' private information without explicit permission
+- Other conduct which could reasonably be considered inappropriate in a professional setting
+
+### Enforcement
+
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the community leaders at **hello@chatwoot.com**.
+
+All complaints will be reviewed and investigated promptly and fairly.
+
+### Enforcement Guidelines
+
+Community leaders will follow these guidelines:
+
+1. **Correction**: Private warning for inappropriate language or behavior
+2. **Warning**: Consequences for continued behavior, temporary interaction restrictions
+3. **Temporary Ban**: Temporary ban from community interaction
+4. **Permanent Ban**: Permanent ban from the community
+
+This Code of Conduct is adapted from the [Contributor Covenant](https://www.contributor-covenant.org), version 2.0.
+
+## Getting Help
+
+If you need help or want to discuss your contribution:
+
+- Join our [Discord community](https://discord.gg/cJXdrwS)
+- Check the [documentation](https://www.chatwoot.com/help-center)
+- Ask questions in GitHub issues or discussions
+
+## Security Issues
+
+Please refer to [SECURITY.md](https://github.com/chatwoot/chatwoot/blob/develop/SECURITY.md) for reporting security vulnerabilities. Do not open public issues for security concerns.
+
+## License
+
+By contributing to Chatwoot, you agree that your contributions will be licensed under the MIT License.

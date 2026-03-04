@@ -1,0 +1,148 @@
+---
+title: Twitter/X Integration
+description: Manage Twitter Direct Messages and mentions through Chatwoot
+---
+
+Connect your Twitter/X account to Chatwoot to manage Direct Messages and track mentions from your unified inbox.
+
+## Prerequisites
+
+- Twitter/X account
+- Twitter Developer account and API access
+- Elevated API access (for DMs)
+
+## Setup
+
+<Steps>
+  <Step title="Create Twitter App">
+    1. Go to [Twitter Developer Portal](https://developer.twitter.com/)
+    2. Create a new Project and App
+    3. Set app permissions to **Read, Write, and Direct Messages**
+    4. Enable OAuth 1.0a
+  </Step>
+
+  <Step title="Get API credentials">
+    From your Twitter App settings, copy:
+    - API Key (Consumer Key)
+    - API Secret (Consumer Secret)
+    - Access Token
+    - Access Token Secret
+  </Step>
+
+  <Step title="Add Twitter inbox in Chatwoot">
+    Go to **Settings** → **Inboxes** → **Add Inbox** → **Twitter**
+  </Step>
+
+  <Step title="Enter credentials">
+    Paste your Twitter API credentials:
+    - Consumer Key
+    - Consumer Secret
+    - Access Token
+    - Access Token Secret
+  </Step>
+
+  <Step title="Configure and test">
+    - Select which events to track (DMs, mentions, both)
+    - Add agents to the inbox
+    - Send a test DM to verify connection
+  </Step>
+</Steps>
+
+## Features
+
+### Direct Messages
+- Receive and send Twitter DMs
+- Support for media attachments
+- Real-time message sync
+- Thread preservation
+
+### Mentions Tracking
+- Monitor when users mention your Twitter handle
+- Respond to mentions as conversations
+- Track brand mentions
+
+## Configuration Options
+
+<ParamField path="profile_id" type="string" required>
+  Your Twitter profile ID
+</ParamField>
+
+<ParamField path="twitter_access_token" type="string" required>
+  OAuth access token from Twitter Developer Portal
+</ParamField>
+
+<ParamField path="twitter_access_token_secret" type="string" required>
+  OAuth access token secret
+</ParamField>
+
+## API Endpoints
+
+### Retrieve Tweets
+```http
+GET /api/v1/accounts/{account_id}/twitter/tweets
+```
+
+### Send Tweet
+```http
+POST /api/v1/accounts/{account_id}/twitter/tweets
+Content-Type: application/json
+
+{
+  "text": "Tweet content",
+  "in_reply_to": "tweet_id" // optional
+}
+```
+
+## Best Practices
+
+<Check>Respond to DMs within 24 hours</Check>
+<Check>Use mentions tracking for brand monitoring</Check>
+<Check>Set up automation for common DM inquiries</Check>
+<Check>Monitor API rate limits</Check>
+<Check>Keep Twitter credentials secure</Check>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Cannot connect Twitter account">
+    - Verify API credentials are correct
+    - Check app permissions include Direct Messages
+    - Ensure OAuth 1.0a is enabled
+    - Confirm API access level is Elevated or higher
+  </Accordion>
+
+  <Accordion title="DMs not syncing">
+    - Check Twitter API rate limits
+    - Verify webhook is registered correctly
+    - Ensure app has Direct Messages permission
+    - Check Chatwoot logs for API errors
+  </Accordion>
+
+  <Accordion title="Mentions not appearing">
+    - Verify mentions tracking is enabled in inbox settings
+    - Check if your account is mentioned with @ handle
+    - Ensure API access includes tweet reading permissions
+    - Twitter's API may have delays (up to 15 minutes)
+  </Accordion>
+
+  <Accordion title="Rate limit errors">
+    - Twitter API has rate limits per 15-minute window
+    - Reduce polling frequency in Chatwoot settings
+    - Upgrade Twitter API access tier if needed
+    - Monitor usage in Twitter Developer Dashboard
+  </Accordion>
+</AccordionGroup>
+
+## Limitations
+
+- Twitter API rate limits apply
+- Elevated API access required for DMs
+- Mention tracking may have delays
+- Media file size limitations
+- Cannot send tweets directly (only DMs and replies)
+
+## Related Documentation
+
+- [Automation Rules](/features/automation)
+- [Canned Responses](/ai/canned-responses)
+- [API Reference](/api/overview)

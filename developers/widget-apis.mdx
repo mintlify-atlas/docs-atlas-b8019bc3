@@ -1,0 +1,793 @@
+---
+title: Widget API Reference
+description: Complete API reference for Chatwoot widget methods, events, and customization
+---
+
+This page provides a complete API reference for the Chatwoot widget SDK, including all methods, events, configuration options, and styling capabilities.
+
+## Global Objects
+
+### window.chatwootSDK
+
+The main SDK object for initializing the widget.
+
+```javascript
+window.chatwootSDK.run({
+  websiteToken: 'YOUR_WEBSITE_TOKEN',
+  baseUrl: 'https://chatwoot.example.com'
+});
+```
+
+Source: `app/javascript/entrypoints/sdk.js:219-221`
+
+### window.$chatwoot
+
+The widget instance object with all control methods. Available after initialization.
+
+```javascript
+// Check if widget is loaded
+if (window.$chatwoot && window.$chatwoot.hasLoaded) {
+  console.log('Widget is ready');
+}
+```
+
+Source: `app/javascript/entrypoints/sdk.js:58-211`
+
+### window.chatwootSettings
+
+Configuration object. Must be set before the SDK script loads.
+
+```javascript
+window.chatwootSettings = {
+  hideMessageBubble: false,
+  position: 'right',
+  locale: 'en',
+  // ... other settings
+};
+```
+
+## Configuration API
+
+### Configuration Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `hideMessageBubble` | boolean | `false` | Hide the chat bubble launcher |
+| `position` | string | `'right'` | Widget position: `'left'` or `'right'` |
+| `locale` | string | `'en'` | Language code (ISO 639-1) |
+| `useBrowserLanguage` | boolean | `false` | Use browser's language automatically |
+| `type` | string | `'standard'` | Bubble type: `'standard'` or `'expanded_bubble'` |
+| `launcherTitle` | string | `''` | Text shown in expanded bubble |
+| `showPopoutButton` | boolean | `false` | Show button to open chat in new window |
+| `showUnreadMessagesDialog` | boolean | `true` | Show unread message notifications |
+| `widgetStyle` | string | `'standard'` | Widget style: `'standard'` or `'flat'` |
+| `darkMode` | string | `'light'` | Color scheme: `'light'`, `'dark'`, or `'auto'` |
+| `welcomeTitle` | string | `''` | Custom welcome message title |
+| `welcomeDescription` | string | `''` | Custom welcome message description |
+| `availableMessage` | string | `''` | Custom "agents available" message |
+| `unavailableMessage` | string | `''` | Custom "agents unavailable" message |
+| `enableFileUpload` | boolean | `true` | Allow file uploads in chat |
+| `enableEmojiPicker` | boolean | `true` | Show emoji picker in chat |
+| `enableEndConversation` | boolean | `true` | Allow users to end conversations |
+| `baseDomain` | string | `undefined` | Domain for cross-subdomain cookies |
+
+Source: `app/javascript/entrypoints/sdk.js:50-81`
+
+### Example: Complete Configuration
+
+```html
+<script>
+  window.chatwootSettings = {
+    hideMessageBubble: false,
+    position: 'right',
+    locale: 'en',
+    useBrowserLanguage: false,
+    type: 'expanded_bubble',
+    launcherTitle: '👋 Need help?',
+    showPopoutButton: true,
+    showUnreadMessagesDialog: true,
+    widgetStyle: 'flat',
+    darkMode: 'auto',
+    welcomeTitle: 'Welcome to Acme Support',
+    welcomeDescription: 'We typically reply in a few minutes',
+    availableMessage: '🟢 We are online and ready to help',
+    unavailableMessage: '🔴 We are currently offline',
+    enableFileUpload: true,
+    enableEmojiPicker: true,
+    enableEndConversation: true,
+    baseDomain: '.example.com'
+  };
+</script>
+```
+
+## Widget Control Methods
+
+### toggle(state)
+
+Open or close the widget.
+
+**Parameters:**
+- `state` (optional): `'open'`, `'close'`, or omit to toggle
+
+**Returns:** `void`
+
+```javascript
+window.$chatwoot.toggle('open');  // Open widget
+window.$chatwoot.toggle('close'); // Close widget
+window.$chatwoot.toggle();        // Toggle current state
+```
+
+Source: `app/javascript/entrypoints/sdk.js:83-85`
+
+### toggleBubbleVisibility(visibility)
+
+Show or hide the chat bubble.
+
+**Parameters:**
+- `visibility`: `'show'` or `'hide'`
+
+**Returns:** `void`
+
+```javascript
+window.$chatwoot.toggleBubbleVisibility('hide');
+window.$chatwoot.toggleBubbleVisibility('show');
+```
+
+Source: `app/javascript/entrypoints/sdk.js:87-102`
+
+### popoutChatWindow()
+
+Open chat in a new popup window.
+
+**Parameters:** None
+
+**Returns:** `void`
+
+**Requirements:** `showPopoutButton: true` must be set
+
+```javascript
+window.$chatwoot.popoutChatWindow();
+```
+
+Source: `app/javascript/entrypoints/sdk.js:104-110`
+
+### reset()
+
+Reset the widget and clear all user data.
+
+**Parameters:** None
+
+**Returns:** `void`
+
+**Effects:**
+- Closes the widget if open
+- Clears conversation cookie
+- Clears user cookie
+- Reloads the widget iframe
+- Sets `resetTriggered` flag
+
+```javascript
+window.$chatwoot.reset();
+```
+
+Source: `app/javascript/entrypoints/sdk.js:195-210`
+
+## User Management Methods
+
+### setUser(identifier, user)
+
+Identify and set properties for the current user.
+
+**Parameters:**
+- `identifier` (required): Unique user ID (string or number)
+- `user` (required): User object with at least one property
+
+**User object properties:**
+- `name`: User's display name
+- `email`: User's email address
+- `avatar_url`: URL to user's avatar image
+- `phone_number`: User's phone number
+
+**Returns:** `void`
+
+**Throws:**
+- `Error` if identifier is not string or number
+- `Error` if user object doesn't have required keys
+
+```javascript
+window.$chatwoot.setUser('user-12345', {
+  name: 'John Doe',
+  email: 'john@example.com',
+  avatar_url: 'https://example.com/avatar.jpg',
+  phone_number: '+1234567890'
+});
+```
+
+Source: `app/javascript/entrypoints/sdk.js:112-137`
+
+### setCustomAttributes(customAttributes)
+
+Set custom attributes for the contact.
+
+**Parameters:**
+- `customAttributes` (required): Object with custom attribute key-value pairs
+
+**Returns:** `void`
+
+**Throws:**
+- `Error` if object is empty or null
+
+```javascript
+window.$chatwoot.setCustomAttributes({
+  subscription_plan: 'premium',
+  account_value: 5000,
+  is_verified: true
+});
+```
+
+Source: `app/javascript/entrypoints/sdk.js:139-145`
+
+### deleteCustomAttribute(customAttribute)
+
+Delete a specific custom attribute from the contact.
+
+**Parameters:**
+- `customAttribute` (required): Attribute key to delete (string)
+
+**Returns:** `void`
+
+**Throws:**
+- `Error` if customAttribute is empty or null
+
+```javascript
+window.$chatwoot.deleteCustomAttribute('subscription_plan');
+```
+
+Source: `app/javascript/entrypoints/sdk.js:147-154`
+
+## Conversation Management Methods
+
+### setConversationCustomAttributes(customAttributes)
+
+Set custom attributes for the current conversation.
+
+**Parameters:**
+- `customAttributes` (required): Object with custom attribute key-value pairs
+
+**Returns:** `void`
+
+**Throws:**
+- `Error` if object is empty or null
+
+```javascript
+window.$chatwoot.setConversationCustomAttributes({
+  order_id: 'ORD-12345',
+  order_total: 299.99,
+  product_category: 'electronics'
+});
+```
+
+Source: `app/javascript/entrypoints/sdk.js:157-165`
+
+### deleteConversationCustomAttribute(customAttribute)
+
+Delete a specific custom attribute from the conversation.
+
+**Parameters:**
+- `customAttribute` (required): Attribute key to delete (string)
+
+**Returns:** `void`
+
+**Throws:**
+- `Error` if customAttribute is empty or null
+
+```javascript
+window.$chatwoot.deleteConversationCustomAttribute('order_id');
+```
+
+Source: `app/javascript/entrypoints/sdk.js:167-174`
+
+### setLabel(label)
+
+Add a label to the current conversation.
+
+**Parameters:**
+- `label` (required): Label name (string)
+
+**Returns:** `void`
+
+```javascript
+window.$chatwoot.setLabel('premium-support');
+window.$chatwoot.setLabel('urgent');
+```
+
+Source: `app/javascript/entrypoints/sdk.js:177-179`
+
+### removeLabel(label)
+
+Remove a label from the current conversation.
+
+**Parameters:**
+- `label` (required): Label name (string)
+
+**Returns:** `void`
+
+```javascript
+window.$chatwoot.removeLabel('premium-support');
+```
+
+Source: `app/javascript/entrypoints/sdk.js:181-183`
+
+## Appearance Methods
+
+### setLocale(locale)
+
+Change the widget language.
+
+**Parameters:**
+- `locale` (optional): Language code (ISO 639-1), defaults to `'en'`
+
+**Returns:** `void`
+
+**Supported locales:**
+`ar`, `az`, `bg`, `bn`, `ca`, `cs`, `da`, `de`, `el`, `en`, `es`, `et`, `fa`, `fi`, `fr`, `he`, `hi`, `hu`, `id`, `it`, `ja`, `ko`, `lt`, `lv`, `ml`, `nl`, `no`, `pl`, `pt`, `pt_BR`, `ro`, `ru`, `sk`, `sl`, `sr`, `sv`, `ta`, `th`, `tr`, `uk`, `vi`, `zh_CN`, `zh_TW`
+
+```javascript
+window.$chatwoot.setLocale('es'); // Spanish
+window.$chatwoot.setLocale('fr'); // French
+window.$chatwoot.setLocale('ja'); // Japanese
+```
+
+Source: `app/javascript/entrypoints/sdk.js:185-187`
+
+### setColorScheme(darkMode)
+
+Change the widget color scheme.
+
+**Parameters:**
+- `darkMode` (optional): `'light'`, `'dark'`, or `'auto'`, defaults to `'light'`
+
+**Returns:** `void`
+
+```javascript
+window.$chatwoot.setColorScheme('light'); // Light mode
+window.$chatwoot.setColorScheme('dark');  // Dark mode
+window.$chatwoot.setColorScheme('auto');  // Follow system preference
+```
+
+Source: `app/javascript/entrypoints/sdk.js:189-193`
+
+## Widget State Properties
+
+### hasLoaded
+
+Indicates whether the widget has finished loading.
+
+**Type:** `boolean`
+
+**Read-only**
+
+```javascript
+if (window.$chatwoot.hasLoaded) {
+  console.log('Widget is ready');
+}
+```
+
+Source: `app/javascript/sdk/IFrameHelper.js:158`
+
+### isOpen
+
+Indicates whether the widget is currently open.
+
+**Type:** `boolean`
+
+**Read-only**
+
+```javascript
+if (window.$chatwoot.isOpen) {
+  console.log('Widget is open');
+}
+```
+
+Source: `app/javascript/entrypoints/sdk.js:63`
+
+### resetTriggered
+
+Indicates whether the reset() method has been called.
+
+**Type:** `boolean`
+
+**Read-only**
+
+```javascript
+if (window.$chatwoot.resetTriggered) {
+  console.log('Widget was reset');
+}
+```
+
+Source: `app/javascript/entrypoints/sdk.js:73`
+
+## Events API
+
+### Event Listener Pattern
+
+All widget events are dispatched as CustomEvents on the window object.
+
+```javascript
+window.addEventListener('chatwoot:ready', function(event) {
+  console.log('Widget ready');
+});
+```
+
+### Available Events
+
+#### chatwoot:ready
+
+Fired when the widget has finished loading and is ready for interaction.
+
+**Event detail:** None
+
+```javascript
+window.addEventListener('chatwoot:ready', function() {
+  console.log('Widget is ready');
+  // Safe to call widget methods now
+});
+```
+
+Source: `app/javascript/widget/constants/sdkEvents.js` (CHATWOOT_READY)
+
+#### chatwoot:opened
+
+Fired when the widget is opened.
+
+**Event detail:** None
+
+```javascript
+window.addEventListener('chatwoot:opened', function() {
+  console.log('Widget opened');
+  gtag('event', 'chat_opened');
+});
+```
+
+Source: `app/javascript/widget/constants/sdkEvents.js` (CHATWOOT_OPENED)
+
+#### chatwoot:closed
+
+Fired when the widget is closed.
+
+**Event detail:** None
+
+```javascript
+window.addEventListener('chatwoot:closed', function() {
+  console.log('Widget closed');
+});
+```
+
+Source: `app/javascript/widget/constants/sdkEvents.js` (CHATWOOT_CLOSED)
+
+#### chatwoot:on-message
+
+Fired when a new message is received.
+
+**Event detail:** Message object
+
+```javascript
+window.addEventListener('chatwoot:on-message', function(event) {
+  const message = event.detail;
+  console.log('New message:', message);
+  // Show browser notification
+  showNotification(message.content);
+});
+```
+
+Source: `app/javascript/widget/constants/sdkEvents.js` (CHATWOOT_ON_MESSAGE)
+
+#### chatwoot:on-start-conversation
+
+Fired when a user starts a new conversation.
+
+**Event detail:** None
+
+```javascript
+window.addEventListener('chatwoot:on-start-conversation', function() {
+  console.log('Conversation started');
+  gtag('event', 'chat_conversation_started');
+});
+```
+
+Source: `app/javascript/widget/constants/sdkEvents.js` (CHATWOOT_ON_START_CONVERSATION)
+
+#### chatwoot:error
+
+Fired when an error occurs in the widget.
+
+**Event detail:** Error object with error type and data
+
+```javascript
+window.addEventListener('chatwoot:error', function(event) {
+  console.error('Widget error:', event.detail);
+  // Handle specific error types
+  if (event.detail.errorType === 'SET_USER_ERROR') {
+    console.error('Failed to set user');
+  }
+});
+```
+
+Source: `app/javascript/widget/constants/sdkEvents.js` (CHATWOOT_ERROR)
+
+#### chatwoot:postback
+
+Fired when a postback action is received (from interactive messages).
+
+**Event detail:** Postback data object
+
+```javascript
+window.addEventListener('chatwoot:postback', function(event) {
+  console.log('Postback:', event.detail);
+  // Handle postback actions
+  handlePostbackAction(event.detail);
+});
+```
+
+Source: `app/javascript/widget/constants/sdkEvents.js` (CHATWOOT_POSTBACK)
+
+## CSS Customization
+
+### Widget Container Classes
+
+The widget uses the following CSS classes that you can target for customization:
+
+```css
+/* Chat bubble */
+.woot-widget-bubble {
+  /* Customize bubble appearance */
+}
+
+/* Widget container */
+.woot-widget-holder {
+  /* Customize widget container */
+}
+
+/* Bubble with unread notification */
+.woot-widget-bubble.unread-notification::after {
+  /* Customize unread indicator */
+}
+
+/* Expanded bubble */
+.woot-widget-bubble.woot-widget--expanded {
+  /* Customize expanded state */
+}
+```
+
+Source: `app/javascript/sdk/sdk.js:1-295`
+
+### Position Classes
+
+```css
+/* Left positioned widget */
+.woot-elements--left {
+  left: 20px;
+}
+
+/* Right positioned widget */
+.woot-elements--right {
+  right: 20px;
+}
+```
+
+### Flat Style Widget
+
+The flat style removes rounded corners and shadows:
+
+```css
+.woot-widget-bubble--flat {
+  border-radius: 0;
+  height: 56px;
+  width: 56px;
+}
+
+.woot-widget-holder--flat {
+  border-radius: 0;
+  border: 1px solid var(--b-100);
+  box-shadow: none;
+}
+```
+
+Source: `app/javascript/sdk/sdk.js:18-22, 57-62`
+
+### Custom Widget Color
+
+The widget color is set via the inbox channel configuration and cannot be overridden with CSS. It must be configured in the Chatwoot dashboard.
+
+## IFrame Communication
+
+The widget uses `postMessage` for communication between the parent page and the widget iframe.
+
+### Message Format
+
+```javascript
+// Messages are prefixed with 'chatwoot-widget:'
+const message = `chatwoot-widget:${JSON.stringify({
+  event: 'set-user',
+  identifier: 'user-123',
+  user: { name: 'John' }
+})}`;
+```
+
+Source: `app/javascript/sdk/IFrameHelper.js:94-99`
+
+### Internal Events
+
+These events are used internally for iframe communication:
+
+- `loaded` - Widget iframe has loaded
+- `config-set` - Configuration sent to widget
+- `set-user` - User data sent to widget
+- `set-custom-attributes` - Custom attributes sent
+- `set-conversation-custom-attributes` - Conversation attributes sent
+- `set-label` - Label added
+- `remove-label` - Label removed
+- `set-locale` - Locale changed
+- `set-color-scheme` - Color scheme changed
+- `toggle-open` - Widget open state changed
+- `change-url` - Page URL changed
+
+Source: `app/javascript/sdk/IFrameHelper.js:155-294`
+
+## Cookie Management
+
+The widget uses cookies for session persistence:
+
+### Cookies Used
+
+| Cookie Name | Purpose | Duration |
+|-------------|---------|----------|
+| `cw_conversation` | Stores conversation token | Session |
+| `cw_user_{websiteToken}` | Stores user identification hash | Persistent |
+| `cw_snooze_campaigns_till` | Campaign snooze timestamp | 1 hour |
+
+Source: `app/javascript/sdk/IFrameHelper.js:40-50`
+
+### Cross-domain Cookies
+
+Set `baseDomain` to share conversations across subdomains:
+
+```javascript
+window.chatwootSettings = {
+  baseDomain: '.example.com' // Works across *.example.com
+};
+```
+
+## Performance Considerations
+
+### Lazy Loading
+
+The widget script supports deferred and async loading:
+
+```html
+<script src="/packs/js/sdk.js" defer async></script>
+```
+
+### Widget Size
+
+**Desktop:**
+- Width: 400px
+- Max height: 640px (90% viewport height - 84px)
+- Min height: 250px
+
+**Mobile:**
+- Full screen (100% width and height)
+
+Source: `app/javascript/sdk/sdk.js:242-289`
+
+## Browser Support
+
+The widget requires:
+- ES6 JavaScript support
+- postMessage API
+- CSS Custom Properties
+- Iframe with `allow` attribute support
+
+### Required Iframe Permissions
+
+The widget iframe requests the following permissions:
+
+```html
+<iframe allow="camera;microphone;fullscreen;display-capture;picture-in-picture;clipboard-write;"></iframe>
+```
+
+Source: `app/javascript/sdk/IFrameHelper.js:70-71`
+
+## Security
+
+### HMAC Identity Verification
+
+For secure user identification, Chatwoot supports HMAC verification. Contact your Chatwoot administrator to enable this feature.
+
+### Content Security Policy
+
+If you use CSP, you need to allow:
+
+```
+frame-src https://your-chatwoot-domain.com;
+script-src https://your-chatwoot-domain.com;
+connect-src https://your-chatwoot-domain.com wss://your-chatwoot-domain.com;
+```
+
+## TypeScript Definitions
+
+```typescript
+interface ChatwootSDK {
+  run(config: ChatwootConfig): void;
+}
+
+interface ChatwootConfig {
+  websiteToken: string;
+  baseUrl: string;
+}
+
+interface ChatwootSettings {
+  hideMessageBubble?: boolean;
+  position?: 'left' | 'right';
+  locale?: string;
+  useBrowserLanguage?: boolean;
+  type?: 'standard' | 'expanded_bubble';
+  launcherTitle?: string;
+  showPopoutButton?: boolean;
+  showUnreadMessagesDialog?: boolean;
+  widgetStyle?: 'standard' | 'flat';
+  darkMode?: 'light' | 'dark' | 'auto';
+  welcomeTitle?: string;
+  welcomeDescription?: string;
+  availableMessage?: string;
+  unavailableMessage?: string;
+  enableFileUpload?: boolean;
+  enableEmojiPicker?: boolean;
+  enableEndConversation?: boolean;
+  baseDomain?: string;
+}
+
+interface ChatwootWidget {
+  hasLoaded: boolean;
+  isOpen: boolean;
+  resetTriggered: boolean;
+  
+  toggle(state?: 'open' | 'close'): void;
+  toggleBubbleVisibility(visibility: 'show' | 'hide'): void;
+  popoutChatWindow(): void;
+  reset(): void;
+  
+  setUser(identifier: string | number, user: ChatwootUser): void;
+  setCustomAttributes(attributes: Record<string, any>): void;
+  deleteCustomAttribute(key: string): void;
+  
+  setConversationCustomAttributes(attributes: Record<string, any>): void;
+  deleteConversationCustomAttribute(key: string): void;
+  setLabel(label: string): void;
+  removeLabel(label: string): void;
+  
+  setLocale(locale: string): void;
+  setColorScheme(mode: 'light' | 'dark' | 'auto'): void;
+}
+
+interface ChatwootUser {
+  name?: string;
+  email?: string;
+  avatar_url?: string;
+  phone_number?: string;
+}
+
+declare global {
+  interface Window {
+    chatwootSDK: ChatwootSDK;
+    $chatwoot: ChatwootWidget;
+    chatwootSettings: ChatwootSettings;
+  }
+}
+```
+
+## Related Resources
+
+- [Widget SDK Methods](/developers/widget-sdk) - Getting started guide
+- [Custom Attributes](/developers/custom-attributes) - Custom attribute documentation
+- [Webhooks](/developers/webhooks) - Server-side event handling

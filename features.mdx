@@ -1,0 +1,738 @@
+---
+title: Chatwoot Features Overview
+description: Explore all the powerful features Chatwoot offers for managing customer conversations, team collaboration, automation, and analytics
+---
+
+# Features Overview
+
+Chatwoot provides a comprehensive suite of features designed to streamline customer support operations, enhance team collaboration, and deliver exceptional customer experiences. This page covers all major capabilities.
+
+## Omnichannel Inbox
+
+Manage all customer conversations from a single, unified inbox regardless of the communication channel.
+
+### Supported Channels
+
+<CardGroup cols={3}>
+  <Card title="Website Widget" icon="globe">
+    Customizable live chat widget for your website
+  </Card>
+  <Card title="Email" icon="envelope">
+    Connect support email addresses (IMAP/SMTP)
+  </Card>
+  <Card title="Facebook Messenger" icon="facebook">
+    Manage Facebook Page conversations
+  </Card>
+  <Card title="Instagram" icon="instagram">
+    Handle Instagram Direct messages
+  </Card>
+  <Card title="Twitter" icon="twitter">
+    Respond to Twitter DMs and mentions
+  </Card>
+  <Card title="WhatsApp" icon="whatsapp">
+    WhatsApp Business API integration
+  </Card>
+  <Card title="Telegram" icon="telegram">
+    Telegram bot for customer support
+  </Card>
+  <Card title="Line" icon="comment">
+    Line messaging platform support
+  </Card>
+  <Card title="SMS" icon="comment-sms">
+    Twilio SMS integration
+  </Card>
+  <Card title="TikTok" icon="tiktok">
+    TikTok messaging support
+  </Card>
+  <Card title="API Channel" icon="code">
+    Build custom channel integrations
+  </Card>
+</CardGroup>
+
+### Channel Configuration
+
+Each channel type has specific configuration options defined in:
+
+- **Web Widget**: `app/models/channel/web_widget.rb` - Supports customizable colors, welcome messages, and pre-chat forms
+- **Email**: `app/models/channel/email.rb` - IMAP/SMTP configuration with email forwarding
+- **WhatsApp**: `app/models/channel/whatsapp.rb` - Business API integration with phone number validation
+- **Telegram**: `app/models/channel/telegram.rb` - Bot token authentication
+- **Facebook**: `app/models/channel/facebook_page.rb` - OAuth integration with Instagram support
+- **Twitter**: `app/models/channel/twitter_profile.rb` - Twitter API v2 integration
+
+<Note>
+Each channel is implemented as a polymorphic association through the `Inbox` model (app/models/inbox.rb), allowing flexible channel management.
+</Note>
+
+## Conversation Management
+
+Powerful tools for organizing and handling customer conversations efficiently.
+
+### Conversation Statuses
+
+Conversations can be in one of four states (defined in `app/models/conversation.rb`):
+
+- **Open**: Active conversations requiring attention
+- **Pending**: Awaiting customer response
+- **Resolved**: Closed/completed conversations
+- **Snoozed**: Temporarily hidden until a specified time
+
+```ruby
+# From app/models/conversation.rb
+enum status: { open: 0, resolved: 1, pending: 2, snoozed: 3 }
+```
+
+### Priority Levels
+
+Assign priority to conversations for better triage:
+
+- **Low**: General inquiries
+- **Medium**: Standard support issues
+- **High**: Important customer issues
+- **Urgent**: Critical problems requiring immediate attention
+
+```ruby
+# From app/models/conversation.rb
+enum priority: { low: 0, medium: 1, high: 2, urgent: 3 }
+```
+
+### Conversation Features
+
+<CardGroup cols={2}>
+  <Card title="Assignment" icon="user-check">
+    Assign conversations to specific agents or teams
+  </Card>
+  <Card title="Labels" icon="tags">
+    Categorize conversations with custom labels
+  </Card>
+  <Card title="Custom Attributes" icon="sliders">
+    Store additional metadata on conversations
+  </Card>
+  <Card title="Context" icon="file-lines">
+    View full conversation history and customer details
+  </Card>
+</CardGroup>
+
+## Team Collaboration
+
+Empower your support team with collaboration tools.
+
+### Private Notes
+
+Add internal notes visible only to team members. Use `@mentions` to notify specific agents.
+
+```ruby
+# Private notes are stored as Message records with message_type: 2
+# See app/models/note.rb and app/models/message.rb
+```
+
+### Teams
+
+Organize agents into teams for better workflow management:
+
+- Create multiple teams within an account
+- Assign conversations to entire teams
+- Set team-specific permissions
+- Track team performance with reports
+
+**Implementation**: `app/models/team.rb` and `app/models/team_member.rb`
+
+### Agent Roles
+
+Three role levels with different permissions:
+
+1. **Agent**: Can manage conversations and access assigned inboxes
+2. **Administrator**: Full access to account settings and configuration
+3. **Super Admin**: Platform-level access (self-hosted installations)
+
+### Mentions & Notifications
+
+Mention team members in private notes to get their attention:
+
+```
+@john Can you help with this customer's billing issue?
+```
+
+**Implementation**: `app/models/mention.rb` and `app/models/notification.rb`
+
+## Automation
+
+Automate repetitive tasks and workflows with powerful automation rules.
+
+### Automation Rules
+
+Create conditional automation based on:
+
+- **Event Triggers**: Conversation created, updated, message created, etc.
+- **Conditions**: Status, assignee, labels, custom attributes, etc.
+- **Actions**: Assign agent/team, add label, send message, send email, etc.
+
+**Example automation workflow**:
+
+<Steps>
+  <Step title="Trigger">
+    When a conversation is created
+  </Step>
+  <Step title="Condition">
+    If message contains "billing" keyword
+  </Step>
+  <Step title="Action">
+    Assign to billing team and add "billing" label
+  </Step>
+</Steps>
+
+**Implementation**: `app/models/automation_rule.rb` and `app/services/automation_rules/`
+
+### Auto-Assignment
+
+Automatically assign conversations to available agents using:
+
+- **Round Robin**: Distribute conversations evenly
+- **Agent Availability**: Only assign to online agents
+- **Capacity Limits**: Respect maximum conversation limits per agent
+- **Assignment Policies**: Create custom assignment rules per inbox
+
+**Implementation**: `app/services/auto_assignment/` directory with services like:
+- `agent_assignment_service.rb`
+- `inbox_round_robin_service.rb`
+- `round_robin_selector.rb`
+
+```ruby
+# Enable auto-assignment in inbox settings
+inbox.update(enable_auto_assignment: true)
+
+# Configure auto-assignment settings
+inbox.update(auto_assignment_config: {
+  max_assignment_limit: 10
+})
+```
+
+### Canned Responses
+
+Create pre-written responses for frequently asked questions:
+
+- Save time with quick replies
+- Use shortcodes for instant insertion (`/shortcode`)
+- Support for variables (contact name, agent name, etc.)
+- Account-wide or personal canned responses
+
+**Implementation**: `app/models/canned_response.rb`
+
+### Macros
+
+Chain multiple actions together into reusable macros:
+
+- Change status, priority, assignee
+- Add labels and notes
+- Send messages
+- Apply multiple actions with one click
+
+**Implementation**: `app/models/macro.rb`
+
+## AI-Powered Features (Captain)
+
+Chatwoot's AI assistant helps automate and enhance support operations.
+
+### Captain Capabilities
+
+<CardGroup cols={2}>
+  <Card title="AI Assistant" icon="robot">
+    Suggest responses and automate common queries
+  </Card>
+  <Card title="Label Suggestions" icon="sparkles">
+    Automatically suggest labels based on conversation content
+  </Card>
+  <Card title="Audio Transcription" icon="microphone">
+    Transcribe voice messages automatically
+  </Card>
+  <Card title="Help Center Search" icon="magnifying-glass">
+    AI-powered search in knowledge base
+  </Card>
+  <Card title="Writing Assistant" icon="pen">
+    Improve and refine agent responses
+  </Card>
+  <Card title="Copilot" icon="wand-magic-sparkles">
+    Real-time assistance while handling conversations
+  </Card>
+</CardGroup>
+
+**Configuration** (from `app/models/account.rb`):
+
+```ruby
+# Account settings for Captain features
+settings: {
+  captain_features: {
+    editor: true,
+    assistant: true,
+    copilot: true,
+    label_suggestion: true,
+    audio_transcription: true,
+    help_center_search: true
+  },
+  captain_models: {
+    editor: 'gpt-4',
+    assistant: 'gpt-4',
+    # ... model configurations
+  }
+}
+```
+
+<Card title="Learn More About Captain" icon="book" href="https://chwt.app/captain-docs">
+  Read the complete Captain documentation
+</Card>
+
+## Contact Management
+
+Build comprehensive customer profiles and manage contact data.
+
+### Contact Profiles
+
+Each contact has:
+
+- **Basic Information**: Name, email, phone, avatar
+- **Custom Attributes**: Store additional custom fields
+- **Conversation History**: View all past interactions
+- **Contact Notes**: Add persistent notes about the contact
+- **Social Profiles**: Links to social media accounts
+- **Contact Source**: Track where the contact came from
+
+**Implementation**: `app/models/contact.rb`
+
+### Custom Attributes
+
+Define custom fields to store additional contact data:
+
+- **Attribute Types**: Text, number, date, link, list, checkbox
+- **Required Fields**: Mark attributes as required
+- **Default Values**: Set default values for new contacts
+- **Contact & Conversation Attributes**: Store data on both levels
+
+**Implementation**: `app/models/custom_attribute_definition.rb`
+
+```ruby
+# Example: Create a custom attribute
+CustomAttributeDefinition.create!(
+  account: account,
+  attribute_display_name: 'Customer Type',
+  attribute_key: 'customer_type',
+  attribute_display_type: 'list',
+  attribute_values: ['Premium', 'Standard', 'Trial']
+)
+```
+
+### Contact Segments
+
+Create dynamic segments based on contact attributes:
+
+- Filter contacts by custom attributes
+- Build targeted campaigns
+- Export segment data
+- Track segment size and changes
+
+### Contact Actions
+
+<CardGroup cols={2}>
+  <Card title="Merge Contacts" icon="code-merge">
+    Combine duplicate contact records
+  </Card>
+  <Card title="Import Contacts" icon="file-import">
+    Bulk import from CSV files
+  </Card>
+  <Card title="Export Contacts" icon="file-export">
+    Download contact lists
+  </Card>
+  <Card title="Block Contacts" icon="ban">
+    Block spam or abusive contacts
+  </Card>
+</CardGroup>
+
+**Implementation**: `app/actions/contact_merge_action.rb` and `app/models/data_import.rb`
+
+## Labels & Organization
+
+Categorize and organize conversations with a flexible labeling system.
+
+### Label Features
+
+- Create custom labels with colors
+- Apply multiple labels per conversation
+- Filter conversations by labels
+- Label-based reporting
+- Team-specific label visibility
+
+**Implementation**: `app/models/label.rb`
+
+```ruby
+# Labels use a tagging system
+conversation.add_labels(['billing', 'urgent'])
+conversation.remove_labels(['pending'])
+```
+
+### Custom Views & Filters
+
+Create saved views with custom filters:
+
+- Filter by status, assignee, team, labels
+- Save frequently used filter combinations
+- Share views with team members
+- Quick access to important conversation subsets
+
+**Implementation**: `app/models/custom_filter.rb`
+
+## Campaigns
+
+Proactively engage customers with targeted messaging campaigns.
+
+### Campaign Types
+
+- **One-time Campaigns**: Send messages to specific audience segments
+- **Triggered Campaigns**: Automatically message based on user behavior
+- **Scheduled Campaigns**: Send messages at specific times
+
+### Campaign Features
+
+- **Audience Targeting**: Select contacts based on custom attributes and segments
+- **Message Scheduling**: Schedule campaigns for optimal timing
+- **Campaign Analytics**: Track delivery, open rates, and responses
+- **A/B Testing**: Test different message variants
+
+**Implementation**: `app/models/campaign.rb` and `app/builders/campaigns/campaign_conversation_builder.rb`
+
+```ruby
+# Create a campaign
+Campaign.create!(
+  account: account,
+  inbox: inbox,
+  title: 'Welcome Series',
+  message: 'Welcome to our service!',
+  trigger_rules: { ... },
+  audience: [{ ... }]
+)
+```
+
+## Reports & Analytics
+
+Gain insights into support operations with comprehensive reporting.
+
+### Available Reports
+
+<CardGroup cols={2}>
+  <Card title="Conversation Reports" icon="comments">
+    Track conversation volume, trends, and resolution times
+  </Card>
+  <Card title="Agent Reports" icon="user">
+    Measure individual agent performance and productivity
+  </Card>
+  <Card title="Inbox Reports" icon="inbox">
+    Analyze performance by channel/inbox
+  </Card>
+  <Card title="Team Reports" icon="users">
+    Compare team performance metrics
+  </Card>
+  <Card title="Label Reports" icon="tags">
+    Track conversations by category
+  </Card>
+  <Card title="CSAT Reports" icon="star">
+    Monitor customer satisfaction scores
+  </Card>
+</CardGroup>
+
+### Key Metrics
+
+- **First Response Time**: Average time to first agent reply
+- **Resolution Time**: Average time to resolve conversations
+- **Resolution Count**: Number of conversations resolved
+- **Response Count**: Total messages sent by agents
+- **Conversations Count**: Total conversations handled
+
+### Live Dashboard
+
+Real-time view of ongoing support operations:
+
+- Active conversations
+- Agents online/offline
+- Waiting conversations
+- Response time metrics
+
+**Implementation**: `app/models/reporting_event.rb` and reporting services
+
+## Help Center (Knowledge Base)
+
+Create a self-service portal for customers to find answers independently.
+
+### Portal Features
+
+- **Multi-portal Support**: Create separate portals for different products
+- **Categories & Sections**: Organize articles hierarchically
+- **Multi-language**: Publish articles in multiple languages
+- **SEO-friendly**: Optimized URLs and meta tags
+- **Search**: Full-text search across articles
+- **Public/Private**: Control article visibility
+
+**Implementation**:
+- `app/models/portal.rb` - Portal container
+- `app/models/category.rb` - Article categories
+- `app/models/article.rb` - Knowledge base articles
+
+```ruby
+# Create a portal
+portal = Portal.create!(
+  account: account,
+  name: 'Help Center',
+  slug: 'help',
+  custom_domain: 'help.yourcompany.com'
+)
+
+# Create articles
+Article.create!(
+  account: account,
+  portal: portal,
+  category: category,
+  title: 'How to reset your password',
+  content: '...',
+  status: :published
+)
+```
+
+### Article Management
+
+- Rich text editor for article content
+- Article versioning and history
+- SEO metadata (title, description)
+- Article associations (related articles)
+- Article analytics (views, searches)
+
+## Integrations
+
+Extend Chatwoot with third-party integrations.
+
+### Available Integrations
+
+<CardGroup cols={2}>
+  <Card title="Slack" icon="slack">
+    Manage conversations from Slack channels
+  </Card>
+  <Card title="Dialogflow" icon="robot">
+    Add chatbot automation with Google Dialogflow
+  </Card>
+  <Card title="Webhooks" icon="webhook">
+    Receive real-time events via webhooks
+  </Card>
+  <Card title="Dashboard Apps" icon="grid">
+    Embed custom apps in the agent dashboard
+  </Card>
+  <Card title="Shopify" icon="shopping-cart">
+    View customer orders within conversations
+  </Card>
+  <Card title="Linear" icon="check-square">
+    Create and manage Linear issues
+  </Card>
+  <Card title="Google Translate" icon="language">
+    Translate messages in real-time
+  </Card>
+</CardGroup>
+
+### Webhook Events
+
+Receive webhooks for events (configured in `app/models/webhook.rb`):
+
+- `conversation_created`
+- `conversation_updated`
+- `conversation_status_changed`
+- `message_created`
+- `message_updated`
+- `contact_created`
+- `contact_updated`
+
+```ruby
+# Create a webhook
+Webhook.create!(
+  account: account,
+  inbox: inbox,
+  url: 'https://your-service.com/webhook',
+  webhook_type: 'account',
+  subscriptions: ['conversation_created', 'message_created']
+)
+```
+
+### Dashboard Apps
+
+Embed custom applications within Chatwoot:
+
+- Display external data in conversation sidebar
+- Interact with third-party services
+- Custom UI for specific workflows
+
+**Implementation**: `app/models/dashboard_app.rb`
+
+## Business Hours & Auto-Responders
+
+Manage customer expectations with working hours and automatic responses.
+
+### Business Hours
+
+Define when your team is available:
+
+- Set hours for each day of the week
+- Multiple time slots per day
+- Timezone-aware scheduling
+- Different hours per inbox
+
+**Implementation**: `app/models/working_hour.rb`
+
+```ruby
+# Define business hours
+WorkingHour.create!(
+  inbox: inbox,
+  day_of_week: 1, # Monday
+  open_hour: 9,
+  open_minutes: 0,
+  close_hour: 17,
+  close_minutes: 0
+)
+```
+
+### Auto-Responders
+
+- **Greeting Messages**: Welcome customers when they start conversations
+- **Out of Office**: Automatic replies outside business hours
+- **Away Messages**: Custom messages when agents are unavailable
+
+## Customer Satisfaction (CSAT)
+
+Measure customer satisfaction after conversations are resolved.
+
+### CSAT Features
+
+- **Rating Scale**: 1-5 star ratings
+- **Custom Questions**: Add follow-up questions
+- **Response Collection**: Gather detailed feedback
+- **CSAT Reports**: Track satisfaction trends over time
+- **Per-inbox Configuration**: Different CSAT settings per inbox
+
+**Implementation**: `app/models/csat_survey_response.rb`
+
+```ruby
+# Enable CSAT for an inbox
+inbox.update(
+  csat_survey_enabled: true,
+  csat_config: {
+    message: 'How would you rate your support experience?'
+  }
+)
+```
+
+## Additional Features
+
+### Keyboard Shortcuts
+
+Boost productivity with keyboard shortcuts:
+
+- `/` - Open command bar
+- `Cmd/Ctrl + K` - Quick navigation
+- `R` - Resolve conversation
+- `E` - Focus reply box
+- `?` - View all shortcuts
+
+### Command Bar
+
+Quick access to actions and navigation:
+
+- Search conversations
+- Execute commands
+- Navigate to settings
+- Apply quick actions
+
+### Conversation Continuity
+
+- **Lock to Single Conversation**: Prevent multiple conversations per contact
+- **Conversation Identifiers**: Custom IDs for conversation tracking
+- **Conversation Participants**: Track multiple participants in group conversations
+
+**Implementation**: `app/models/conversation_participant.rb`
+
+### Attachments
+
+Support for various file types:
+
+- Images, documents, videos
+- Cloud storage integration (Active Storage)
+- Automatic thumbnail generation
+- Virus scanning support
+
+**Implementation**: `app/models/attachment.rb`
+
+### Message Features
+
+- **Rich Text**: Markdown support in messages
+- **Code Blocks**: Syntax highlighting for code
+- **Email Templates**: Branded email notifications
+- **Message Templates**: Structured message formats
+
+**Implementation**: `app/models/message.rb`
+
+## Platform Apps
+
+Chatwoot supports platform apps for extended functionality:
+
+- Install apps from marketplace
+- Configure app permissions
+- Custom app development
+
+**Implementation**: `app/models/platform_app.rb` and `app/models/platform_app_permissible.rb`
+
+## Advanced Configuration
+
+### Account Settings
+
+Configure account-level settings:
+
+- **Auto-resolve Duration**: Automatically resolve inactive conversations
+- **Custom Attributes**: Account-level custom fields
+- **Feature Flags**: Enable/disable specific features
+- **Limits**: Set usage limits (agents, inboxes, etc.)
+
+### Inbox Settings
+
+Per-inbox configuration:
+
+- Auto-assignment rules
+- CSAT survey settings
+- Greeting messages
+- Email collection
+- Business hours
+- Channel-specific settings
+
+## API Access
+
+Chatwoot provides a comprehensive REST API:
+
+- **Account Management**: Create and manage accounts
+- **Conversations**: Create, update, and list conversations
+- **Messages**: Send and receive messages
+- **Contacts**: Manage contact data
+- **Webhooks**: Configure event notifications
+- **Custom Channels**: Build custom integrations
+
+<Card title="API Documentation" icon="code" href="https://www.chatwoot.com/developers/api">
+  Explore the complete API reference
+</Card>
+
+---
+
+## Learn More
+
+<CardGroup cols={2}>
+  <Card title="Quick Start Guide" icon="rocket" href="/quickstart">
+    Set up your first inbox and start managing conversations
+  </Card>
+  <Card title="Official Documentation" icon="book" href="https://www.chatwoot.com/help-center">
+    Browse detailed guides and tutorials
+  </Card>
+  <Card title="GitHub Repository" icon="github" href="https://github.com/chatwoot/chatwoot">
+    View source code and contribute
+  </Card>
+  <Card title="Community Discord" icon="discord" href="https://discord.gg/cJXdrwS">
+    Join the community for support and discussions
+  </Card>
+</CardGroup>

@@ -1,0 +1,445 @@
+---
+title: Linear Integration
+description: Create and manage Linear issues directly from Chatwoot conversations
+---
+
+The Linear integration enables seamless issue tracking by allowing you to create, link, and manage Linear issues directly from customer conversations in Chatwoot. Turn customer feedback into actionable development tasks without switching tools.
+
+## Features
+
+- **Create Issues**: Convert conversations into Linear issues
+- **Link Issues**: Connect existing Linear issues to conversations
+- **Search Issues**: Find and link relevant issues quickly
+- **Team Sync**: Access teams, projects, and workflow states
+- **Automated Logging**: Activity messages for all Linear actions
+- **Issue Management**: View linked issues and their status
+- **OAuth Authentication**: Secure connection to Linear workspace
+
+## Prerequisites
+
+- Admin access to your Chatwoot account
+- Linear workspace with admin access
+- Feature flag enabled: `linear_integration`
+- Linear OAuth credentials configured:
+  - `LINEAR_CLIENT_ID`
+  - `LINEAR_CLIENT_SECRET`
+
+## Setup Instructions
+
+### Step 1: Configure Environment Variables
+
+Ensure your Chatwoot instance has Linear credentials configured:
+
+```bash
+LINEAR_CLIENT_ID=your_linear_client_id
+LINEAR_CLIENT_SECRET=your_linear_client_secret
+```
+
+### Step 2: Enable Feature Flag
+
+The Linear integration requires the feature flag:
+
+```ruby
+account.enable_features('linear_integration')
+```
+
+### Step 3: Connect Linear
+
+1. Navigate to **Settings** > **Integrations** in Chatwoot
+2. Find **Linear** in the integrations list
+3. Click **Connect**
+4. You'll be redirected to Linear's authorization page
+5. Review permissions and click **Authorize**
+6. You'll be redirected back to Chatwoot
+
+### Step 4: Verify Integration
+
+1. Open a conversation
+2. Look for the Linear integration panel
+3. Try creating a test issue
+4. Verify the issue appears in Linear
+
+## OAuth Scopes
+
+The integration requests the following Linear permissions:
+
+- `read`: Read workspace data
+- `write`: Create and modify issues
+
+With these scopes, Chatwoot can:
+- Access teams, projects, and workflow states
+- Create new issues
+- Link and unlink issues
+- Search existing issues
+- Read issue details
+
+## Using the Integration
+
+### Creating Issues
+
+To create a Linear issue from a conversation:
+
+1. Open the conversation
+2. Click the Linear integration icon
+3. Fill in the issue details:
+   - **Title**: Brief issue description
+   - **Description**: Detailed information (supports markdown)
+   - **Team**: Select the Linear team
+   - **Project**: Choose a project (optional)
+   - **Assignee**: Assign to a team member (optional)
+   - **Priority**: Set issue priority (optional)
+   - **State**: Select workflow state (optional)
+   - **Labels**: Add labels (optional)
+4. Click **Create Issue**
+
+The issue is created in Linear and automatically linked to the conversation.
+
+### Linking Existing Issues
+
+To link an existing Linear issue:
+
+1. Open the conversation
+2. Click **Link Issue** in the Linear panel
+3. Search for the issue by:
+   - Issue identifier (e.g., "ENG-123")
+   - Title keywords
+4. Select the issue from results
+5. Click **Link**
+
+A conversation link is created in Linear with reference back to Chatwoot.
+
+### Viewing Linked Issues
+
+Linked issues are displayed in the conversation sidebar:
+
+- Issue identifier and title
+- Current status
+- Link to view in Linear
+- Option to unlink
+
+### Unlinking Issues
+
+To remove the link between a conversation and issue:
+
+1. Find the linked issue in the conversation
+2. Click **Unlink**
+3. Confirm the action
+
+This removes the conversation link from Linear but doesn't delete the issue.
+
+### Activity Logging
+
+All Linear actions generate activity messages in the conversation:
+
+- **Issue Created**: "Created Linear issue [ENG-123]"
+- **Issue Linked**: "Linked Linear issue [ENG-123]"
+- **Issue Unlinked**: "Unlinked Linear issue [ENG-123]"
+
+These messages help track the relationship between conversations and issues.
+
+## API Integration
+
+### Get Teams
+
+```bash
+GET /api/v1/accounts/{account_id}/integrations/linear/teams
+```
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "id": "team-id-1",
+      "name": "Engineering",
+      "key": "ENG"
+    }
+  ]
+}
+```
+
+### Get Team Entities
+
+Fetch projects, users, states, and labels for a team:
+
+```bash
+GET /api/v1/accounts/{account_id}/integrations/linear/team_entities?team_id={team_id}
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "users": [{"id": "user-1", "name": "John Doe"}],
+    "projects": [{"id": "proj-1", "name": "Q1 Goals"}],
+    "states": [{"id": "state-1", "name": "In Progress"}],
+    "labels": [{"id": "label-1", "name": "bug"}]
+  }
+}
+```
+
+### Create Issue
+
+```bash
+POST /api/v1/accounts/{account_id}/integrations/linear/create_issue
+Content-Type: application/json
+
+{
+  "conversation_id": 123,
+  "title": "Issue title",
+  "description": "Detailed description",
+  "team_id": "team-id",
+  "project_id": "project-id",
+  "assignee_id": "user-id",
+  "priority": 1,
+  "state_id": "state-id",
+  "label_ids": ["label-1", "label-2"]
+}
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "id": "issue-id",
+    "title": "Issue title",
+    "identifier": "ENG-123"
+  }
+}
+```
+
+### Link Issue
+
+```bash
+POST /api/v1/accounts/{account_id}/integrations/linear/link_issue
+Content-Type: application/json
+
+{
+  "conversation_id": 123,
+  "issue_id": "issue-id",
+  "title": "Conversation #123"
+}
+```
+
+### Unlink Issue
+
+```bash
+POST /api/v1/accounts/{account_id}/integrations/linear/unlink_issue
+Content-Type: application/json
+
+{
+  "conversation_id": 123,
+  "link_id": "attachment-id",
+  "issue_id": "issue-id"
+}
+```
+
+### Search Issues
+
+```bash
+GET /api/v1/accounts/{account_id}/integrations/linear/search_issue?q={search_term}
+```
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "id": "issue-id",
+      "identifier": "ENG-123",
+      "title": "Fix login bug",
+      "state": {"name": "In Progress"}
+    }
+  ]
+}
+```
+
+### Get Linked Issues
+
+```bash
+GET /api/v1/accounts/{account_id}/integrations/linear/linked_issues?conversation_id={conversation_id}
+```
+
+### Delete Integration
+
+```bash
+DELETE /api/v1/accounts/{account_id}/integrations/linear
+```
+
+This revokes the Linear token and removes the integration.
+
+## Implementation Details
+
+The Linear integration uses:
+
+- **Processor Service**: `Integrations::Linear::ProcessorService`
+- **Linear Client**: Custom GraphQL client for Linear API
+- **Hook Type**: Account-level integration
+- **Token Storage**: Encrypted access token in integration hook
+
+### Hook Configuration
+
+```ruby
+{
+  app_id: 'linear',
+  hook_type: 'account',
+  access_token: 'encrypted_linear_token'
+}
+```
+
+### Priority Values
+
+Linear priority levels:
+
+- `0`: No priority
+- `1`: Urgent
+- `2`: High
+- `3`: Medium
+- `4`: Low
+
+### Conversation Link Format
+
+When linking issues, Chatwoot creates a URL:
+
+```
+https://your-chatwoot-domain/app/accounts/{account_id}/conversations/{display_id}
+```
+
+This appears in Linear as an attachment to the issue.
+
+## Troubleshooting
+
+### Integration Not Available
+
+**Issue**: Linear integration doesn't appear.
+
+**Solution**:
+1. Verify `LINEAR_CLIENT_ID` environment variable is set
+2. Enable `linear_integration` feature flag
+3. Check admin permissions
+
+### OAuth Authorization Failed
+
+**Issue**: Error during OAuth redirect.
+
+**Solution**:
+1. Verify redirect URI in Linear OAuth app:
+   ```
+   https://your-chatwoot-domain/linear/callback
+   ```
+2. Check `FRONTEND_URL` environment variable
+3. Ensure Linear app is properly configured
+
+### Cannot Create Issues
+
+**Issue**: Error when creating Linear issues.
+
+**Solution**:
+1. Verify access token is valid
+2. Check that team ID is correct
+3. Ensure user has write permissions in Linear
+4. Verify all required fields are provided
+
+### Team Entities Not Loading
+
+**Issue**: Projects, users, or states not appearing.
+
+**Solution**:
+1. Verify team ID is correct
+2. Check Linear workspace permissions
+3. Ensure the team has projects and workflow states configured
+4. Try refreshing the integration connection
+
+### Search Returns No Results
+
+**Issue**: Issue search doesn't find existing issues.
+
+**Solution**:
+1. Verify search parameter is provided (`q` parameter required)
+2. Check that issues exist in Linear workspace
+3. Ensure search term matches issue titles or identifiers
+4. Try more specific search terms
+
+### Token Revocation Failed
+
+**Issue**: Error when removing integration.
+
+**Solution**:
+1. The integration will still be removed from Chatwoot
+2. Manually revoke access in Linear settings
+3. Check Linear API status if persistent
+
+## Activity Messages
+
+The integration uses `Linear::ActivityMessageService` to create conversation messages:
+
+```ruby:workspace/source/app/controllers/api/v1/accounts/integrations/linear_controller.rb
+Linear::ActivityMessageService.new(
+  conversation: @conversation,
+  action_type: :issue_created, # or :issue_linked, :issue_unlinked
+  issue_data: { id: issue_identifier },
+  user: Current.user
+).perform
+```
+
+These messages are visible to all conversation participants.
+
+## State Management
+
+Linear uses workflow states to track issue progress:
+
+- **Triage**: New issues awaiting review
+- **Backlog**: Planned work
+- **Todo**: Ready to start
+- **In Progress**: Active work
+- **In Review**: Awaiting review
+- **Done**: Completed
+- **Canceled**: Not proceeding
+
+Workflow states are team-specific and can be customized.
+
+## Security Considerations
+
+- **Encrypted Tokens**: Linear access tokens are encrypted
+- **OAuth 2.0**: Secure authorization flow
+- **Token Revocation**: Tokens are revoked when integration is removed
+- **Admin Only**: Only administrators can configure the integration
+- **Scoped Access**: Minimum required permissions
+
+## Best Practices
+
+1. **Consistent Naming**: Use clear, descriptive issue titles
+2. **Proper Labeling**: Apply consistent labels for filtering
+3. **Set Priorities**: Help teams prioritize customer-reported issues
+4. **Link Context**: Include relevant conversation details in issue descriptions
+5. **Regular Review**: Periodically review linked issues for status updates
+
+## Limitations
+
+- **Single Workspace**: One Linear workspace per Chatwoot account
+- **No Bidirectional Sync**: Changes in Linear don't update Chatwoot
+- **Manual Linking**: Must manually link existing issues
+- **No Bulk Operations**: One issue at a time
+
+## Removing the Integration
+
+To remove the Linear integration:
+
+1. Navigate to **Settings** > **Integrations**
+2. Find Linear integration
+3. Click **Delete**
+4. Confirm removal
+
+This will:
+- Revoke the Linear access token
+- Remove integration configuration
+- Existing linked issues remain in Linear
+- Activity messages in conversations are preserved
+
+## Next Steps
+
+- Configure Linear teams and projects
+- Train support team on creating issues
+- Establish guidelines for when to create vs. link issues
+- Set up Linear automation rules for Chatwoot-created issues
+- Monitor issue resolution times from customer conversations

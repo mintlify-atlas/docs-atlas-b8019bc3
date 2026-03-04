@@ -1,0 +1,429 @@
+---
+title: 'Conversation Management'
+description: 'Managing conversations, assignments, status, and priorities'
+icon: 'comments'
+---
+
+## Overview
+
+Conversations are at the heart of Chatwoot. Each conversation represents an interaction with a contact across any channel, containing messages, metadata, and tracking information.
+
+## Conversation States
+
+Conversations can be in one of four states:
+
+<Tabs>
+  <Tab title="Open">
+    Active conversations requiring attention from agents.
+    
+    ```ruby
+    conversation.open!
+    conversation.status # => "open"
+    ```
+  </Tab>
+  <Tab title="Resolved">
+    Conversations marked as complete.
+    
+    ```ruby
+    conversation.resolved!
+    conversation.status # => "resolved"
+    ```
+  </Tab>
+  <Tab title="Pending">
+    Conversations awaiting customer response or handled by bots.
+    
+    ```ruby
+    conversation.pending!
+    conversation.status # => "pending"
+    ```
+  </Tab>
+  <Tab title="Snoozed">
+    Conversations temporarily hidden until a specific time.
+    
+    ```ruby
+    conversation.snoozed!
+    conversation.update!(snoozed_until: 2.days.from_now)
+    ```
+  </Tab>
+</Tabs>
+
+## Priority Levels
+
+Set conversation priorities to help agents focus on urgent issues:
+
+```ruby
+conversation.priority = :urgent  # urgent, high, medium, low
+conversation.save!
+
+# Toggle priority
+conversation.toggle_priority(:high)
+```
+
+<Info>
+  Priority levels: **Urgent** > **High** > **Medium** > **Low**
+</Info>
+
+## Conversation Attributes
+
+### Core Attributes
+
+```ruby
+conversation.display_id              # User-friendly conversation ID
+conversation.status                  # open, resolved, pending, snoozed
+conversation.priority                # urgent, high, medium, low
+conversation.assignee                # Assigned agent
+conversation.team                    # Assigned team
+conversation.inbox                   # Source inbox/channel
+conversation.contact                 # Associated contact
+conversation.created_at              # Creation timestamp
+conversation.last_activity_at        # Last message or activity
+conversation.first_reply_created_at  # Agent's first response time
+conversation.waiting_since           # Time since last customer message
+```
+
+### Custom Attributes
+
+Store additional metadata:
+
+```ruby
+conversation.custom_attributes = {
+  order_id: "ORD-12345",
+  customer_tier: "premium",
+  source: "mobile_app"
+}
+conversation.save!
+```
+
+### Additional Attributes
+
+System-managed attributes:
+
+```ruby
+conversation.additional_attributes
+# => {
+#   referer: "https://example.com/pricing",
+#   browser: "Chrome 120",
+#   browser_language: "en-US",
+#   conversation_language: "en"
+# }
+```
+
+## Assignment Management
+
+### Assign to Agent
+
+```ruby
+# Assign to a specific agent
+service = Conversations::AssignmentService.new(
+  conversation: conversation,
+  assignee_id: agent.id,
+  assignee_type: 'User'
+)
+service.perform
+
+# Unassign
+conversation.update!(assignee_id: nil)
+```
+
+### Assign to Team
+
+```ruby
+conversation.update!(team: team)
+
+# Team-based filtering
+team_conversations = account.conversations.where(team_id: team.id)
+```
+
+### Auto-Assignment
+
+<Steps>
+  <Step title="Enable on Inbox">
+    ```ruby
+    inbox.update!(enable_auto_assignment: true)
+    ```
+  </Step>
+  <Step title="Configure Assignment Rules">
+    Set max assignment limits per agent:
+    ```ruby
+    inbox.auto_assignment_config = {
+      max_assignment_limit: 10
+    }
+    ```
+  </Step>
+  <Step title="Assignment Triggers">
+    Conversations are auto-assigned when:
+    - New conversation is created
+    - Conversation status changes to open
+    - Agent becomes available
+  </Step>
+</Steps>
+
+## Conversation Scopes
+
+### Common Filters
+
+```ruby
+# Unassigned conversations
+Conversation.unassigned
+
+# Assigned conversations
+Conversation.assigned
+
+# Conversations assigned to specific agent
+Conversation.assigned_to(agent)
+
+# Unattended conversations (no first reply or waiting for agent)
+Conversation.unattended
+
+# By status
+Conversation.open
+Conversation.resolved
+Conversation.pending
+Conversation.snoozed
+```
+
+### Advanced Filtering
+
+```ruby
+# Find conversations ready for auto-resolve
+Conversation.resolvable_not_waiting(auto_resolve_after: 48.hours)
+
+# Sort by last user message
+Conversation.last_user_message_at
+```
+
+## Messages
+
+### Accessing Messages
+
+```ruby
+# All messages in conversation
+conversation.messages
+
+# Last incoming message
+conversation.last_incoming_message
+
+# Recent messages (last 5)
+conversation.recent_messages
+
+# Unread messages
+conversation.unread_messages
+conversation.unread_incoming_messages
+```
+
+### Read/Unread Tracking
+
+```ruby
+# Track agent's last seen time
+conversation.update!(agent_last_seen_at: Time.current)
+
+# Track assignee's last seen time
+conversation.update!(assignee_last_seen_at: Time.current)
+
+# Contact's last seen time
+conversation.update!(contact_last_seen_at: Time.current)
+```
+
+## Conversation Actions
+
+### Toggle Status
+
+```ruby
+# Toggle between open and resolved
+conversation.toggle_status
+
+# Open conversation changes to resolved
+# Resolved/pending/snoozed changes to open
+```
+
+### Bot Handoff
+
+Transfer from bot to human agent:
+
+```ruby
+conversation.bot_handoff!
+# Sets status to open and triggers CONVERSATION_BOT_HANDOFF event
+```
+
+### Mute Conversation
+
+```ruby
+conversation.mute!
+conversation.unmute!
+```
+
+### Check Reply Capability
+
+Some channels have messaging windows:
+
+```ruby
+if conversation.can_reply?
+  # Send message
+else
+  # Show error: messaging window closed
+end
+```
+
+## Labels
+
+Organize conversations with labels:
+
+```ruby
+# Add labels
+conversation.add_labels(["bug", "urgent", "billing"])
+
+# Remove labels
+conversation.remove_labels(["billing"])
+
+# Get labels
+conversation.label_list # => ["bug", "urgent"]
+conversation.cached_label_list_array # => ["bug", "urgent"]
+```
+
+## Participants
+
+Track conversation participants:
+
+```ruby
+conversation.conversation_participants
+# => [#<ConversationParticipant>, ...]
+```
+
+## Attachments
+
+Access all attachments in a conversation:
+
+```ruby
+attachments = conversation.attachments
+                          .includes(:message)
+                          .order(created_at: :desc)
+                          .page(1)
+                          .per(100)
+```
+
+## Advanced Features
+
+### Conversation Language
+
+Automatic language detection:
+
+```ruby
+conversation.language # => "en", "es", "fr", etc.
+```
+
+### Identifiers
+
+Unique identifiers for integrations:
+
+```ruby
+conversation.identifier # Custom identifier
+conversation.uuid       # System-generated UUID
+```
+
+### Activity Tracking
+
+```ruby
+# Last activity timestamp
+conversation.last_activity_at
+
+# Waiting time (since last customer message)
+conversation.waiting_since
+
+# First response time
+conversation.first_reply_created_at
+```
+
+## API Examples
+
+### Create Conversation
+
+```ruby
+conversation = ConversationBuilder.new(
+  params: {
+    contact_id: contact.id,
+    inbox_id: inbox.id,
+    status: :open,
+    additional_attributes: {
+      referer: "https://example.com"
+    }
+  },
+  contact_inbox: contact_inbox
+).perform
+```
+
+### Update Conversation
+
+```ruby
+conversation.update!(
+  status: :resolved,
+  assignee: agent,
+  team: team,
+  priority: :high,
+  custom_attributes: {
+    resolution_type: "solved"
+  }
+)
+```
+
+### Filter Conversations
+
+```ruby
+result = Conversations::FilterService.new(
+  params: {
+    status: "open",
+    assignee_type: "me",
+    inbox_id: inbox.id,
+    team_id: team.id,
+    labels: ["bug", "urgent"]
+  },
+  user: current_user,
+  account: current_account
+).perform
+
+conversations = result[:conversations]
+count = result[:count]
+```
+
+## Events
+
+Conversations trigger various events:
+
+- `CONVERSATION_CREATED` - New conversation created
+- `CONVERSATION_UPDATED` - Conversation attributes changed
+- `CONVERSATION_OPENED` - Status changed to open
+- `CONVERSATION_RESOLVED` - Status changed to resolved
+- `CONVERSATION_STATUS_CHANGED` - Any status change
+- `CONVERSATION_READ` - Marked as read
+- `CONVERSATION_CONTACT_CHANGED` - Contact changed
+- `CONVERSATION_BOT_HANDOFF` - Bot transferred to agent
+
+## Best Practices
+
+<Warning>
+  Always check `can_reply?` before sending messages on channels with messaging windows (WhatsApp, Instagram).
+</Warning>
+
+<Tip>
+  Use custom attributes to store integration-specific data like order IDs, subscription status, or custom metadata.
+</Tip>
+
+<Note>
+  The `last_activity_at` timestamp updates on any message or activity. Use `waiting_since` to track time since last customer message.
+</Note>
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Contacts" icon="address-book" href="/features/contacts">
+    Manage contact profiles
+  </Card>
+  <Card title="Teams" icon="users" href="/features/teams">
+    Team-based assignment
+  </Card>
+  <Card title="Automation" icon="robot" href="/features/automation">
+    Automate conversation workflows
+  </Card>
+  <Card title="Reports" icon="chart-line" href="/features/reports">
+    Conversation analytics
+  </Card>
+</CardGroup>
